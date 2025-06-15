@@ -1,289 +1,186 @@
 
-import { useState } from "react";
-import { Calendar, Plus, Search, Filter, ExternalLink, MapPin } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useAudiences } from "@/hooks/useAudiences";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { CalendarDays, Clock, MapPin, Users } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const Audiencias = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("todos");
+  const { data: audiences, isLoading, error } = useAudiences();
 
-  // Audiências agrupadas por região
-  const audiencesByRegion = {
-    macrorregiao_02: [
-      {
-        id: 1,
-        date: "2024-06-15",
-        time: "09:00",
-        process: "0001234-56.2024.8.09.0000",
-        defendant: "João Silva Santos",
-        unit: "CDP Aparecida de Goiânia",
-        magistrate: "Dr. Carlos Eduardo Silva",
-        prosecutor: "Dra. Ana Paula Oliveira",
-        defender: "Dr. Roberto Santos Lima",
-        policeResponsible: "Inspetor José Maria",
-        status: "agendada",
-        virtualRoom: "https://zoom.us/j/123456789",
-        confirmed: false
-      },
-      {
-        id: 4,
-        date: "2024-06-15",
-        time: "11:00",
-        process: "0001237-56.2024.8.09.0000",
-        defendant: "Ana Carolina Mendes",
-        unit: "CDP Aparecida de Goiânia",
-        magistrate: "Dr. Carlos Eduardo Silva",
-        prosecutor: "Dra. Ana Paula Oliveira",
-        defender: "Dra. Fernanda Luz",
-        policeResponsible: "Inspetor José Maria",
-        status: "realizada",
-        virtualRoom: "https://zoom.us/j/789123456",
-        confirmed: true
-      }
-    ],
-    macrorregiao_03: [
-      {
-        id: 5,
-        date: "2024-06-15",
-        time: "15:30",
-        process: "0001238-56.2024.8.09.0000",
-        defendant: "Pedro Henrique Costa",
-        unit: "Casa de Prisão Provisória - Anápolis",
-        magistrate: "Dra. Mariana Santos",
-        prosecutor: "Dr. Pedro Henrique",
-        defender: "Dr. Roberto Santos Lima",
-        policeResponsible: "Inspetora Maria José",
-        status: "agendada",
-        virtualRoom: "https://zoom.us/j/654321987",
-        confirmed: true
-      }
-    ],
-    central_custodia_01: [
-      {
-        id: 2,
-        date: "2024-06-15",
-        time: "10:30",
-        process: "0001235-56.2024.8.09.0000",
-        defendant: "Maria Oliveira Costa",
-        unit: "Presídio Feminino",
-        magistrate: "Dr. Carlos Eduardo Silva",
-        prosecutor: "Dra. Ana Paula Oliveira",
-        defender: "Dra. Fernanda Luz",
-        policeResponsible: "Inspetora Maria José",
-        status: "realizada",
-        virtualRoom: "https://zoom.us/j/987654321",
-        confirmed: true
-      }
-    ],
-    central_custodia_03: [
-      {
-        id: 3,
-        date: "2024-06-15",
-        time: "14:00",
-        process: "0001236-56.2024.8.09.0000",
-        defendant: "Carlos Eduardo Lima",
-        unit: "CPP Goiânia",
-        magistrate: "Dr. Carlos Eduardo Silva",
-        prosecutor: "Dr. Pedro Henrique",
-        defender: "Dr. Roberto Santos Lima",
-        policeResponsible: "Inspetor João Carlos",
-        status: "cancelada",
-        virtualRoom: "https://zoom.us/j/456789123",
-        confirmed: false
-      }
-    ]
-  };
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="space-y-4">
+          <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-32 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-32 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+      </div>
+    );
+  }
 
-  const regionNames = {
-    macrorregiao_02: "Macrorregião 02",
-    macrorregiao_03: "Macrorregião 03",
-    central_custodia_01: "Central de Custódia 01",
-    central_custodia_03: "Central de Custódia 03"
-  };
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center text-red-600">
+          Erro ao carregar audiências: {error.message}
+        </div>
+      </div>
+    );
+  }
 
-  const getStatusBadge = (status: string) => {
+  // Agrupar audiências por região
+  const groupedAudiences = audiences?.reduce((acc, audience) => {
+    const regionName = audience.regions.name;
+    if (!acc[regionName]) {
+      acc[regionName] = {
+        region: audience.regions,
+        audiences: []
+      };
+    }
+    acc[regionName].audiences.push(audience);
+    return acc;
+  }, {} as Record<string, { region: any; audiences: any[] }>) || {};
+
+  const getStatusColor = (status: string) => {
     switch (status) {
       case "agendada":
-        return <Badge className="bg-blue-100 text-blue-800">Agendada</Badge>;
+        return "bg-blue-100 text-blue-800";
       case "realizada":
-        return <Badge className="bg-green-100 text-green-800">Realizada</Badge>;
+        return "bg-green-100 text-green-800";
       case "cancelada":
-        return <Badge className="bg-red-100 text-red-800">Cancelada</Badge>;
+        return "bg-red-100 text-red-800";
       case "nao_compareceu":
-        return <Badge className="bg-yellow-100 text-yellow-800">Não Compareceu</Badge>;
+        return "bg-yellow-100 text-yellow-800";
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  const filterAudiences = (audiences: any[]) => {
-    return audiences.filter(audience => {
-      const matchesSearch = 
-        audience.defendant.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        audience.process.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        audience.unit.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesStatus = statusFilter === "todos" || audience.status === statusFilter;
-      
-      return matchesSearch && matchesStatus;
-    });
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "agendada":
+        return "Agendada";
+      case "realizada":
+        return "Realizada";
+      case "cancelada":
+        return "Cancelada";
+      case "nao_compareceu":
+        return "Não Compareceu";
+      default:
+        return status;
+    }
   };
-
-  const getRegionIcon = (regionKey: string) => {
-    return regionKey.includes('macrorregiao') ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200';
-  };
-
-  const getRegionIconColor = (regionKey: string) => {
-    return regionKey.includes('macrorregiao') ? 'text-blue-600' : 'text-green-600';
-  };
-
-  // Calcular totais
-  const totalAudiences = Object.values(audiencesByRegion).flat().length;
-  const filteredTotal = Object.values(audiencesByRegion)
-    .map(audiences => filterAudiences(audiences).length)
-    .reduce((sum, count) => sum + count, 0);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Audiências de Custódia</h1>
-          <p className="text-gray-600">Gerencie todas as audiências do sistema por região</p>
-        </div>
-        <Button className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Audiência
-        </Button>
+    <div className="container mx-auto p-6">
+      <div className="flex items-center gap-2 mb-6">
+        <Users className="h-6 w-6 text-blue-600" />
+        <h1 className="text-2xl font-bold text-gray-900">Audiências de Custódia</h1>
       </div>
 
-      {/* Filtros */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Buscar por nome, processo ou unidade..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os Status</SelectItem>
-                <SelectItem value="agendada">Agendada</SelectItem>
-                <SelectItem value="realizada">Realizada</SelectItem>
-                <SelectItem value="cancelada">Cancelada</SelectItem>
-                <SelectItem value="nao_compareceu">Não Compareceu</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="mt-4 text-sm text-gray-600">
-            Mostrando {filteredTotal} de {totalAudiences} audiências
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Audiências Agrupadas por Região */}
       <div className="space-y-6">
-        {Object.entries(audiencesByRegion).map(([regionKey, audiences]) => {
-          const filteredAudiences = filterAudiences(audiences);
-          
-          if (filteredAudiences.length === 0) return null;
-
-          return (
-            <Card key={regionKey} className={`${getRegionIcon(regionKey)} border-2`}>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center space-x-3">
-                  <MapPin className={`h-6 w-6 ${getRegionIconColor(regionKey)}`} />
-                  <span className={getRegionIconColor(regionKey)}>{regionNames[regionKey as keyof typeof regionNames]}</span>
-                  <Badge variant="outline" className="ml-auto">
-                    {filteredAudiences.length} audiência{filteredAudiences.length !== 1 ? 's' : ''}
+        {Object.entries(groupedAudiences).map(([regionName, { region, audiences }]) => (
+          <Card key={regionName} className="w-full">
+            <CardHeader className={`pb-4 ${
+              region.type === 'macrorregiao' 
+                ? 'bg-gradient-to-r from-blue-50 to-blue-100' 
+                : 'bg-gradient-to-r from-green-50 to-green-100'
+            }`}>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className={`h-5 w-5 ${
+                    region.type === 'macrorregiao' ? 'text-blue-600' : 'text-green-600'
+                  }`} />
+                  {regionName}
+                  <Badge variant="outline" className={
+                    region.type === 'macrorregiao' 
+                      ? 'border-blue-300 text-blue-700' 
+                      : 'border-green-300 text-green-700'
+                  }>
+                    {region.type === 'macrorregiao' ? 'Macrorregião' : 'Central de Custódia'}
                   </Badge>
                 </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {filteredAudiences.map((audience) => (
-                  <Card key={audience.id} className="bg-white hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                        <div className="flex-1 space-y-3">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
-                            <div className="flex items-center space-x-2">
-                              <Calendar className="h-4 w-4 text-gray-500" />
-                              <span className="font-medium">{new Date(audience.date).toLocaleDateString('pt-BR')} - {audience.time}</span>
-                            </div>
-                            {getStatusBadge(audience.status)}
-                            {audience.confirmed ? (
-                              <Badge className="bg-green-100 text-green-800">Confirmado pela UP</Badge>
-                            ) : (
-                              <Badge variant="outline" className="border-yellow-300 text-yellow-700">Pendente Confirmação</Badge>
-                            )}
-                          </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <h3 className="font-semibold text-gray-900">{audience.defendant}</h3>
-                              <p className="text-sm text-gray-600">Processo: {audience.process}</p>
-                              <p className="text-sm text-gray-600">Unidade: {audience.unit}</p>
-                            </div>
-                            
-                            <div className="space-y-1">
-                              <p className="text-sm"><span className="font-medium">Magistrado:</span> {audience.magistrate}</p>
-                              <p className="text-sm"><span className="font-medium">Promotor:</span> {audience.prosecutor}</p>
-                              <p className="text-sm"><span className="font-medium">Defensor:</span> {audience.defender}</p>
-                              <p className="text-sm"><span className="font-medium">Polícia Penal:</span> {audience.policeResponsible}</p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex flex-col space-y-2 lg:ml-6">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open(audience.virtualRoom, '_blank')}
-                            className="flex items-center space-x-2"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                            <span>Sala Virtual</span>
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            Editar
-                          </Button>
-                        </div>
+                <Badge variant="secondary">
+                  {audiences.length} {audiences.length === 1 ? 'audiência' : 'audiências'}
+                </Badge>
+              </div>
+              {region.responsible && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Responsável: {region.responsible}
+                </p>
+              )}
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="space-y-3">
+                {audiences.map((audience) => (
+                  <div
+                    key={audience.id}
+                    className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-1">
+                          {audience.defendant_name}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          Processo: {audience.process_number}
+                        </p>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <Badge className={getStatusColor(audience.status)}>
+                        {getStatusLabel(audience.status)}
+                      </Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4 text-gray-500" />
+                        <span>
+                          {format(new Date(audience.scheduled_date), "dd 'de' MMMM 'de' yyyy", {
+                            locale: ptBR
+                          })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-gray-500" />
+                        <span>{audience.scheduled_time}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-gray-500" />
+                        <span>{audience.prison_units.name}</span>
+                      </div>
+                      {audience.magistrates && (
+                        <div className="text-gray-600">
+                          Magistrado: {audience.magistrates.name}
+                        </div>
+                      )}
+                    </div>
+
+                    {audience.observations && (
+                      <div className="mt-3 p-2 bg-gray-50 rounded text-sm">
+                        <strong>Observações:</strong> {audience.observations}
+                      </div>
+                    )}
+                  </div>
                 ))}
-              </CardContent>
-            </Card>
-          );
-        })}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {filteredTotal === 0 && (
+      {Object.keys(groupedAudiences).length === 0 && (
         <Card>
-          <CardContent className="p-12 text-center">
-            <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma audiência encontrada</h3>
-            <p className="text-gray-600">Tente ajustar os filtros ou adicione uma nova audiência.</p>
+          <CardContent className="text-center py-8">
+            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Nenhuma audiência encontrada
+            </h3>
+            <p className="text-gray-600">
+              Não há audiências agendadas no momento.
+            </p>
           </CardContent>
         </Card>
       )}
