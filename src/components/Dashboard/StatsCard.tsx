@@ -2,23 +2,10 @@
 import { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
-const colorVariants = {
-  blue: { bg: 'bg-blue-50', text: 'text-blue-600' },
-  yellow: { bg: 'bg-yellow-50', text: 'text-yellow-600' },
-  green: { bg: 'bg-green-50', text: 'text-green-600' },
-  purple: { bg: 'bg-purple-50', text: 'text-purple-600' },
-  indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600' },
-  pink: { bg: 'bg-pink-50', text: 'text-pink-600' },
-  orange: { bg: 'bg-orange-50', text: 'text-orange-600' },
-};
-
-type Color = keyof typeof colorVariants;
-
 interface StatsCardProps {
   title: string;
   value: string | number;
   icon: LucideIcon;
-  color: Color;
   description?: string;
   trend?: {
     value: number;
@@ -26,9 +13,7 @@ interface StatsCardProps {
   };
 }
 
-const StatsCard = ({ title, value, icon: Icon, color, description, trend }: StatsCardProps) => {
-  const variants = colorVariants[color] || colorVariants.blue;
-  
+const StatsCard = ({ title, value, icon: Icon, description, trend }: StatsCardProps) => {
   return (
     <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
       <CardContent className="p-6">
@@ -45,8 +30,8 @@ const StatsCard = ({ title, value, icon: Icon, color, description, trend }: Stat
               </p>
             )}
           </div>
-          <div className={`p-3 rounded-lg ${variants.bg}`}>
-            <Icon className={`h-6 w-6 ${variants.text}`} />
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <Icon className="h-6 w-6 text-blue-600" />
           </div>
         </div>
       </CardContent>
