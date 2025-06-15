@@ -1,5 +1,5 @@
 
-import { Calendar, Clock, Users, Building, CheckCircle, AlertCircle } from "lucide-react";
+import { Calendar, Clock, Users, Building, CheckCircle, AlertCircle, MapPin } from "lucide-react";
 import StatsCard from "@/components/Dashboard/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,68 @@ const Dashboard = () => {
     }
   ];
 
+  const macrorregioes = [
+    {
+      id: 1,
+      nome: "Macrorregião 02",
+      responsavel: "Fernanda Braz",
+      telefone: "556299953335",
+      whatsapp: "556299953335",
+      status: "ativa"
+    },
+    {
+      id: 2,
+      nome: "Macrorregião 03",
+      responsavel: "Lana Nunes",
+      telefone: "556296039999",
+      whatsapp: "556296039999",
+      status: "ativa"
+    },
+    {
+      id: 3,
+      nome: "Macrorregião 04",
+      responsavel: "Alessandro",
+      telefone: "556284153627",
+      whatsapp: "556284153627",
+      status: "ativa"
+    },
+    {
+      id: 4,
+      nome: "Macrorregião 05",
+      responsavel: "Suelem Mendonça",
+      telefone: "556285376555",
+      whatsapp: "556285376555",
+      status: "ativa"
+    }
+  ];
+
+  const centraisCustodia = [
+    {
+      id: 1,
+      nome: "Central de Custódia 01",
+      responsavel: "Carla Martins C. Oliveira",
+      telefone: "556299815567",
+      whatsapp: "556299815567",
+      status: "ativa"
+    },
+    {
+      id: 2,
+      nome: "Central de Custódia 03",
+      responsavel: "Roberto (556299840837)",
+      telefone: "556299600837",
+      whatsapp: "556299600837",
+      status: "ativa"
+    },
+    {
+      id: 3,
+      nome: "Central de Custódia 04",
+      responsavel: "Revellinne Dina",
+      telefone: "556499236593",
+      whatsapp: "556499236593",
+      status: "ativa"
+    }
+  ];
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "agendada":
@@ -69,16 +131,16 @@ const Dashboard = () => {
           trend={{ value: 15, isPositive: true }}
         />
         <StatsCard
-          title="Plantões Ativos"
-          value={8}
-          icon={Clock}
-          description="Magistrados e promotores"
+          title="Macrorregiões Ativas"
+          value={20}
+          icon={MapPin}
+          description="Todas as regiões operacionais"
         />
         <StatsCard
-          title="Unidades Prisionais"
-          value={24}
+          title="Centrais de Custódia"
+          value={20}
           icon={Building}
-          description="Todas as regiões"
+          description="Unidades em funcionamento"
         />
         <StatsCard
           title="Operadores Ativos"
@@ -123,41 +185,44 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Plantões Ativos */}
+        {/* Macrorregiões e Centrais de Custódia */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <Clock className="h-5 w-5 text-blue-600" />
-              <span>Plantões Ativos</span>
+              <MapPin className="h-5 w-5 text-blue-600" />
+              <span>Macrorregiões & Centrais</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-sm text-green-800">Magistrado Plantonista</span>
-                  <Badge className="bg-green-100 text-green-800">Ativo</Badge>
-                </div>
-                <p className="text-sm font-medium">Dr. Carlos Eduardo Silva</p>
-                <p className="text-xs text-green-600">Comarca de Goiânia</p>
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {/* Macrorregiões */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Macrorregiões</h4>
+                {macrorregioes.map((macro) => (
+                  <div key={macro.id} className="p-3 bg-blue-50 rounded-lg border border-blue-200 mb-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-sm text-blue-800">{macro.nome}</span>
+                      <Badge className="bg-blue-100 text-blue-800">Ativa</Badge>
+                    </div>
+                    <p className="text-sm font-medium">{macro.responsavel}</p>
+                    <p className="text-xs text-blue-600">Tel: {macro.telefone}</p>
+                  </div>
+                ))}
               </div>
 
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-sm text-blue-800">Promotor Plantonista</span>
-                  <Badge className="bg-blue-100 text-blue-800">Ativo</Badge>
-                </div>
-                <p className="text-sm font-medium">Dra. Ana Paula Oliveira</p>
-                <p className="text-xs text-blue-600">1ª Promotoria Criminal</p>
-              </div>
-
-              <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-sm text-purple-800">Defensor Plantonista</span>
-                  <Badge className="bg-purple-100 text-purple-800">Ativo</Badge>
-                </div>
-                <p className="text-sm font-medium">Dr. Roberto Santos Lima</p>
-                <p className="text-xs text-purple-600">Defensoria Pública</p>
+              {/* Centrais de Custódia */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Centrais de Custódia</h4>
+                {centraisCustodia.map((central) => (
+                  <div key={central.id} className="p-3 bg-green-50 rounded-lg border border-green-200 mb-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-sm text-green-800">{central.nome}</span>
+                      <Badge className="bg-green-100 text-green-800">Ativa</Badge>
+                    </div>
+                    <p className="text-sm font-medium">{central.responsavel}</p>
+                    <p className="text-xs text-green-600">Tel: {central.telefone}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </CardContent>
