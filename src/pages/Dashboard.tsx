@@ -1,195 +1,263 @@
 
-import { useAudiences } from "@/hooks/useAudiences";
-import { useRegions } from "@/hooks/useRegions";
-import { usePrisonUnits } from "@/hooks/usePrisonUnits";
-import { useContacts } from "@/hooks/useContacts";
-import { StatsCard } from "@/components/Dashboard/StatsCard";
+import { Calendar, Clock, Users, Building, CheckCircle, AlertCircle, MapPin } from "lucide-react";
+import StatsCard from "@/components/Dashboard/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Building, Users, Phone, MapPin } from "lucide-react";
 
 const Dashboard = () => {
-  const { data: audiences, isLoading: audiencesLoading } = useAudiences();
-  const { data: regions, isLoading: regionsLoading } = useRegions();
-  const { data: prisonUnits, isLoading: unitsLoading } = usePrisonUnits();
-  const { data: contacts, isLoading: contactsLoading } = useContacts();
+  const todayDate = new Date().toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
 
-  const isLoading = audiencesLoading || regionsLoading || unitsLoading || contactsLoading;
+  const recentAudiences = [
+    {
+      id: 1,
+      time: "09:00",
+      process: "0001234-56.2024.8.09.0000",
+      defendant: "João Silva Santos",
+      unit: "CDP Aparecida de Goiânia",
+      status: "agendada"
+    },
+    {
+      id: 2,
+      time: "10:30",
+      process: "0001235-56.2024.8.09.0000",
+      defendant: "Maria Oliveira Costa",
+      unit: "Presídio Feminino",
+      status: "realizada"
+    },
+    {
+      id: 3,
+      time: "14:00",
+      process: "0001236-56.2024.8.09.0000",
+      defendant: "Carlos Eduardo Lima",
+      unit: "CPP Goiânia",
+      status: "cancelada"
+    }
+  ];
 
-  // Calcular estatísticas
-  const totalAudiences = audiences?.length || 0;
-  const scheduledAudiences = audiences?.filter(a => a.status === 'agendada').length || 0;
-  const completedAudiences = audiences?.filter(a => a.status === 'realizada').length || 0;
-  const totalRegions = regions?.length || 0;
-  const totalPrisonUnits = prisonUnits?.length || 0;
-  const totalContacts = contacts?.length || 0;
+  const macrorregioes = [
+    {
+      id: 1,
+      nome: "Macrorregião 02",
+      responsavel: "Fernanda Braz",
+      telefone: "556299953335",
+      whatsapp: "556299953335",
+      status: "ativa"
+    },
+    {
+      id: 2,
+      nome: "Macrorregião 03",
+      responsavel: "Lana Nunes",
+      telefone: "556296039999",
+      whatsapp: "556296039999",
+      status: "ativa"
+    },
+    {
+      id: 3,
+      nome: "Macrorregião 04",
+      responsavel: "Alessandro",
+      telefone: "556284153627",
+      whatsapp: "556284153627",
+      status: "ativa"
+    },
+    {
+      id: 4,
+      nome: "Macrorregião 05",
+      responsavel: "Suelem Mendonça",
+      telefone: "556285376555",
+      whatsapp: "556285376555",
+      status: "ativa"
+    }
+  ];
 
-  // Audiências de hoje
-  const today = new Date().toISOString().split('T')[0];
-  const todaysAudiences = audiences?.filter(a => a.scheduled_date === today) || [];
+  const centraisCustodia = [
+    {
+      id: 1,
+      nome: "Central de Custódia 01",
+      responsavel: "Carla Martins C. Oliveira",
+      telefone: "556299815567",
+      whatsapp: "556299815567",
+      status: "ativa"
+    },
+    {
+      id: 2,
+      nome: "Central de Custódia 03",
+      responsavel: "Roberto (556299840837)",
+      telefone: "556299600837",
+      whatsapp: "556299600837",
+      status: "ativa"
+    },
+    {
+      id: 3,
+      nome: "Central de Custódia 04",
+      responsavel: "Revellinne Dina",
+      telefone: "556499236593",
+      whatsapp: "556499236593",
+      status: "ativa"
+    }
+  ];
 
-  if (isLoading) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="space-y-6">
-          <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {Array(4).fill(0).map((_, i) => (
-              <div key={i} className="h-24 bg-gray-200 rounded animate-pulse"></div>
-            ))}
-          </div>
-          <div className="h-64 bg-gray-200 rounded animate-pulse"></div>
-        </div>
-      </div>
-    );
-  }
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "agendada":
+        return <Badge className="bg-blue-100 text-blue-800">Agendada</Badge>;
+      case "realizada":
+        return <Badge className="bg-green-100 text-green-800">Realizada</Badge>;
+      case "cancelada":
+        return <Badge className="bg-red-100 text-red-800">Cancelada</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex items-center gap-2 mb-6">
-        <CalendarDays className="h-6 w-6 text-blue-600" />
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col space-y-2">
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-gray-600 capitalize">{todayDate}</p>
       </div>
 
-      {/* Cards de Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatsCard
-          title="Total de Audiências"
-          value={totalAudiences}
-          icon={<CalendarDays className="h-6 w-6" />}
-          color="blue"
-        />
-        <StatsCard
-          title="Audiências Agendadas"
-          value={scheduledAudiences}
-          icon={<CalendarDays className="h-6 w-6" />}
-          color="yellow"
-        />
-        <StatsCard
-          title="Audiências Realizadas"
-          value={completedAudiences}
-          icon={<CalendarDays className="h-6 w-6" />}
-          color="green"
-        />
-        <StatsCard
-          title="Regiões"
-          value={totalRegions}
-          icon={<MapPin className="h-6 w-6" />}
-          color="purple"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <StatsCard
-          title="Unidades Prisionais"
-          value={totalPrisonUnits}
-          icon={<Building className="h-6 w-6" />}
-          color="indigo"
-        />
-        <StatsCard
-          title="Contatos"
-          value={totalContacts}
-          icon={<Phone className="h-6 w-6" />}
-          color="pink"
-        />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
           title="Audiências Hoje"
-          value={todaysAudiences.length}
-          icon={<CalendarDays className="h-6 w-6" />}
-          color="orange"
+          value={12}
+          icon={Calendar}
+          description="3 pendentes, 9 realizadas"
+          trend={{ value: 15, isPositive: true }}
+        />
+        <StatsCard
+          title="Macrorregiões Ativas"
+          value={20}
+          icon={MapPin}
+          description="Todas as regiões operacionais"
+        />
+        <StatsCard
+          title="Centrais de Custódia"
+          value={20}
+          icon={Building}
+          description="Unidades em funcionamento"
+        />
+        <StatsCard
+          title="Operadores Ativos"
+          value={156}
+          icon={Users}
+          description="Judiciário, MP e Defensoria"
         />
       </div>
 
-      {/* Audiências de Hoje */}
-      {todaysAudiences.length > 0 && (
-        <Card className="mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Audiências do Dia */}
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarDays className="h-5 w-5 text-blue-600" />
-              Audiências de Hoje ({todaysAudiences.length})
+            <CardTitle className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              <span>Audiências de Hoje</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {todaysAudiences.map((audience) => (
-                <div
-                  key={audience.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div>
-                    <h4 className="font-medium">{audience.defendant_name}</h4>
-                    <p className="text-sm text-gray-600">
-                      {audience.scheduled_time} - {audience.prison_units.name}
-                    </p>
+            <div className="space-y-4">
+              {recentAudiences.map((audience) => (
+                <div key={audience.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <span className="font-medium text-sm">{audience.time}</span>
+                      {getStatusBadge(audience.status)}
+                    </div>
+                    <p className="text-sm font-medium text-gray-900">{audience.defendant}</p>
+                    <p className="text-xs text-gray-500">{audience.process}</p>
+                    <p className="text-xs text-gray-500">{audience.unit}</p>
                   </div>
-                  <Badge 
-                    variant="outline"
-                    className={
-                      audience.status === 'agendada' 
-                        ? 'border-blue-300 text-blue-700' 
-                        : audience.status === 'realizada'
-                        ? 'border-green-300 text-green-700'
-                        : 'border-red-300 text-red-700'
-                    }
-                  >
-                    {audience.status === 'agendada' ? 'Agendada' : 
-                     audience.status === 'realizada' ? 'Realizada' : 'Cancelada'}
-                  </Badge>
+                  <div className="flex items-center">
+                    {audience.status === "realizada" ? (
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <AlertCircle className="h-5 w-5 text-yellow-500" />
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-      )}
 
-      {/* Resumo por Regiões */}
+        {/* Macrorregiões e Centrais de Custódia */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <MapPin className="h-5 w-5 text-blue-600" />
+              <span>Macrorregiões & Centrais</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {/* Macrorregiões */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Macrorregiões</h4>
+                {macrorregioes.map((macro) => (
+                  <div key={macro.id} className="p-3 bg-blue-50 rounded-lg border border-blue-200 mb-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-sm text-blue-800">{macro.nome}</span>
+                      <Badge className="bg-blue-100 text-blue-800">Ativa</Badge>
+                    </div>
+                    <p className="text-sm font-medium">{macro.responsavel}</p>
+                    <p className="text-xs text-blue-600">Tel: {macro.telefone}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Centrais de Custódia */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Centrais de Custódia</h4>
+                {centraisCustodia.map((central) => (
+                  <div key={central.id} className="p-3 bg-green-50 rounded-lg border border-green-200 mb-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-sm text-green-800">{central.nome}</span>
+                      <Badge className="bg-green-100 text-green-800">Ativa</Badge>
+                    </div>
+                    <p className="text-sm font-medium">{central.responsavel}</p>
+                    <p className="text-xs text-green-600">Tel: {central.telefone}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Alertas e Notificações */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-blue-600" />
-            Resumo por Regiões
+          <CardTitle className="flex items-center space-x-2 text-orange-600">
+            <AlertCircle className="h-5 w-5" />
+            <span>Alertas e Notificações</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {regions?.map((region) => {
-              const regionAudiences = audiences?.filter(a => a.region_id === region.id) || [];
-              const regionUnits = prisonUnits?.filter(u => u.region_id === region.id) || [];
-              
-              return (
-                <div
-                  key={region.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <div>
-                    <h4 className="font-medium flex items-center gap-2">
-                      {region.name}
-                      <Badge 
-                        variant="outline" 
-                        className={`text-xs ${
-                          region.type === 'macrorregiao' 
-                            ? 'border-blue-300 text-blue-700' 
-                            : 'border-green-300 text-green-700'
-                        }`}
-                      >
-                        {region.type === 'macrorregiao' ? 'Macrorregião' : 'Central de Custódia'}
-                      </Badge>
-                    </h4>
-                    <p className="text-sm text-gray-600">
-                      {regionUnits.length} {regionUnits.length === 1 ? 'unidade' : 'unidades'}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium text-blue-600">
-                      {regionAudiences.length} {regionAudiences.length === 1 ? 'audiência' : 'audiências'}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {regionAudiences.filter(a => a.status === 'agendada').length} agendadas
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+            <div className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800">
+                  3 audiências pendentes de confirmação pela unidade prisional
+                </p>
+                <p className="text-xs text-yellow-600">CDP Aparecida, Presídio Feminino, CPP Goiânia</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-blue-800">
+                  Sistema atualizado com sucesso
+                </p>
+                <p className="text-xs text-blue-600">Última sincronização há 5 minutos</p>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
