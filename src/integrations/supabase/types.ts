@@ -9,7 +9,385 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      audiences: {
+        Row: {
+          confirmed_by_unit: boolean | null
+          created_at: string
+          defendant_document: string | null
+          defendant_name: string
+          defender_id: string | null
+          id: string
+          magistrate_id: string | null
+          observations: string | null
+          police_officer_id: string | null
+          prison_unit_id: string
+          process_number: string
+          prosecutor_id: string | null
+          region_id: string
+          scheduled_date: string
+          scheduled_time: string
+          status: Database["public"]["Enums"]["audience_status"]
+          updated_at: string
+          virtual_room_url: string | null
+        }
+        Insert: {
+          confirmed_by_unit?: boolean | null
+          created_at?: string
+          defendant_document?: string | null
+          defendant_name: string
+          defender_id?: string | null
+          id?: string
+          magistrate_id?: string | null
+          observations?: string | null
+          police_officer_id?: string | null
+          prison_unit_id: string
+          process_number: string
+          prosecutor_id?: string | null
+          region_id: string
+          scheduled_date: string
+          scheduled_time: string
+          status?: Database["public"]["Enums"]["audience_status"]
+          updated_at?: string
+          virtual_room_url?: string | null
+        }
+        Update: {
+          confirmed_by_unit?: boolean | null
+          created_at?: string
+          defendant_document?: string | null
+          defendant_name?: string
+          defender_id?: string | null
+          id?: string
+          magistrate_id?: string | null
+          observations?: string | null
+          police_officer_id?: string | null
+          prison_unit_id?: string
+          process_number?: string
+          prosecutor_id?: string | null
+          region_id?: string
+          scheduled_date?: string
+          scheduled_time?: string
+          status?: Database["public"]["Enums"]["audience_status"]
+          updated_at?: string
+          virtual_room_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audiences_defender_id_fkey"
+            columns: ["defender_id"]
+            isOneToOne: false
+            referencedRelation: "defenders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audiences_magistrate_id_fkey"
+            columns: ["magistrate_id"]
+            isOneToOne: false
+            referencedRelation: "magistrates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audiences_police_officer_id_fkey"
+            columns: ["police_officer_id"]
+            isOneToOne: false
+            referencedRelation: "police_officers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audiences_prison_unit_id_fkey"
+            columns: ["prison_unit_id"]
+            isOneToOne: false
+            referencedRelation: "prison_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audiences_prosecutor_id_fkey"
+            columns: ["prosecutor_id"]
+            isOneToOne: false
+            referencedRelation: "prosecutors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audiences_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          department: string | null
+          email: string | null
+          id: string
+          mobile: string | null
+          name: string
+          phone: string | null
+          position: string | null
+          region_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          id?: string
+          mobile?: string | null
+          name: string
+          phone?: string | null
+          position?: string | null
+          region_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          id?: string
+          mobile?: string | null
+          name?: string
+          phone?: string | null
+          position?: string | null
+          region_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      defenders: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          registration: string | null
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          registration?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          registration?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      magistrates: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          registration: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          registration?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          registration?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      police_officers: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          rank: string | null
+          registration: string | null
+          unit_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          rank?: string | null
+          registration?: string | null
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          rank?: string | null
+          registration?: string | null
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "police_officers_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "prison_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prison_units: {
+        Row: {
+          address: string | null
+          capacity: number | null
+          created_at: string
+          id: string
+          name: string
+          phone: string | null
+          region_id: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          capacity?: number | null
+          created_at?: string
+          id?: string
+          name: string
+          phone?: string | null
+          region_id: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          capacity?: number | null
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          region_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prison_units_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prosecutors: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          registration: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          registration?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          registration?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      regions: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          name: string
+          phone: string | null
+          responsible: string | null
+          type: Database["public"]["Enums"]["region_type"]
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+          phone?: string | null
+          responsible?: string | null
+          type: Database["public"]["Enums"]["region_type"]
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          responsible?: string | null
+          type?: Database["public"]["Enums"]["region_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +396,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      audience_status: "agendada" | "realizada" | "cancelada" | "nao_compareceu"
+      region_type: "macrorregiao" | "central_custodia"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +512,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      audience_status: ["agendada", "realizada", "cancelada", "nao_compareceu"],
+      region_type: ["macrorregiao", "central_custodia"],
+    },
   },
 } as const
