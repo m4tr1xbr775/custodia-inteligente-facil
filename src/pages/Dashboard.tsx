@@ -3,7 +3,7 @@ import { useAudiences } from "@/hooks/useAudiences";
 import { useRegions } from "@/hooks/useRegions";
 import { usePrisonUnits } from "@/hooks/usePrisonUnits";
 import { useContacts } from "@/hooks/useContacts";
-import { StatsCard } from "@/components/Dashboard/StatsCard";
+import StatsCard from "@/components/Dashboard/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Building, Users, Phone, MapPin } from "lucide-react";
