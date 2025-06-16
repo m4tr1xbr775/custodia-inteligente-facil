@@ -1,33 +1,19 @@
 
-import React from "react";
+import { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface StatsCardProps {
   title: string;
   value: string | number;
-  icon: React.ReactNode;
+  icon: LucideIcon;
   description?: string;
-  color?: string;
   trend?: {
     value: number;
     isPositive: boolean;
   };
 }
 
-const StatsCard = ({ title, value, icon, description, color = "blue", trend }: StatsCardProps) => {
-  const getColorClasses = (color: string) => {
-    const colorMap = {
-      blue: "bg-blue-50 text-blue-600",
-      yellow: "bg-yellow-50 text-yellow-600",
-      green: "bg-green-50 text-green-600",
-      purple: "bg-purple-50 text-purple-600",
-      indigo: "bg-indigo-50 text-indigo-600",
-      pink: "bg-pink-50 text-pink-600",
-      orange: "bg-orange-50 text-orange-600",
-    };
-    return colorMap[color as keyof typeof colorMap] || colorMap.blue;
-  };
-
+const StatsCard = ({ title, value, icon: Icon, description, trend }: StatsCardProps) => {
   return (
     <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
       <CardContent className="p-6">
@@ -44,8 +30,8 @@ const StatsCard = ({ title, value, icon, description, color = "blue", trend }: S
               </p>
             )}
           </div>
-          <div className={`p-3 rounded-lg ${getColorClasses(color)}`}>
-            {icon}
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <Icon className="h-6 w-6 text-blue-600" />
           </div>
         </div>
       </CardContent>
