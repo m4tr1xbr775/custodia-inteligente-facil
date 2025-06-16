@@ -1,8 +1,9 @@
+
 import { useAudiences } from "@/hooks/useAudiences";
 import { useRegions } from "@/hooks/useRegions";
 import { usePrisonUnits } from "@/hooks/usePrisonUnits";
 import { useContacts } from "@/hooks/useContacts";
-import StatsCard from "@/components/Dashboard/StatsCard";
+import { StatsCard } from "@/components/Dashboard/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Building, Users, Phone, MapPin } from "lucide-react";
@@ -55,25 +56,25 @@ const Dashboard = () => {
         <StatsCard
           title="Total de Audiências"
           value={totalAudiences}
-          icon={CalendarDays}
+          icon={<CalendarDays className="h-6 w-6" />}
           color="blue"
         />
         <StatsCard
           title="Audiências Agendadas"
           value={scheduledAudiences}
-          icon={CalendarDays}
+          icon={<CalendarDays className="h-6 w-6" />}
           color="yellow"
         />
         <StatsCard
           title="Audiências Realizadas"
           value={completedAudiences}
-          icon={CalendarDays}
+          icon={<CalendarDays className="h-6 w-6" />}
           color="green"
         />
         <StatsCard
           title="Regiões"
           value={totalRegions}
-          icon={MapPin}
+          icon={<MapPin className="h-6 w-6" />}
           color="purple"
         />
       </div>
@@ -82,19 +83,19 @@ const Dashboard = () => {
         <StatsCard
           title="Unidades Prisionais"
           value={totalPrisonUnits}
-          icon={Building}
+          icon={<Building className="h-6 w-6" />}
           color="indigo"
         />
         <StatsCard
           title="Contatos"
           value={totalContacts}
-          icon={Phone}
+          icon={<Phone className="h-6 w-6" />}
           color="pink"
         />
         <StatsCard
           title="Audiências Hoje"
           value={todaysAudiences.length}
-          icon={CalendarDays}
+          icon={<CalendarDays className="h-6 w-6" />}
           color="orange"
         />
       </div>
