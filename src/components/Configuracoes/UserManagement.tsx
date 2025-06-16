@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Edit, Trash2, Phone, Mail } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface UserManagementProps {
   type: "magistrates" | "prosecutors" | "defenders";
@@ -36,55 +46,118 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
     registration: "",
     type: "",
   });
+  
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Dados mockados para demonstração
-  const mockData = {
-    magistrates: [
-      {
-        id: "1",
-        name: "Dr. João Silva",
-        email: "joao.silva@tj.go.br",
-        phone: "(62) 99999-9999",
-        registration: "MAG001",
-        active: true,
-      },
-      {
-        id: "2",
-        name: "Dra. Maria Santos",
-        email: "maria.santos@tj.go.br",
-        phone: "(62) 88888-8888",
-        registration: "MAG002",
-        active: true,
-      },
-    ],
-    prosecutors: [
-      {
-        id: "1",
-        name: "Dr. Carlos Oliveira",
-        email: "carlos.oliveira@mp.go.br",
-        phone: "(62) 77777-7777",
-        registration: "PROM001",
-        active: true,
-      },
-    ],
-    defenders: [
-      {
-        id: "1",
-        name: "Dra. Ana Costa",
-        email: "ana.costa@defensoria.go.br",
-        phone: "(62) 66666-6666",
-        registration: "DEF001",
-        type: "Defensoria Pública",
-        active: true,
-      },
-    ],
-  };
+  // Fetch data from Supabase
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: [type],
+    queryFn: async () => {
+      console.log(`Fetching data for ${type}`);
+      const { data, error } = await supabase
+        .from(type)
+        .select('*')
+        .order('name');
+      
+      if (error) {
+        console.error(`Error fetching ${type}:`, error);
+        throw error;
+      }
+      
+      console.log(`Fetched ${type} data:`, data);
+      return data || [];
+    },
+  });
+
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: async (userData: any) => {
+      console.log(`Creating new ${type}:`, userData);
+      const { data, error } = await supabase
+        .from(type)
+        .insert([userData])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error(`Error creating ${type}:`, error);
+        throw error;
+      }
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [type] });
+      toast({
+        title: "Sucesso",
+        description: `${title.slice(0, -1)} criado com sucesso!`,
+      });
+      setIsDialogOpen(false);
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        registration: "",
+        type: "",
+      });
+    },
+    onError: (error: any) => {
+      console.error(`Error creating ${type}:`, error);
+      toast({
+        title: "Erro",
+        description: `Erro ao criar ${title.slice(0, -1).toLowerCase()}: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      console.log(`Deleting ${type} with id:`, id);
+      const { error } = await supabase
+        .from(type)
+        .delete()
+        .eq('id', id);
+      
+      if (error) {
+        console.error(`Error deleting ${type}:`, error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [type] });
+      toast({
+        title: "Sucesso",
+        description: `${title.slice(0, -1)} removido com sucesso!`,
+      });
+    },
+    onError: (error: any) => {
+      console.error(`Error deleting ${type}:`, error);
+      toast({
+        title: "Erro",
+        description: `Erro ao remover ${title.slice(0, -1).toLowerCase()}: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.name.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome é obrigatório",
+        variant: "destructive",
+      });
+      return;
+    }
+
     console.log("Form submitted:", formData);
-    setIsDialogOpen(false);
-    // Aqui será implementada a integração com Supabase
+    createMutation.mutate(formData);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -94,7 +167,21 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
     }));
   };
 
-  const data = mockData[type] || [];
+  const handleDelete = (id: string) => {
+    if (confirm("Tem certeza que deseja remover este item?")) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">Carregando...</div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -113,7 +200,7 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="name">Nome Completo</Label>
+                <Label htmlFor="name">Nome Completo *</Label>
                 <Input
                   id="name"
                   value={formData.name}
@@ -153,20 +240,23 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
               {type === "defenders" && (
                 <div>
                   <Label htmlFor="type">Tipo</Label>
-                  <Input
-                    id="type"
-                    value={formData.type}
-                    onChange={(e) => handleInputChange("type", e.target.value)}
-                    placeholder="Ex: Defensoria Pública, Advogado Dativo"
-                  />
+                  <Select value={formData.type} onValueChange={(value) => handleInputChange("type", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dativo">Advogado Dativo</SelectItem>
+                      <SelectItem value="defensoria_publica">Defensoria Pública</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
               <div className="flex justify-end space-x-2">
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit">
-                  Salvar
+                <Button type="submit" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? "Salvando..." : "Salvar"}
                 </Button>
               </div>
             </form>
@@ -191,40 +281,61 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-1 text-sm">
-                        <Mail className="h-3 w-3" />
-                        <span>{user.email}</span>
-                      </div>
-                      <div className="flex items-center space-x-1 text-sm">
-                        <Phone className="h-3 w-3" />
-                        <span>{user.phone}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{user.registration}</TableCell>
-                  {type === "defenders" && <TableCell>{(user as any).type}</TableCell>}
-                  <TableCell>
-                    <Badge className={user.active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                      {user.active ? "Ativo" : "Inativo"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button size="sm" variant="outline">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+              {users.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={type === "defenders" ? 6 : 5} className="text-center text-gray-500">
+                    Nenhum registro encontrado
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        {user.email && (
+                          <div className="flex items-center space-x-1 text-sm">
+                            <Mail className="h-3 w-3" />
+                            <span>{user.email}</span>
+                          </div>
+                        )}
+                        {user.phone && (
+                          <div className="flex items-center space-x-1 text-sm">
+                            <Phone className="h-3 w-3" />
+                            <span>{user.phone}</span>
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{user.registration || "-"}</TableCell>
+                    {type === "defenders" && (
+                      <TableCell>
+                        {user.type === "defensoria_publica" ? "Defensoria Pública" : "Advogado Dativo"}
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      <Badge className={user.active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                        {user.active ? "Ativo" : "Inativo"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button size="sm" variant="outline">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleDelete(user.id)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
