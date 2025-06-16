@@ -1,4 +1,3 @@
-
 import { useAudiences } from "@/hooks/useAudiences";
 import { useRegions } from "@/hooks/useRegions";
 import { usePrisonUnits } from "@/hooks/usePrisonUnits";
@@ -56,25 +55,25 @@ const Dashboard = () => {
         <StatsCard
           title="Total de Audiências"
           value={totalAudiences}
-          icon={<CalendarDays className="h-6 w-6" />}
+          icon={CalendarDays}
           color="blue"
         />
         <StatsCard
           title="Audiências Agendadas"
           value={scheduledAudiences}
-          icon={<CalendarDays className="h-6 w-6" />}
+          icon={CalendarDays}
           color="yellow"
         />
         <StatsCard
           title="Audiências Realizadas"
           value={completedAudiences}
-          icon={<CalendarDays className="h-6 w-6" />}
+          icon={CalendarDays}
           color="green"
         />
         <StatsCard
           title="Regiões"
           value={totalRegions}
-          icon={<MapPin className="h-6 w-6" />}
+          icon={MapPin}
           color="purple"
         />
       </div>
@@ -83,19 +82,19 @@ const Dashboard = () => {
         <StatsCard
           title="Unidades Prisionais"
           value={totalPrisonUnits}
-          icon={<Building className="h-6 w-6" />}
+          icon={Building}
           color="indigo"
         />
         <StatsCard
           title="Contatos"
           value={totalContacts}
-          icon={<Phone className="h-6 w-6" />}
+          icon={Phone}
           color="pink"
         />
         <StatsCard
           title="Audiências Hoje"
           value={todaysAudiences.length}
-          icon={<CalendarDays className="h-6 w-6" />}
+          icon={CalendarDays}
           color="orange"
         />
       </div>
