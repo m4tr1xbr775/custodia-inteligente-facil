@@ -37,6 +37,31 @@ interface UserManagementProps {
   title: string;
 }
 
+// Interface específica para defenders com type
+interface Defender {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  registration?: string;
+  type?: string;
+  active?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Interface para outros usuários
+interface User {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  registration?: string;
+  active?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 const UserManagement = ({ type, title }: UserManagementProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -310,7 +335,7 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
                     <TableCell>{user.registration || "-"}</TableCell>
                     {type === "defenders" && (
                       <TableCell>
-                        {user.type === "defensoria_publica" ? "Defensoria Pública" : "Advogado Dativo"}
+                        {(user as Defender).type === "defensoria_publica" ? "Defensoria Pública" : "Advogado Dativo"}
                       </TableCell>
                     )}
                     <TableCell>
