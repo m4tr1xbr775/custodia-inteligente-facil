@@ -207,7 +207,7 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
                     </div>
                   </TableCell>
                   <TableCell>{user.registration}</TableCell>
-                  {type === "defenders" && <TableCell>{user.type}</TableCell>}
+                  {type === "defenders" && <TableCell>{(user as any).type}</TableCell>}
                   <TableCell>
                     <Badge className={user.active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
                       {user.active ? "Ativo" : "Inativo"}
