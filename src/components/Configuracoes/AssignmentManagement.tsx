@@ -63,9 +63,9 @@ const AssignmentManagement = () => {
   const [selectedScheduleId, setSelectedScheduleId] = useState<string>("");
   const [formData, setFormData] = useState({
     region_id: "",
-    magistrate_id: "",
-    prosecutor_id: "",
-    defender_id: "",
+    magistrate_id: "none",
+    prosecutor_id: "none",
+    defender_id: "none",
     date: "",
     shift: "diurno",
   });
@@ -174,9 +174,15 @@ const AssignmentManagement = () => {
   // Create assignment mutation
   const createMutation = useMutation({
     mutationFn: async (assignmentData: any) => {
+      // Clean data - convert "none" values to null/undefined
+      const cleanData = { ...assignmentData, schedule_id: selectedScheduleId };
+      if (cleanData.magistrate_id === "none") delete cleanData.magistrate_id;
+      if (cleanData.prosecutor_id === "none") delete cleanData.prosecutor_id;
+      if (cleanData.defender_id === "none") delete cleanData.defender_id;
+
       const { data, error } = await supabase
         .from('schedule_assignments')
-        .insert([{ ...assignmentData, schedule_id: selectedScheduleId }])
+        .insert([cleanData])
         .select()
         .single();
       
@@ -192,9 +198,9 @@ const AssignmentManagement = () => {
       setIsDialogOpen(false);
       setFormData({
         region_id: "",
-        magistrate_id: "",
-        prosecutor_id: "",
-        defender_id: "",
+        magistrate_id: "none",
+        prosecutor_id: "none",
+        defender_id: "none",
         date: "",
         shift: "diurno",
       });
@@ -246,12 +252,7 @@ const AssignmentManagement = () => {
       return;
     }
 
-    // Clean empty fields
-    const cleanData = Object.fromEntries(
-      Object.entries(formData).filter(([key, value]) => value !== "")
-    );
-
-    createMutation.mutate(cleanData);
+    createMutation.mutate(formData);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -390,7 +391,7 @@ const AssignmentManagement = () => {
                         <SelectValue placeholder="Selecione um magistrado" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Nenhum</SelectItem>
+                        <SelectItem value="none">Nenhum</SelectItem>
                         {magistrates.map((magistrate) => (
                           <SelectItem key={magistrate.id} value={magistrate.id}>
                             {magistrate.name}
@@ -407,7 +408,7 @@ const AssignmentManagement = () => {
                         <SelectValue placeholder="Selecione um promotor" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Nenhum</SelectItem>
+                        <SelectItem value="none">Nenhum</SelectItem>
                         {prosecutors.map((prosecutor) => (
                           <SelectItem key={prosecutor.id} value={prosecutor.id}>
                             {prosecutor.name}
@@ -424,7 +425,7 @@ const AssignmentManagement = () => {
                         <SelectValue placeholder="Selecione um advogado" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Nenhum</SelectItem>
+                        <SelectItem value="none">Nenhum</SelectItem>
                         {defenders.map((defender) => (
                           <SelectItem key={defender.id} value={defender.id}>
                             {defender.name}
