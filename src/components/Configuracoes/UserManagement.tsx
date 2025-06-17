@@ -260,12 +260,14 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
                 />
               </div>
               <div>
-                <Label htmlFor="registration">Registro/Matrícula</Label>
+                <Label htmlFor="registration">
+                  {type === "defenders" ? "OAB" : "Registro/Matrícula"}
+                </Label>
                 <Input
                   id="registration"
                   value={formData.registration}
                   onChange={(e) => handleInputChange("registration", e.target.value)}
-                  placeholder="Número do registro"
+                  placeholder={type === "defenders" ? "Número da OAB" : "Número do registro"}
                 />
               </div>
               {type === "defenders" && (
@@ -305,7 +307,7 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Contato</TableHead>
-                <TableHead>Registro</TableHead>
+                <TableHead>{type === "defenders" ? "OAB" : "Registro"}</TableHead>
                 {type === "defenders" && <TableHead>Tipo</TableHead>}
                 <TableHead>Status</TableHead>
                 <TableHead>Ações</TableHead>
