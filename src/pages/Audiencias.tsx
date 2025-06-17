@@ -12,16 +12,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import AudienciaForm from "@/components/Audiencias/AudienciaForm";
 
 const Audiencias = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingAudienciaId, setEditingAudienciaId] = useState<string | undefined>();
 
   // Audiências agrupadas por região
   const audiencesByRegion = {
     macrorregiao_02: [
       {
-        id: 1,
+        id: "1",
         date: "2024-06-15",
         time: "09:00",
         process: "0001234-56.2024.8.09.0000",
@@ -36,7 +39,7 @@ const Audiencias = () => {
         confirmed: false
       },
       {
-        id: 4,
+        id: "4",
         date: "2024-06-15",
         time: "11:00",
         process: "0001237-56.2024.8.09.0000",
@@ -53,7 +56,7 @@ const Audiencias = () => {
     ],
     macrorregiao_03: [
       {
-        id: 5,
+        id: "5",
         date: "2024-06-15",
         time: "15:30",
         process: "0001238-56.2024.8.09.0000",
@@ -70,7 +73,7 @@ const Audiencias = () => {
     ],
     central_custodia_01: [
       {
-        id: 2,
+        id: "2",
         date: "2024-06-15",
         time: "10:30",
         process: "0001235-56.2024.8.09.0000",
@@ -87,7 +90,7 @@ const Audiencias = () => {
     ],
     central_custodia_03: [
       {
-        id: 3,
+        id: "3",
         date: "2024-06-15",
         time: "14:00",
         process: "0001236-56.2024.8.09.0000",
@@ -147,6 +150,21 @@ const Audiencias = () => {
     return regionKey.includes('macrorregiao') ? 'text-blue-600' : 'text-green-600';
   };
 
+  const handleNewAudiencia = () => {
+    setEditingAudienciaId(undefined);
+    setIsFormOpen(true);
+  };
+
+  const handleEditAudiencia = (audienciaId: string) => {
+    setEditingAudienciaId(audienciaId);
+    setIsFormOpen(true);
+  };
+
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    setEditingAudienciaId(undefined);
+  };
+
   // Calcular totais
   const totalAudiences = Object.values(audiencesByRegion).flat().length;
   const filteredTotal = Object.values(audiencesByRegion)
@@ -160,7 +178,7 @@ const Audiencias = () => {
           <h1 className="text-3xl font-bold text-gray-900">Audiências de Custódia</h1>
           <p className="text-gray-600">Gerencie todas as audiências do sistema por região</p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700">
+        <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleNewAudiencia}>
           <Plus className="h-4 w-4 mr-2" />
           Nova Audiência
         </Button>
@@ -264,7 +282,11 @@ const Audiencias = () => {
                             <ExternalLink className="h-4 w-4" />
                             <span>Sala Virtual</span>
                           </Button>
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditAudiencia(audience.id)}
+                          >
                             Editar
                           </Button>
                         </div>
@@ -287,6 +309,12 @@ const Audiencias = () => {
           </CardContent>
         </Card>
       )}
+
+      <AudienciaForm
+        isOpen={isFormOpen}
+        onClose={handleCloseForm}
+        audienciaId={editingAudienciaId}
+      />
     </div>
   );
 };
