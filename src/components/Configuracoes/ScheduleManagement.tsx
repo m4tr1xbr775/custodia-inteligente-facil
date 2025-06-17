@@ -33,7 +33,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-// Interface específica para schedules
 interface Schedule {
   id: string;
   title: string;
@@ -59,95 +58,42 @@ const ScheduleManagement = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch schedules usando uma abordagem mais segura
+  // Fetch schedules from Supabase
   const { data: schedules = [], isLoading } = useQuery({
     queryKey: ['schedules'],
     queryFn: async () => {
-      console.log('Fetching schedules');
+      console.log('Fetching schedules from database');
+      const { data, error } = await supabase
+        .from('schedules')
+        .select('*')
+        .order('created_at', { ascending: false });
       
-      try {
-        // Tentar acessar a tabela schedules diretamente
-        const { data, error } = await (supabase as any)
-          .from('schedules')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (error) {
-          console.error('Error fetching schedules from database:', error);
-          // Retornar dados mock se a tabela não existir ainda
-          return [
-            {
-              id: '1',
-              title: 'Escala Semanal - Janeiro 2024',
-              description: 'Escala de plantão para a primeira semana de janeiro',
-              start_date: '2024-01-01',
-              end_date: '2024-01-07',
-              status: 'ativa',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            },
-            {
-              id: '2',
-              title: 'Escala Especial - Feriado',
-              description: 'Escala especial para período de feriado',
-              start_date: '2024-01-15',
-              end_date: '2024-01-15',
-              status: 'rascunho',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }
-          ] as Schedule[];
-        }
-        
-        console.log('Fetched schedules:', data);
-        return (data || []) as Schedule[];
-      } catch (fetchError) {
-        console.error('Failed to fetch schedules:', fetchError);
-        // Fallback para dados mock
-        return [
-          {
-            id: '1',
-            title: 'Escala Semanal - Janeiro 2024',
-            description: 'Escala de plantão para a primeira semana de janeiro',
-            start_date: '2024-01-01',
-            end_date: '2024-01-07',
-            status: 'ativa',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-        ] as Schedule[];
+      if (error) {
+        console.error('Error fetching schedules:', error);
+        throw error;
       }
+      
+      console.log('Fetched schedules:', data);
+      return data as Schedule[];
     },
   });
 
-  // Create mutation - usando insert direto
+  // Create mutation
   const createMutation = useMutation({
     mutationFn: async (scheduleData: any) => {
       console.log('Creating new schedule:', scheduleData);
+      const { data, error } = await supabase
+        .from('schedules')
+        .insert([scheduleData])
+        .select()
+        .single();
       
-      try {
-        const { data, error } = await (supabase as any)
-          .from('schedules')
-          .insert([scheduleData])
-          .select()
-          .single();
-        
-        if (error) {
-          console.error('Error creating schedule:', error);
-          throw error;
-        }
-        
-        return data;
-      } catch (insertError) {
-        console.error('Failed to create schedule:', insertError);
-        // Por enquanto, simular criação se a tabela não existir
-        toast({
-          title: "Aviso",
-          description: "Funcionalidade de escalas será implementada após sincronização dos tipos do banco",
-          variant: "destructive",
-        });
-        throw insertError;
+      if (error) {
+        console.error('Error creating schedule:', error);
+        throw error;
       }
+      
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
@@ -178,26 +124,14 @@ const ScheduleManagement = () => {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       console.log('Deleting schedule with id:', id);
+      const { error } = await supabase
+        .from('schedules')
+        .delete()
+        .eq('id', id);
       
-      try {
-        const { error } = await (supabase as any)
-          .from('schedules')
-          .delete()
-          .eq('id', id);
-        
-        if (error) {
-          console.error('Error deleting schedule:', error);
-          throw error;
-        }
-      } catch (deleteError) {
-        console.error('Failed to delete schedule:', deleteError);
-        // Por enquanto, simular deleção se a tabela não existir
-        toast({
-          title: "Aviso",
-          description: "Funcionalidade de exclusão será implementada após sincronização dos tipos do banco",
-          variant: "destructive",
-        });
-        throw deleteError;
+      if (error) {
+        console.error('Error deleting schedule:', error);
+        throw error;
       }
     },
     onSuccess: () => {

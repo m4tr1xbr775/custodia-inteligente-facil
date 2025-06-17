@@ -388,6 +388,117 @@ export type Database = {
         }
         Relationships: []
       }
+      schedule_assignments: {
+        Row: {
+          created_at: string
+          date: string
+          defender_id: string | null
+          id: string
+          magistrate_id: string | null
+          prosecutor_id: string | null
+          region_id: string
+          schedule_id: string
+          shift: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          defender_id?: string | null
+          id?: string
+          magistrate_id?: string | null
+          prosecutor_id?: string | null
+          region_id: string
+          schedule_id: string
+          shift: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          defender_id?: string | null
+          id?: string
+          magistrate_id?: string | null
+          prosecutor_id?: string | null
+          region_id?: string
+          schedule_id?: string
+          shift?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_assignments_defender_id_fkey"
+            columns: ["defender_id"]
+            isOneToOne: false
+            referencedRelation: "defenders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_assignments_magistrate_id_fkey"
+            columns: ["magistrate_id"]
+            isOneToOne: false
+            referencedRelation: "magistrates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_assignments_prosecutor_id_fkey"
+            columns: ["prosecutor_id"]
+            isOneToOne: false
+            referencedRelation: "prosecutors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_assignments_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_assignments_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_date: string
+          id: string
+          start_date: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date: string
+          id?: string
+          start_date: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string
+          id?: string
+          start_date?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -20,7 +20,28 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Edit, Trash2, MapPin, Phone, User } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+interface Region {
+  id: string;
+  name: string;
+  code: string;
+  type: 'macrorregiao' | 'central_custodia';
+  responsible?: string;
+  phone?: string;
+  created_at: string;
+  updated_at: string;
+}
 
 const RegionManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -29,34 +50,119 @@ const RegionManagement = () => {
     code: "",
     responsible: "",
     phone: "",
-    type: "macrorregiao",
+    type: "macrorregiao" as 'macrorregiao' | 'central_custodia',
   });
 
-  // Dados mockados das regiões
-  const mockRegions = [
-    {
-      id: "1",
-      name: "Macrorregião 02",
-      code: "MR02",
-      responsible: "Fernanda Braz",
-      phone: "556299953335",
-      type: "macrorregiao",
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch regions from Supabase
+  const { data: regions = [], isLoading } = useQuery({
+    queryKey: ['regions'],
+    queryFn: async () => {
+      console.log('Fetching regions from database');
+      const { data, error } = await supabase
+        .from('regions')
+        .select('*')
+        .order('name');
+      
+      if (error) {
+        console.error('Error fetching regions:', error);
+        throw error;
+      }
+      
+      console.log('Fetched regions:', data);
+      return data as Region[];
     },
-    {
-      id: "2",
-      name: "Central de Custódia 01",
-      code: "CC01",
-      responsible: "Carla Martins C. Oliveira",
-      phone: "556299815567",
-      type: "central_custodia",
+  });
+
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: async (regionData: any) => {
+      console.log('Creating new region:', regionData);
+      const { data, error } = await supabase
+        .from('regions')
+        .insert([regionData])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error creating region:', error);
+        throw error;
+      }
+      
+      return data;
     },
-  ];
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['regions'] });
+      toast({
+        title: "Sucesso",
+        description: "Região criada com sucesso!",
+      });
+      setIsDialogOpen(false);
+      setFormData({
+        name: "",
+        code: "",
+        responsible: "",
+        phone: "",
+        type: "macrorregiao",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Error creating region:', error);
+      toast({
+        title: "Erro",
+        description: `Erro ao criar região: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      console.log('Deleting region with id:', id);
+      const { error } = await supabase
+        .from('regions')
+        .delete()
+        .eq('id', id);
+      
+      if (error) {
+        console.error('Error deleting region:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['regions'] });
+      toast({
+        title: "Sucesso",
+        description: "Região removida com sucesso!",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Error deleting region:', error);
+      toast({
+        title: "Erro",
+        description: `Erro ao remover região: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.name.trim() || !formData.code.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome e código são obrigatórios",
+        variant: "destructive",
+      });
+      return;
+    }
+
     console.log("Region form submitted:", formData);
-    setIsDialogOpen(false);
-    // Aqui será implementada a integração com Supabase
+    createMutation.mutate(formData);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -66,6 +172,12 @@ const RegionManagement = () => {
     }));
   };
 
+  const handleDelete = (id: string) => {
+    if (confirm("Tem certeza que deseja remover esta região?")) {
+      deleteMutation.mutate(id);
+    }
+  };
+
   const getTypeLabel = (type: string) => {
     return type === "macrorregiao" ? "Macrorregião" : "Central de Custódia";
   };
@@ -73,6 +185,16 @@ const RegionManagement = () => {
   const getTypeBadgeColor = (type: string) => {
     return type === "macrorregiao" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800";
   };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">Carregando...</div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -91,7 +213,7 @@ const RegionManagement = () => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="name">Nome da Região</Label>
+                <Label htmlFor="name">Nome da Região *</Label>
                 <Input
                   id="name"
                   value={formData.name}
@@ -101,7 +223,7 @@ const RegionManagement = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="code">Código</Label>
+                <Label htmlFor="code">Código *</Label>
                 <Input
                   id="code"
                   value={formData.code}
@@ -112,15 +234,15 @@ const RegionManagement = () => {
               </div>
               <div>
                 <Label htmlFor="type">Tipo</Label>
-                <select
-                  id="type"
-                  value={formData.type}
-                  onChange={(e) => handleInputChange("type", e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="macrorregiao">Macrorregião</option>
-                  <option value="central_custodia">Central de Custódia</option>
-                </select>
+                <Select value={formData.type} onValueChange={(value: 'macrorregiao' | 'central_custodia') => handleInputChange("type", value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="macrorregiao">Macrorregião</SelectItem>
+                    <SelectItem value="central_custodia">Central de Custódia</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="responsible">Responsável</Label>
@@ -144,8 +266,8 @@ const RegionManagement = () => {
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit">
-                  Salvar
+                <Button type="submit" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? "Salvando..." : "Salvar"}
                 </Button>
               </div>
             </form>
@@ -173,39 +295,60 @@ const RegionManagement = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockRegions.map((region) => (
-                <TableRow key={region.id}>
-                  <TableCell className="font-medium">{region.name}</TableCell>
-                  <TableCell>{region.code}</TableCell>
-                  <TableCell>
-                    <Badge className={getTypeBadgeColor(region.type)}>
-                      {getTypeLabel(region.type)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-1">
-                      <User className="h-3 w-3" />
-                      <span>{region.responsible}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-1">
-                      <Phone className="h-3 w-3" />
-                      <span>{region.phone}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button size="sm" variant="outline">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+              {regions.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-gray-500">
+                    Nenhuma região encontrada
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                regions.map((region) => (
+                  <TableRow key={region.id}>
+                    <TableCell className="font-medium">{region.name}</TableCell>
+                    <TableCell>{region.code}</TableCell>
+                    <TableCell>
+                      <Badge className={getTypeBadgeColor(region.type)}>
+                        {getTypeLabel(region.type)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {region.responsible ? (
+                        <div className="flex items-center space-x-1">
+                          <User className="h-3 w-3" />
+                          <span>{region.responsible}</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {region.phone ? (
+                        <div className="flex items-center space-x-1">
+                          <Phone className="h-3 w-3" />
+                          <span>{region.phone}</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button size="sm" variant="outline">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleDelete(region.id)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

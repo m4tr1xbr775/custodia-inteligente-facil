@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,30 +37,22 @@ interface UserManagementProps {
   title: string;
 }
 
-// Interface específica para defenders com type
-interface Defender {
+interface BaseUser {
   id: string;
   name: string;
   email?: string;
   phone?: string;
   registration?: string;
-  type?: string;
   active?: boolean;
   created_at: string;
   updated_at: string;
 }
 
-// Interface para outros usuários
-interface User {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  registration?: string;
-  active?: boolean;
-  created_at: string;
-  updated_at: string;
+interface Defender extends BaseUser {
+  type?: string;
 }
+
+type User = BaseUser | Defender;
 
 const UserManagement = ({ type, title }: UserManagementProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -91,7 +83,7 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
       }
       
       console.log(`Fetched ${type} data:`, data);
-      return data || [];
+      return data as User[];
     },
   });
 
@@ -335,12 +327,13 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
                     <TableCell>{user.registration || "-"}</TableCell>
                     {type === "defenders" && (
                       <TableCell>
-                        {(user as Defender).type === "defensoria_publica" ? "Defensoria Pública" : "Advogado Dativo"}
+                        {(user as Defender).type === "defensoria_publica" ? "Defensoria Pública" : 
+                         (user as Defender).type === "dativo" ? "Advogado Dativo" : "-"}
                       </TableCell>
                     )}
                     <TableCell>
-                      <Badge className={user.active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                        {user.active ? "Ativo" : "Inativo"}
+                      <Badge className={user.active !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                        {user.active !== false ? "Ativo" : "Inativo"}
                       </Badge>
                     </TableCell>
                     <TableCell>
