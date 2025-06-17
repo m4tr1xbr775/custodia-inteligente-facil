@@ -91,9 +91,23 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
   const createMutation = useMutation({
     mutationFn: async (userData: any) => {
       console.log(`Creating new ${type}:`, userData);
+      
+      // Remove the type field for magistrates and prosecutors as they don't have this column
+      const cleanUserData = { ...userData };
+      if (type === "magistrates" || type === "prosecutors") {
+        delete cleanUserData.type;
+      }
+      
+      // Remove empty strings to avoid inserting empty values
+      Object.keys(cleanUserData).forEach(key => {
+        if (cleanUserData[key] === "") {
+          delete cleanUserData[key];
+        }
+      });
+      
       const { data, error } = await supabase
         .from(type)
-        .insert([userData])
+        .insert([cleanUserData])
         .select()
         .single();
       
