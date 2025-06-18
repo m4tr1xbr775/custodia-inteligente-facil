@@ -3,13 +3,53 @@ import { Calendar, Clock, Users, Building, CheckCircle, AlertCircle, MapPin } fr
 import StatsCard from "@/components/Dashboard/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  
   const todayDate = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric'
+  });
+
+  // Buscar escalas ativas com suas centrais de custódia
+  const { data: schedules = [] } = useQuery({
+    queryKey: ["schedules-with-custody-centers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("schedules")
+        .select(`
+          id,
+          title,
+          description,
+          status,
+          start_date,
+          end_date,
+          schedule_assignments!inner(
+            region_id,
+            regions!inner(
+              id,
+              name,
+              type
+            )
+          )
+        `)
+        .eq("status", "ativo")
+        .eq("schedule_assignments.regions.type", "central");
+      
+      if (error) {
+        console.error("Erro ao buscar escalas:", error);
+        return [];
+      }
+      
+      return data || [];
+    },
   });
 
   const recentAudiences = [
@@ -74,33 +114,6 @@ const Dashboard = () => {
     }
   ];
 
-  const centraisCustodia = [
-    {
-      id: 1,
-      nome: "Central de Custódia 01",
-      responsavel: "Carla Martins C. Oliveira",
-      telefone: "556299815567",
-      whatsapp: "556299815567",
-      status: "ativa"
-    },
-    {
-      id: 2,
-      nome: "Central de Custódia 03",
-      responsavel: "Roberto (556299840837)",
-      telefone: "556299600837",
-      whatsapp: "556299600837",
-      status: "ativa"
-    },
-    {
-      id: 3,
-      nome: "Central de Custódia 04",
-      responsavel: "Revellinne Dina",
-      telefone: "556499236593",
-      whatsapp: "556499236593",
-      status: "ativa"
-    }
-  ];
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "agendada":
@@ -112,6 +125,11 @@ const Dashboard = () => {
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
+  };
+
+  const handleViewScheduleAudiences = (scheduleId: string, scheduleTitle: string) => {
+    // Navegar para a página de audiências com filtro da escala
+    navigate(`/audiencias?schedule=${scheduleId}&title=${encodeURIComponent(scheduleTitle)}`);
   };
 
   return (
@@ -185,12 +203,12 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Macrorregiões e Centrais de Custódia */}
+        {/* Centrais de Custódia por Escala */}
         <Card className="w-full">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2 text-lg">
-              <MapPin className="h-5 w-5 text-blue-600" />
-              <span>Macrorregiões & Centrais</span>
+              <Building className="h-5 w-5 text-blue-600" />
+              <span>Centrais de Custódia - Escalas</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -210,19 +228,60 @@ const Dashboard = () => {
                 ))}
               </div>
 
-              {/* Centrais de Custódia */}
+              {/* Centrais de Custódia por Escala */}
               <div>
-                <h4 className="text-sm font-semibold text-gray-700 mb-2">Centrais de Custódia</h4>
-                {centraisCustodia.map((central) => (
-                  <div key={central.id} className="p-3 bg-green-50 rounded-lg border border-green-200 mb-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-sm text-green-800 truncate">{central.nome}</span>
-                      <Badge className="bg-green-100 text-green-800 flex-shrink-0">Ativa</Badge>
-                    </div>
-                    <p className="text-sm font-medium truncate">{central.responsavel}</p>
-                    <p className="text-xs text-green-600 truncate">Tel: {central.telefone}</p>
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Centrais de Custódia por Escala</h4>
+                {schedules.length > 0 ? (
+                  schedules.map((schedule) => {
+                    // Agrupar centrais de custódia por escala
+                    const custodyCenters = schedule.schedule_assignments
+                      ?.filter(assignment => assignment.regions?.type === "central")
+                      ?.map(assignment => assignment.regions) || [];
+
+                    return (
+                      <div key={schedule.id} className="p-3 bg-green-50 rounded-lg border border-green-200 mb-2">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-sm text-green-800 truncate">{schedule.title}</span>
+                              <Badge className="bg-green-100 text-green-800 flex-shrink-0">Ativa</Badge>
+                            </div>
+                            {schedule.description && (
+                              <p className="text-xs text-green-600 truncate mt-1">{schedule.description}</p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Centrais associadas */}
+                        {custodyCenters.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            <p className="text-xs font-medium text-green-700">Centrais:</p>
+                            {custodyCenters.map((center) => (
+                              <div key={center.id} className="text-xs text-green-600 pl-2">
+                                • {center.name}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        <div className="mt-2 flex justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs h-7 px-2 border-green-300 text-green-700 hover:bg-green-100"
+                            onClick={() => handleViewScheduleAudiences(schedule.id, schedule.title)}
+                          >
+                            Ver Audiências
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-sm text-gray-500">Nenhuma escala ativa encontrada</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </CardContent>
@@ -260,7 +319,7 @@ const Dashboard = () => {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </div>
     </div>
   );
 };
