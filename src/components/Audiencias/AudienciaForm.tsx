@@ -65,10 +65,26 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
     mutationFn: async (data: AudienciaFormData) => {
       console.log("Dados sendo enviados:", data);
       
+      // Preparar os dados para inserção/atualização
+      const audienceData = {
+        defendant_name: data.defendant_name,
+        defendant_document: data.defendant_document || null,
+        process_number: data.process_number,
+        scheduled_date: data.scheduled_date,
+        scheduled_time: data.scheduled_time,
+        region_id: data.region_id,
+        prison_unit_id: data.prison_unit_id,
+        magistrate_id: data.magistrate_id || null,
+        prosecutor_id: data.prosecutor_id || null,
+        defender_id: data.defender_id || null,
+        virtual_room_url: data.virtual_room_url || null,
+        observations: data.observations || null,
+      };
+      
       if (isEditing && initialData?.id) {
         const { data: result, error } = await supabase
           .from("audiences")
-          .update(data)
+          .update(audienceData)
           .eq("id", initialData.id)
           .select()
           .single();
@@ -78,7 +94,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
       } else {
         const { data: result, error } = await supabase
           .from("audiences")
-          .insert([data])
+          .insert(audienceData)
           .select()
           .single();
         
