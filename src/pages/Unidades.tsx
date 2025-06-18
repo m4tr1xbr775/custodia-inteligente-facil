@@ -24,7 +24,7 @@ interface PrisonUnit {
   id: string;
   name: string;
   short_name: string;
-  type: string;
+  type: "CDP" | "Presídio" | "CPP";
   comarca: string;
   director: string;
   responsible: string;
