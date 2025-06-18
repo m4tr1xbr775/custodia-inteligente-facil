@@ -13,8 +13,8 @@ const Sidebar = () => {
           <nav className="flex-1 px-2 py-4 space-y-1">
             {navItems.map((item) => (
               <NavLink
-                key={item.url}
-                to={item.url}
+                key={item.href}
+                to={item.href}
                 className={({ isActive }) =>
                   `group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors truncate ${
                     isActive
