@@ -538,6 +538,10 @@ export type Database = {
         Args: { unit_id: string; slot_date: string }
         Returns: undefined
       }
+      generate_future_slots: {
+        Args: { days_ahead?: number }
+        Returns: string
+      }
     }
     Enums: {
       audience_status: "agendada" | "realizada" | "cancelada" | "nao_compareceu"
