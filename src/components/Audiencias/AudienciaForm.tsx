@@ -406,9 +406,9 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
                       </SelectItem>
                     ))}
                     {(!availableSlots || availableSlots.length === 0) && selectedDate && selectedUnit && (
-                      <SelectItem disabled value="">
+                      <div className="px-2 py-1.5 text-sm text-gray-500">
                         Nenhum horário disponível
-                      </SelectItem>
+                      </div>
                     )}
                   </SelectContent>
                 </Select>
