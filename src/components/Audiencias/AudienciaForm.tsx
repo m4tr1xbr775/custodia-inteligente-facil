@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +20,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Database } from "@/integrations/supabase/types";
+
+type AudienceStatus = Database["public"]["Enums"]["audience_status"];
 
 interface AudienciaFormProps {
   isOpen: boolean;
@@ -47,7 +49,7 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
     police_officer_id: "none",
     virtual_room_url: "",
     observations: "",
-    status: "agendada" as const,
+    status: "agendada" as AudienceStatus,
     confirmed_by_unit: false,
   });
 
@@ -252,7 +254,7 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
       police_officer_id: "none",
       virtual_room_url: "",
       observations: "",
-      status: "agendada",
+      status: "agendada" as AudienceStatus,
       confirmed_by_unit: false,
     });
   };
