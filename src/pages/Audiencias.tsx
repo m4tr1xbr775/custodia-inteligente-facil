@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Calendar, Plus, Search, Filter, ExternalLink, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,21 +26,22 @@ const Audiencias = () => {
   const { data: audiencesData, isLoading } = useQuery({
     queryKey: ['audiences'],
     queryFn: async () => {
+      console.log("Buscando audiências...");
       const { data, error } = await supabase
         .from('audiences')
         .select(`
           *,
           regions(id, name, type),
-          prison_units_extended(id, name, short_name),
-          schedule_assignments(
-            magistrates(name),
-            prosecutors(name),
-            defenders(name)
-          )
+          prison_units_extended(id, name, short_name)
         `)
         .order('scheduled_date', { ascending: true });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao buscar audiências:", error);
+        throw error;
+      }
+      
+      console.log("Audiências encontradas:", data);
       return data;
     },
   });
@@ -118,10 +120,10 @@ const Audiencias = () => {
 
   // Group audiences by region with proper typing
   const audiencesByRegion = filteredAudiences.reduce((acc: Record<string, { region: any; audiences: any[] }>, audience) => {
-    const regionId = audience.region_id;
+    const regionId = audience.region_id || 'sem-regiao';
     if (!acc[regionId]) {
       acc[regionId] = {
-        region: audience.regions,
+        region: audience.regions || { name: 'Sem Região', type: 'regiao' },
         audiences: []
       };
     }
@@ -216,13 +218,13 @@ const Audiencias = () => {
                           
                           <div className="space-y-1">
                             <p className="text-sm">
-                              <span className="font-medium">Magistrado:</span> {audience.schedule_assignments?.[0]?.magistrates?.name || 'Não definido'}
+                              <span className="font-medium">Magistrado:</span> {audience.magistrate_id ? 'Definido' : 'Não definido'}
                             </p>
                             <p className="text-sm">
-                              <span className="font-medium">Promotor:</span> {audience.schedule_assignments?.[0]?.prosecutors?.name || 'Não definido'}
+                              <span className="font-medium">Promotor:</span> {audience.prosecutor_id ? 'Definido' : 'Não definido'}
                             </p>
                             <p className="text-sm">
-                              <span className="font-medium">Defensor:</span> {audience.schedule_assignments?.[0]?.defenders?.name || 'Não definido'}
+                              <span className="font-medium">Defensor:</span> {audience.defender_id ? 'Definido' : 'Não definido'}
                             </p>
                           </div>
                         </div>

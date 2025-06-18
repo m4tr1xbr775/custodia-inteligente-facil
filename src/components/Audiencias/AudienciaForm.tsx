@@ -65,6 +65,26 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
     mutationFn: async (data: AudienciaFormData) => {
       console.log("Dados sendo enviados:", data);
       
+      // Verificar se já existe uma audiência no mesmo horário e unidade (apenas para criação)
+      if (!isEditing) {
+        console.log("Verificando conflitos de horário...");
+        const { data: existingAudiences, error: conflictError } = await supabase
+          .from('audiences')
+          .select('id')
+          .eq('prison_unit_id', data.prison_unit_id)
+          .eq('scheduled_date', data.scheduled_date)
+          .eq('scheduled_time', data.scheduled_time);
+        
+        if (conflictError) {
+          console.error("Erro ao verificar conflitos:", conflictError);
+          throw new Error("Erro ao verificar conflitos de horário");
+        }
+        
+        if (existingAudiences && existingAudiences.length > 0) {
+          throw new Error("Já existe uma audiência agendada para este horário e unidade prisional. Por favor, escolha outro horário.");
+        }
+      }
+      
       // Buscar a região baseada na escala selecionada e data
       let regionId = null;
       if (data.schedule_id && data.scheduled_date) {
