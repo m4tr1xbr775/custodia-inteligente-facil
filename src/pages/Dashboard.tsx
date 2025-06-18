@@ -115,14 +115,14 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full">
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 capitalize">{todayDate}</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-gray-600 capitalize text-sm md:text-base">{todayDate}</p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <StatsCard
           title="Audiências Hoje"
           value={12}
@@ -150,11 +150,11 @@ const Dashboard = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Audiências do Dia */}
-        <Card>
+        <Card className="w-full">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
+            <CardTitle className="flex items-center space-x-2 text-lg">
               <Calendar className="h-5 w-5 text-blue-600" />
               <span>Audiências de Hoje</span>
             </CardTitle>
@@ -163,16 +163,16 @@ const Dashboard = () => {
             <div className="space-y-4">
               {recentAudiences.map((audience) => (
                 <div key={audience.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-1">
                       <span className="font-medium text-sm">{audience.time}</span>
                       {getStatusBadge(audience.status)}
                     </div>
-                    <p className="text-sm font-medium text-gray-900">{audience.defendant}</p>
-                    <p className="text-xs text-gray-500">{audience.process}</p>
-                    <p className="text-xs text-gray-500">{audience.unit}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate">{audience.defendant}</p>
+                    <p className="text-xs text-gray-500 truncate">{audience.process}</p>
+                    <p className="text-xs text-gray-500 truncate">{audience.unit}</p>
                   </div>
-                  <div className="flex items-center">
+                  <div className="flex items-center ml-4">
                     {audience.status === "realizada" ? (
                       <CheckCircle className="h-5 w-5 text-green-500" />
                     ) : (
@@ -186,9 +186,9 @@ const Dashboard = () => {
         </Card>
 
         {/* Macrorregiões e Centrais de Custódia */}
-        <Card>
+        <Card className="w-full">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
+            <CardTitle className="flex items-center space-x-2 text-lg">
               <MapPin className="h-5 w-5 text-blue-600" />
               <span>Macrorregiões & Centrais</span>
             </CardTitle>
@@ -201,11 +201,11 @@ const Dashboard = () => {
                 {macrorregioes.map((macro) => (
                   <div key={macro.id} className="p-3 bg-blue-50 rounded-lg border border-blue-200 mb-2">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-sm text-blue-800">{macro.nome}</span>
-                      <Badge className="bg-blue-100 text-blue-800">Ativa</Badge>
+                      <span className="font-medium text-sm text-blue-800 truncate">{macro.nome}</span>
+                      <Badge className="bg-blue-100 text-blue-800 flex-shrink-0">Ativa</Badge>
                     </div>
-                    <p className="text-sm font-medium">{macro.responsavel}</p>
-                    <p className="text-xs text-blue-600">Tel: {macro.telefone}</p>
+                    <p className="text-sm font-medium truncate">{macro.responsavel}</p>
+                    <p className="text-xs text-blue-600 truncate">Tel: {macro.telefone}</p>
                   </div>
                 ))}
               </div>
@@ -216,11 +216,11 @@ const Dashboard = () => {
                 {centraisCustodia.map((central) => (
                   <div key={central.id} className="p-3 bg-green-50 rounded-lg border border-green-200 mb-2">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-sm text-green-800">{central.nome}</span>
-                      <Badge className="bg-green-100 text-green-800">Ativa</Badge>
+                      <span className="font-medium text-sm text-green-800 truncate">{central.nome}</span>
+                      <Badge className="bg-green-100 text-green-800 flex-shrink-0">Ativa</Badge>
                     </div>
-                    <p className="text-sm font-medium">{central.responsavel}</p>
-                    <p className="text-xs text-green-600">Tel: {central.telefone}</p>
+                    <p className="text-sm font-medium truncate">{central.responsavel}</p>
+                    <p className="text-xs text-green-600 truncate">Tel: {central.telefone}</p>
                   </div>
                 ))}
               </div>
@@ -230,9 +230,9 @@ const Dashboard = () => {
       </div>
 
       {/* Alertas e Notificações */}
-      <Card>
+      <Card className="w-full">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2 text-orange-600">
+          <CardTitle className="flex items-center space-x-2 text-orange-600 text-lg">
             <AlertCircle className="h-5 w-5" />
             <span>Alertas e Notificações</span>
           </CardTitle>
@@ -240,18 +240,18 @@ const Dashboard = () => {
         <CardContent>
           <div className="space-y-3">
             <div className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
-              <div>
+              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-yellow-800">
                   3 audiências pendentes de confirmação pela unidade prisional
                 </p>
-                <p className="text-xs text-yellow-600">CDP Aparecida, Presídio Feminino, CPP Goiânia</p>
+                <p className="text-xs text-yellow-600 truncate">CDP Aparecida, Presídio Feminino, CPP Goiânia</p>
               </div>
             </div>
             
             <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5" />
-              <div>
+              <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-blue-800">
                   Sistema atualizado com sucesso
                 </p>
