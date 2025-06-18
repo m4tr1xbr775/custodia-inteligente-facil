@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,11 +52,16 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
   const { data: regions } = useQuery({
     queryKey: ['regions'],
     queryFn: async () => {
+      console.log('Fetching regions...');
       const { data, error } = await supabase
         .from('regions')
         .select('*')
         .order('name');
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching regions:', error);
+        throw error;
+      }
+      console.log('Regions fetched:', data);
       return data;
     },
   });
@@ -66,13 +70,21 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
   const { data: prisonUnits } = useQuery({
     queryKey: ['prison_units', formData.region_id],
     queryFn: async () => {
-      if (!formData.region_id) return [];
+      if (!formData.region_id) {
+        console.log('No region selected, returning empty array');
+        return [];
+      }
+      console.log('Fetching prison units for region:', formData.region_id);
       const { data, error } = await supabase
         .from('prison_units')
         .select('*')
         .eq('region_id', formData.region_id)
         .order('name');
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching prison units:', error);
+        throw error;
+      }
+      console.log('Prison units fetched:', data);
       return data;
     },
     enabled: !!formData.region_id,
@@ -83,6 +95,7 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
     queryKey: ['available_slots', formData.prison_unit_id, formData.scheduled_date],
     queryFn: async () => {
       if (!formData.prison_unit_id || !formData.scheduled_date) return [];
+      console.log('Fetching available slots for unit:', formData.prison_unit_id, 'date:', formData.scheduled_date);
       const { data, error } = await supabase
         .from('prison_unit_slots')
         .select('*')
@@ -90,7 +103,11 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
         .eq('date', formData.scheduled_date)
         .eq('is_available', true)
         .order('time');
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching available slots:', error);
+        throw error;
+      }
+      console.log('Available slots fetched:', data);
       return data;
     },
     enabled: !!(formData.prison_unit_id && formData.scheduled_date),
@@ -101,6 +118,7 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
     queryKey: ['schedule_assignments', formData.region_id, formData.scheduled_date],
     queryFn: async () => {
       if (!formData.region_id || !formData.scheduled_date) return [];
+      console.log('Fetching schedule assignments for region:', formData.region_id, 'date:', formData.scheduled_date);
       const { data, error } = await supabase
         .from('schedule_assignments')
         .select(`
@@ -111,7 +129,11 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
         `)
         .eq('region_id', formData.region_id)
         .eq('date', formData.scheduled_date);
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching schedule assignments:', error);
+        throw error;
+      }
+      console.log('Schedule assignments fetched:', data);
       return data;
     },
     enabled: !!(formData.region_id && formData.scheduled_date),
@@ -120,6 +142,7 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
   // Reset dependent fields when selections change
   useEffect(() => {
     if (formData.region_id) {
+      console.log('Region changed, resetting prison unit and slot time');
       setFormData(prev => ({
         ...prev,
         prison_unit_id: "",
@@ -129,13 +152,14 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
   }, [formData.region_id]);
 
   useEffect(() => {
-    if (formData.prison_unit_id) {
+    if (formData.prison_unit_id || formData.scheduled_date) {
+      console.log('Prison unit or date changed, resetting slot time');
       setFormData(prev => ({
         ...prev,
         audience_slot_time: "",
       }));
     }
-  }, [formData.prison_unit_id]);
+  }, [formData.prison_unit_id, formData.scheduled_date]);
 
   // Fetch existing audiencia data if editing
   useEffect(() => {
@@ -266,6 +290,8 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Form data on submit:', formData);
+    
     if (!formData.defendant_name || !formData.process_number || !formData.scheduled_date || 
         !formData.region_id || !formData.prison_unit_id || !formData.audience_slot_time) {
       toast({
@@ -295,6 +321,7 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
   };
 
   const handleInputChange = (field: string, value: string) => {
+    console.log(`Changing ${field} to:`, value);
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -328,111 +355,111 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Seção 2: Unidade Prisional - Sempre visível após selecionar região */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">2. Unidade Prisional</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div>
-                <Label htmlFor="prison_unit_id">Unidade Prisional *</Label>
-                <Select 
-                  value={formData.prison_unit_id} 
-                  onValueChange={(value) => handleInputChange('prison_unit_id', value)}
-                  disabled={!formData.region_id}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={
-                      !formData.region_id 
-                        ? "Primeiro selecione uma região" 
-                        : "Selecione a unidade prisional"
-                    } />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {prisonUnits?.map((unit) => (
-                      <SelectItem key={unit.id} value={unit.id}>
-                        {unit.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formData.region_id && (!prisonUnits || prisonUnits.length === 0) && (
+                {regions && regions.length === 0 && (
                   <p className="text-sm text-amber-600 mt-2">
-                    Nenhuma unidade prisional encontrada para esta região.
+                    Nenhuma região encontrada. Cadastre regiões primeiro.
                   </p>
                 )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Seção 3: Data - Sempre visível após selecionar unidade */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">3. Data da Audiência</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div>
-                <Label htmlFor="scheduled_date">Data *</Label>
-                <Input
-                  id="scheduled_date"
-                  type="date"
-                  value={formData.scheduled_date}
-                  onChange={(e) => handleInputChange('scheduled_date', e.target.value)}
-                  disabled={!formData.prison_unit_id}
-                  required
-                />
-                {!formData.prison_unit_id && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    Selecione uma unidade prisional primeiro.
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Seção 2: Unidade Prisional */}
+          {formData.region_id && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">2. Unidade Prisional</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div>
+                  <Label htmlFor="prison_unit_id">Unidade Prisional *</Label>
+                  <Select 
+                    value={formData.prison_unit_id} 
+                    onValueChange={(value) => handleInputChange('prison_unit_id', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a unidade prisional" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {prisonUnits?.map((unit) => (
+                        <SelectItem key={unit.id} value={unit.id}>
+                          {unit.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {prisonUnits && prisonUnits.length === 0 && (
+                    <p className="text-sm text-amber-600 mt-2">
+                      Nenhuma unidade prisional encontrada para esta região. Cadastre unidades primeiro.
+                    </p>
+                  )}
+                  {prisonUnits && prisonUnits.length > 0 && (
+                    <p className="text-sm text-gray-600 mt-2">
+                      {prisonUnits.length} unidade{prisonUnits.length !== 1 ? 's' : ''} encontrada{prisonUnits.length !== 1 ? 's' : ''} para esta região.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Seção 4: Horário Disponível - Sempre visível após selecionar data */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">4. Horário Disponível</CardTitle>
-              <p className="text-sm text-gray-600">Apenas horários livres na unidade selecionada</p>
-            </CardHeader>
-            <CardContent>
-              <div>
-                <Label htmlFor="audience_slot_time">Horário *</Label>
-                <Select 
-                  value={formData.audience_slot_time} 
-                  onValueChange={(value) => handleInputChange('audience_slot_time', value)}
-                  disabled={!formData.scheduled_date}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={
-                      !formData.scheduled_date
-                        ? "Primeiro selecione uma data"
-                        : "Selecione um horário disponível"
-                    } />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableSlots?.map((slot) => (
-                      <SelectItem key={`${slot.date}-${slot.time}`} value={slot.time}>
-                        {slot.time}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formData.scheduled_date && availableSlots?.length === 0 && (
-                  <p className="text-sm text-amber-600 mt-2">
-                    Nenhum horário disponível para esta data nesta unidade.
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Seção 3: Data */}
+          {formData.prison_unit_id && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">3. Data da Audiência</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div>
+                  <Label htmlFor="scheduled_date">Data *</Label>
+                  <Input
+                    id="scheduled_date"
+                    type="date"
+                    value={formData.scheduled_date}
+                    onChange={(e) => handleInputChange('scheduled_date', e.target.value)}
+                    required
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Seção 5: Plantonistas - Sempre visível após selecionar horário */}
+          {/* Seção 4: Horário Disponível */}
+          {formData.scheduled_date && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">4. Horário Disponível</CardTitle>
+                <p className="text-sm text-gray-600">Apenas horários livres na unidade selecionada</p>
+              </CardHeader>
+              <CardContent>
+                <div>
+                  <Label htmlFor="audience_slot_time">Horário *</Label>
+                  <Select 
+                    value={formData.audience_slot_time} 
+                    onValueChange={(value) => handleInputChange('audience_slot_time', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um horário disponível" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableSlots?.map((slot) => (
+                        <SelectItem key={`${slot.date}-${slot.time}`} value={slot.time}>
+                          {slot.time}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {availableSlots && availableSlots.length === 0 && (
+                    <p className="text-sm text-amber-600 mt-2">
+                      Nenhum horário disponível para esta data nesta unidade.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Seção 5: Plantonistas */}
           {formData.audience_slot_time && (
             <Card>
               <CardHeader>
@@ -470,7 +497,7 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
             </Card>
           )}
 
-          {/* Seção 6: Dados do Processo - Sempre visível */}
+          {/* Seção 6: Dados do Processo */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">6. Dados do Custodiado e Processo</CardTitle>
