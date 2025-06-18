@@ -43,12 +43,7 @@ const UnidadesPrisionais = () => {
         .select(`
           *,
           regions(name),
-          prison_units(name),
-          schedule_assignments(
-            magistrates(name),
-            prosecutors(name),
-            defenders(name)
-          )
+          prison_units(name)
         `)
         .eq('prison_unit_id', selectedUnit)
         .order('scheduled_date', { ascending: true });
@@ -208,13 +203,13 @@ const UnidadesPrisionais = () => {
 
                           <div className="space-y-2">
                             <p className="text-sm">
-                              <span className="font-medium">Magistrado:</span> {audience.schedule_assignments?.[0]?.magistrates?.name || 'Não definido'}
+                              <span className="font-medium">Magistrado:</span> {audience.magistrate_id || 'Não definido'}
                             </p>
                             <p className="text-sm">
-                              <span className="font-medium">Promotor:</span> {audience.schedule_assignments?.[0]?.prosecutors?.name || 'Não definido'}
+                              <span className="font-medium">Promotor:</span> {audience.prosecutor_id || 'Não definido'}
                             </p>
                             <p className="text-sm">
-                              <span className="font-medium">Defensor:</span> {audience.schedule_assignments?.[0]?.defenders?.name || 'Não definido'}
+                              <span className="font-medium">Defensor:</span> {audience.defender_id || 'Não definido'}
                             </p>
                           </div>
                         </div>

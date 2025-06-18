@@ -117,8 +117,8 @@ const Audiencias = () => {
 
   const filteredAudiences = audiencesData ? filterAudiences(audiencesData) : [];
 
-  // Group audiences by region
-  const audiencesByRegion = filteredAudiences.reduce((acc, audience) => {
+  // Group audiences by region with proper typing
+  const audiencesByRegion = filteredAudiences.reduce((acc: Record<string, { region: any; audiences: any[] }>, audience) => {
     const regionId = audience.region_id;
     if (!acc[regionId]) {
       acc[regionId] = {
@@ -128,7 +128,7 @@ const Audiencias = () => {
     }
     acc[regionId].audiences.push(audience);
     return acc;
-  }, {} as Record<string, { region: any; audiences: any[] }>);
+  }, {});
 
   return (
     <div className="space-y-6">
@@ -180,19 +180,19 @@ const Audiencias = () => {
 
       {/* Audiências Agrupadas por Região */}
       <div className="space-y-6">
-        {Object.entries(audiencesByRegion).map(([regionId, { region, audiences }]) => (
-          <Card key={regionId} className={`${getRegionIcon(region?.type)} border-2`}>
+        {Object.entries(audiencesByRegion).map(([regionId, groupData]) => (
+          <Card key={regionId} className={`${getRegionIcon(groupData.region?.type)} border-2`}>
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center space-x-3">
-                <MapPin className={`h-6 w-6 ${getRegionIconColor(region?.type)}`} />
-                <span className={getRegionIconColor(region?.type)}>{region?.name}</span>
+                <MapPin className={`h-6 w-6 ${getRegionIconColor(groupData.region?.type)}`} />
+                <span className={getRegionIconColor(groupData.region?.type)}>{groupData.region?.name}</span>
                 <Badge variant="outline" className="ml-auto">
-                  {audiences.length} audiência{audiences.length !== 1 ? 's' : ''}
+                  {groupData.audiences.length} audiência{groupData.audiences.length !== 1 ? 's' : ''}
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {audiences.map((audience) => (
+              {groupData.audiences.map((audience) => (
                 <Card key={audience.id} className="bg-white hover:shadow-md transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
