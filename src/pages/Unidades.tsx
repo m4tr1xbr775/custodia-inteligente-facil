@@ -16,85 +16,142 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import UnidadeForm from "@/components/Unidades/UnidadeForm";
 
 const Unidades = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<any>(null);
-  const [deletingUnitId, setDeletingUnitId] = useState<number | null>(null);
+  const [deletingUnitId, setDeletingUnitId] = useState<string | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const [units, setUnits] = useState([
-    {
-      id: 1,
-      name: "Centro de Detenção Provisória de Aparecida de Goiânia",
-      shortName: "CDP Aparecida",
-      comarca: "Aparecida de Goiânia",
-      director: "Dr. João Carlos Silva",
-      responsible: "Inspetor José Maria Santos",
-      landline: "(62) 3201-4444",
-      functional: "(62) 3201-4445",
-      whatsapp: "(62) 99999-4444",
-      email: "cdp.aparecida@dgap.go.gov.br",
-      address: "Av. Presidente Vargas, 1000 - Aparecida de Goiânia/GO",
-      capacity: 850,
-      currentPopulation: 720,
-      municipalities: ["Aparecida de Goiânia", "Senador Canedo", "Bela Vista de Goiás"],
-      type: "CDP"
+  // Fetch units from Supabase
+  const { data: units = [], isLoading } = useQuery({
+    queryKey: ['prison_units'],
+    queryFn: async () => {
+      console.log('Fetching prison units from Supabase...');
+      const { data, error } = await supabase
+        .from('prison_units')
+        .select(`
+          *,
+          regions(id, name, type)
+        `)
+        .order('name');
+      
+      if (error) {
+        console.error('Error fetching prison units:', error);
+        throw error;
+      }
+      
+      console.log('Prison units fetched:', data);
+      return data || [];
     },
-    {
-      id: 2,
-      name: "Presídio Feminino de Goiânia",
-      shortName: "Presídio Feminino",
-      comarca: "Goiânia",
-      director: "Dra. Maria Fernanda Costa",
-      responsible: "Inspetora Maria José Silva",
-      landline: "(62) 3201-5555",
-      functional: "(62) 3201-5556",
-      whatsapp: "(62) 99999-5555",
-      email: "presidio.feminino@dgap.go.gov.br",
-      address: "Rua das Flores, 500 - Goiânia/GO",
-      capacity: 400,
-      currentPopulation: 380,
-      municipalities: ["Goiânia", "Trindade", "Goianira"],
-      type: "Presídio"
+  });
+
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: async (unitData: any) => {
+      console.log('Creating new prison unit:', unitData);
+      const { data, error } = await supabase
+        .from('prison_units')
+        .insert([{
+          name: unitData.name,
+          region_id: unitData.region_id,
+          address: unitData.address,
+          phone: unitData.landline,
+          capacity: unitData.capacity,
+        }])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
     },
-    {
-      id: 3,
-      name: "Complexo Prisional de Goiânia",
-      shortName: "CPP Goiânia",
-      comarca: "Goiânia",
-      director: "Dr. Pedro Henrique Oliveira",
-      responsible: "Inspetor João Carlos Santos",
-      landline: "(62) 3201-6666",
-      functional: "(62) 3201-6667",
-      whatsapp: "(62) 99999-6666",
-      email: "cpp.goiania@dgap.go.gov.br",
-      address: "BR-153, Km 10 - Goiânia/GO",
-      capacity: 1200,
-      currentPopulation: 1150,
-      municipalities: ["Goiânia", "Hidrolândia", "Aragoiânia"],
-      type: "CPP"
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prison_units'] });
+      toast({
+        title: "Sucesso",
+        description: "Unidade criada com sucesso!",
+      });
     },
-    {
-      id: 4,
-      name: "Casa de Prisão Provisória de Anápolis",
-      shortName: "CPP Anápolis",
-      comarca: "Anápolis",
-      director: "Dr. Roberto Lima Santos",
-      responsible: "Inspetor Carlos Eduardo Lima",
-      landline: "(62) 3201-7777",
-      functional: "(62) 3201-7778",
-      whatsapp: "(62) 99999-7777",
-      email: "cpp.anapolis@dgap.go.gov.br",
-      address: "Av. Brasília, 2000 - Anápolis/GO",
-      capacity: 600,
-      currentPopulation: 580,
-      municipalities: ["Anápolis", "Nerópolis", "Campo Limpo de Goiás"],
-      type: "CPP"
-    }
-  ]);
+    onError: (error) => {
+      console.error('Error creating unit:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao criar unidade",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, unitData }: { id: string; unitData: any }) => {
+      console.log('Updating prison unit:', id, unitData);
+      const { data, error } = await supabase
+        .from('prison_units')
+        .update({
+          name: unitData.name,
+          region_id: unitData.region_id,
+          address: unitData.address,
+          phone: unitData.landline,
+          capacity: unitData.capacity,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prison_units'] });
+      toast({
+        title: "Sucesso",
+        description: "Unidade atualizada com sucesso!",
+      });
+    },
+    onError: (error) => {
+      console.error('Error updating unit:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar unidade",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (unitId: string) => {
+      console.log('Deleting prison unit:', unitId);
+      const { error } = await supabase
+        .from('prison_units')
+        .delete()
+        .eq('id', unitId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prison_units'] });
+      toast({
+        title: "Sucesso",
+        description: "Unidade excluída com sucesso!",
+      });
+      setDeletingUnitId(null);
+    },
+    onError: (error) => {
+      console.error('Error deleting unit:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir unidade",
+        variant: "destructive",
+      });
+    },
+  });
 
   const getTypeBadge = (type: string) => {
     switch (type) {
@@ -106,17 +163,6 @@ const Unidades = () => {
         return <Badge className="bg-purple-100 text-purple-800">CPP</Badge>;
       default:
         return <Badge variant="secondary">{type}</Badge>;
-    }
-  };
-
-  const getOccupancyBadge = (current: number, capacity: number) => {
-    const percentage = (current / capacity) * 100;
-    if (percentage >= 90) {
-      return <Badge className="bg-red-100 text-red-800">Superlotação</Badge>;
-    } else if (percentage >= 80) {
-      return <Badge className="bg-yellow-100 text-yellow-800">Atenção</Badge>;
-    } else {
-      return <Badge className="bg-green-100 text-green-800">Normal</Badge>;
     }
   };
 
@@ -135,64 +181,47 @@ const Unidades = () => {
   };
 
   const handleEditUnit = (unit: any) => {
-    setEditingUnit({
-      ...unit,
-      municipalities: unit.municipalities.join(", ")
-    });
+    setEditingUnit(unit);
     setIsFormOpen(true);
   };
 
-  const handleDeleteUnit = (unitId: number) => {
+  const handleDeleteUnit = (unitId: string) => {
     setDeletingUnitId(unitId);
   };
 
   const confirmDeleteUnit = () => {
     if (deletingUnitId) {
-      setUnits(units.filter(unit => unit.id !== deletingUnitId));
-      toast({
-        title: "Sucesso",
-        description: "Unidade excluída com sucesso!",
-      });
-      setDeletingUnitId(null);
+      deleteMutation.mutate(deletingUnitId);
     }
   };
 
   const handleSaveUnit = async (data: any) => {
-    const municipalitiesArray = data.municipalities.split(',').map((m: string) => m.trim());
-    
     if (editingUnit) {
-      // Editar unidade existente
-      setUnits(units.map(unit => 
-        unit.id === editingUnit.id 
-          ? { ...unit, ...data, municipalities: municipalitiesArray }
-          : unit
-      ));
+      updateMutation.mutate({ id: editingUnit.id, unitData: data });
     } else {
-      // Criar nova unidade
-      const newUnit = {
-        id: Math.max(...units.map(u => u.id)) + 1,
-        ...data,
-        municipalities: municipalitiesArray
-      };
-      setUnits([...units, newUnit]);
+      createMutation.mutate(data);
     }
   };
 
   const handleViewUnit = (unit: any) => {
     toast({
       title: "Visualização",
-      description: `Visualizando detalhes de ${unit.shortName}`,
+      description: `Visualizando detalhes de ${unit.name}`,
     });
   };
 
   const filteredUnits = units.filter(unit => 
-    unit.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    unit.shortName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    unit.comarca.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    unit.municipalities.some((municipality: string) => 
-      municipality.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    unit.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    unit.regions?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg">Carregando unidades...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -216,7 +245,7 @@ const Unidades = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              placeholder="Buscar por nome, comarca ou município..."
+              placeholder="Buscar por nome ou região..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -226,7 +255,7 @@ const Unidades = () => {
       </Card>
 
       {/* Estatísticas Rápidas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="bg-blue-50 border-blue-200">
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
@@ -242,45 +271,11 @@ const Unidades = () => {
         <Card className="bg-green-50 border-green-200">
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
-              <div className="bg-green-500 p-2 rounded-lg text-white font-bold">
-                CDP
-              </div>
+              <MapPin className="h-8 w-8 text-green-600" />
               <div>
-                <p className="text-sm font-medium text-green-800">CDPs</p>
+                <p className="text-sm font-medium text-green-800">Regiões Atendidas</p>
                 <p className="text-2xl font-bold text-green-900">
-                  {units.filter(u => u.type === 'CDP').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-purple-50 border-purple-200">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="bg-purple-500 p-2 rounded-lg text-white font-bold">
-                CPP
-              </div>
-              <div>
-                <p className="text-sm font-medium text-purple-800">CPPs</p>
-                <p className="text-2xl font-bold text-purple-900">
-                  {units.filter(u => u.type === 'CPP').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-orange-50 border-orange-200">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="bg-orange-500 p-2 rounded-lg text-white font-bold">
-                PR
-              </div>
-              <div>
-                <p className="text-sm font-medium text-orange-800">Presídios</p>
-                <p className="text-2xl font-bold text-orange-900">
-                  {units.filter(u => u.type === 'Presídio').length}
+                  {new Set(units.map(u => u.regions?.name)).size}
                 </p>
               </div>
             </div>
@@ -298,65 +293,28 @@ const Unidades = () => {
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
                       <h3 className="font-semibold text-lg text-gray-900">{unit.name}</h3>
-                      {getTypeBadge(unit.type)}
-                      {getOccupancyBadge(unit.currentPopulation, unit.capacity)}
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">Comarca:</span> {unit.comarca}
+                          <span className="font-medium">Região:</span> {unit.regions?.name || 'Não definida'}
                         </p>
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">Diretor:</span> {unit.director}
+                          <span className="font-medium">Telefone:</span> {unit.phone || 'Não informado'}
                         </p>
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">Responsável:</span> {unit.responsible}
-                        </p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Telefone:</span> {unit.landline}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Funcional:</span> {unit.functional}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">WhatsApp:</span> {unit.whatsapp}
-                        </p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Capacidade:</span> {unit.capacity} vagas
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">População Atual:</span> {unit.currentPopulation}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Ocupação:</span> {Math.round((unit.currentPopulation / unit.capacity) * 100)}%
+                          <span className="font-medium">Capacidade:</span> {unit.capacity || 'Não informada'} vagas
                         </p>
                       </div>
                     </div>
                     
-                    <div className="mt-3">
-                      <p className="text-sm text-gray-600 mb-1">
-                        <span className="font-medium">Municípios Atendidos:</span>
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {unit.municipalities.map((municipality: string, index: number) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {municipality}
-                          </Badge>
-                        ))}
+                    {unit.address && (
+                      <div className="mt-3 flex items-start space-x-2">
+                        <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-gray-600">{unit.address}</p>
                       </div>
-                    </div>
-                    
-                    <div className="mt-3 flex items-start space-x-2">
-                      <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-gray-600">{unit.address}</p>
-                    </div>
+                    )}
                   </div>
                   
                   <div className="flex flex-col space-y-2 lg:ml-6">
@@ -390,26 +348,28 @@ const Unidades = () => {
                       </Button>
                     </div>
                     
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCall(unit.landline)}
-                        className="flex items-center space-x-2"
-                      >
-                        <Phone className="h-4 w-4" />
-                        <span>Ligar</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleWhatsApp(unit.whatsapp, unit.shortName)}
-                        className="flex items-center space-x-2 text-green-600 border-green-300 hover:bg-green-50"
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                        <span>WhatsApp</span>
-                      </Button>
-                    </div>
+                    {unit.phone && (
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCall(unit.phone)}
+                          className="flex items-center space-x-2"
+                        >
+                          <Phone className="h-4 w-4" />
+                          <span>Ligar</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleWhatsApp(unit.phone, unit.name)}
+                          className="flex items-center space-x-2 text-green-600 border-green-300 hover:bg-green-50"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          <span>WhatsApp</span>
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

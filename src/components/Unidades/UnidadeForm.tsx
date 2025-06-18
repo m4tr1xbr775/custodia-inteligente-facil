@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,22 +22,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const unidadeSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
-  shortName: z.string().min(1, "Nome curto é obrigatório"),
-  comarca: z.string().min(1, "Comarca é obrigatória"),
-  director: z.string().min(1, "Diretor é obrigatório"),
-  responsible: z.string().min(1, "Responsável é obrigatório"),
-  landline: z.string().min(1, "Telefone é obrigatório"),
-  functional: z.string().min(1, "Telefone funcional é obrigatório"),
-  whatsapp: z.string().min(1, "WhatsApp é obrigatório"),
-  email: z.string().email("Email inválido"),
-  address: z.string().min(1, "Endereço é obrigatório"),
-  capacity: z.number().min(1, "Capacidade deve ser maior que 0"),
-  currentPopulation: z.number().min(0, "População atual deve ser 0 ou maior"),
-  municipalities: z.string().min(1, "Municípios são obrigatórios"),
-  type: z.enum(["CDP", "Presídio", "CPP"]),
+  region_id: z.string().min(1, "Região é obrigatória"),
+  address: z.string().optional(),
+  phone: z.string().optional(),
+  capacity: z.number().min(1, "Capacidade deve ser maior que 0").optional(),
 });
 
 type UnidadeFormData = z.infer<typeof unidadeSchema>;
@@ -46,13 +39,33 @@ interface UnidadeFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: UnidadeFormData) => void;
-  initialData?: Partial<UnidadeFormData>;
+  initialData?: any;
   mode: 'create' | 'edit';
 }
 
 const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeFormProps) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch regions for the dropdown
+  const { data: regions = [] } = useQuery({
+    queryKey: ['regions'],
+    queryFn: async () => {
+      console.log('Fetching regions for UnidadeForm...');
+      const { data, error } = await supabase
+        .from('regions')
+        .select('*')
+        .order('name');
+      
+      if (error) {
+        console.error('Error fetching regions:', error);
+        throw error;
+      }
+      
+      console.log('Regions fetched for UnidadeForm:', data);
+      return data || [];
+    },
+  });
 
   const {
     register,
@@ -64,34 +77,45 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
   } = useForm<UnidadeFormData>({
     resolver: zodResolver(unidadeSchema),
     defaultValues: {
-      name: initialData?.name || "",
-      shortName: initialData?.shortName || "",
-      comarca: initialData?.comarca || "",
-      director: initialData?.director || "",
-      responsible: initialData?.responsible || "",
-      landline: initialData?.landline || "",
-      functional: initialData?.functional || "",
-      whatsapp: initialData?.whatsapp || "",
-      email: initialData?.email || "",
-      address: initialData?.address || "",
-      capacity: initialData?.capacity || 0,
-      currentPopulation: initialData?.currentPopulation || 0,
-      municipalities: initialData?.municipalities || "",
-      type: initialData?.type || "CDP",
+      name: "",
+      region_id: "",
+      address: "",
+      phone: "",
+      capacity: undefined,
     },
   });
+
+  // Reset form when initialData changes
+  useEffect(() => {
+    if (initialData) {
+      console.log('Setting initial data:', initialData);
+      reset({
+        name: initialData.name || "",
+        region_id: initialData.region_id || "",
+        address: initialData.address || "",
+        phone: initialData.phone || "",
+        capacity: initialData.capacity || undefined,
+      });
+    } else {
+      reset({
+        name: "",
+        region_id: "",
+        address: "",
+        phone: "",
+        capacity: undefined,
+      });
+    }
+  }, [initialData, reset]);
 
   const onSubmit = async (data: UnidadeFormData) => {
     setIsSubmitting(true);
     try {
+      console.log('Submitting form data:', data);
       await onSave(data);
-      toast({
-        title: "Sucesso",
-        description: `Unidade ${mode === 'create' ? 'criada' : 'atualizada'} com sucesso!`,
-      });
       reset();
       onClose();
     } catch (error) {
+      console.error('Error submitting form:', error);
       toast({
         title: "Erro",
         description: `Erro ao ${mode === 'create' ? 'criar' : 'atualizar'} unidade`,
@@ -104,7 +128,7 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {mode === 'create' ? 'Nova Unidade Prisional' : 'Editar Unidade Prisional'}
@@ -112,9 +136,9 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome Completo *</Label>
+              <Label htmlFor="name">Nome da Unidade *</Label>
               <Input
                 id="name"
                 {...register("name")}
@@ -126,121 +150,43 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="shortName">Nome Curto *</Label>
-              <Input
-                id="shortName"
-                {...register("shortName")}
-                placeholder="CDP Aparecida"
-              />
-              {errors.shortName && (
-                <p className="text-sm text-red-500">{errors.shortName.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="type">Tipo *</Label>
-              <Select value={watch("type")} onValueChange={(value) => setValue("type", value as "CDP" | "Presídio" | "CPP")}>
+              <Label htmlFor="region_id">Região *</Label>
+              <Select value={watch("region_id")} onValueChange={(value) => setValue("region_id", value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo" />
+                  <SelectValue placeholder="Selecione a região" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CDP">CDP</SelectItem>
-                  <SelectItem value="Presídio">Presídio</SelectItem>
-                  <SelectItem value="CPP">CPP</SelectItem>
+                  {regions.map((region) => (
+                    <SelectItem key={region.id} value={region.id}>
+                      {region.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              {errors.type && (
-                <p className="text-sm text-red-500">{errors.type.message}</p>
+              {errors.region_id && (
+                <p className="text-sm text-red-500">{errors.region_id.message}</p>
+              )}
+              {regions.length === 0 && (
+                <p className="text-sm text-amber-600">
+                  Nenhuma região encontrada. Cadastre regiões primeiro na página de Configurações.
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="comarca">Comarca *</Label>
+              <Label htmlFor="phone">Telefone</Label>
               <Input
-                id="comarca"
-                {...register("comarca")}
-                placeholder="Goiânia"
-              />
-              {errors.comarca && (
-                <p className="text-sm text-red-500">{errors.comarca.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="director">Diretor *</Label>
-              <Input
-                id="director"
-                {...register("director")}
-                placeholder="Dr. João Silva"
-              />
-              {errors.director && (
-                <p className="text-sm text-red-500">{errors.director.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="responsible">Responsável *</Label>
-              <Input
-                id="responsible"
-                {...register("responsible")}
-                placeholder="Inspetor José Santos"
-              />
-              {errors.responsible && (
-                <p className="text-sm text-red-500">{errors.responsible.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="landline">Telefone *</Label>
-              <Input
-                id="landline"
-                {...register("landline")}
+                id="phone"
+                {...register("phone")}
                 placeholder="(62) 3201-4444"
               />
-              {errors.landline && (
-                <p className="text-sm text-red-500">{errors.landline.message}</p>
+              {errors.phone && (
+                <p className="text-sm text-red-500">{errors.phone.message}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="functional">Telefone Funcional *</Label>
-              <Input
-                id="functional"
-                {...register("functional")}
-                placeholder="(62) 3201-4445"
-              />
-              {errors.functional && (
-                <p className="text-sm text-red-500">{errors.functional.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp">WhatsApp *</Label>
-              <Input
-                id="whatsapp"
-                {...register("whatsapp")}
-                placeholder="(62) 99999-4444"
-              />
-              {errors.whatsapp && (
-                <p className="text-sm text-red-500">{errors.whatsapp.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
-              <Input
-                id="email"
-                type="email"
-                {...register("email")}
-                placeholder="unidade@dgap.go.gov.br"
-              />
-              {errors.email && (
-                <p className="text-sm text-red-500">{errors.email.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="capacity">Capacidade *</Label>
+              <Label htmlFor="capacity">Capacidade (vagas)</Label>
               <Input
                 id="capacity"
                 type="number"
@@ -253,42 +199,17 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="currentPopulation">População Atual *</Label>
-              <Input
-                id="currentPopulation"
-                type="number"
-                {...register("currentPopulation", { valueAsNumber: true })}
-                placeholder="720"
+              <Label htmlFor="address">Endereço</Label>
+              <Textarea
+                id="address"
+                {...register("address")}
+                placeholder="Av. Presidente Vargas, 1000 - Aparecida de Goiânia/GO"
+                rows={3}
               />
-              {errors.currentPopulation && (
-                <p className="text-sm text-red-500">{errors.currentPopulation.message}</p>
+              {errors.address && (
+                <p className="text-sm text-red-500">{errors.address.message}</p>
               )}
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="address">Endereço *</Label>
-            <Input
-              id="address"
-              {...register("address")}
-              placeholder="Av. Presidente Vargas, 1000 - Aparecida de Goiânia/GO"
-            />
-            {errors.address && (
-              <p className="text-sm text-red-500">{errors.address.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="municipalities">Municípios Atendidos *</Label>
-            <Textarea
-              id="municipalities"
-              {...register("municipalities")}
-              placeholder="Aparecida de Goiânia, Senador Canedo, Bela Vista de Goiás"
-              rows={3}
-            />
-            {errors.municipalities && (
-              <p className="text-sm text-red-500">{errors.municipalities.message}</p>
-            )}
           </div>
 
           <DialogFooter>
