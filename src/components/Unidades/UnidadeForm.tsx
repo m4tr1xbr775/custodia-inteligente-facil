@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -64,22 +63,65 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
   } = useForm<UnidadeFormData>({
     resolver: zodResolver(unidadeSchema),
     defaultValues: {
-      name: initialData?.name || "",
-      short_name: initialData?.short_name || "",
-      comarca: initialData?.comarca || "",
-      director: initialData?.director || "",
-      responsible: initialData?.responsible || "",
-      landline: initialData?.landline || "",
-      functional: initialData?.functional || "",
-      whatsapp: initialData?.whatsapp || "",
-      email: initialData?.email || "",
-      address: initialData?.address || "",
-      capacity: initialData?.capacity || 0,
-      current_population: initialData?.current_population || 0,
-      municipalities: initialData?.municipalities || "",
-      type: initialData?.type || "CDP",
+      name: "",
+      short_name: "",
+      comarca: "",
+      director: "",
+      responsible: "",
+      landline: "",
+      functional: "",
+      whatsapp: "",
+      email: "",
+      address: "",
+      capacity: 0,
+      current_population: 0,
+      municipalities: "",
+      type: "CDP",
     },
   });
+
+  // Carregar dados quando initialData mudar
+  useEffect(() => {
+    if (initialData && mode === 'edit') {
+      console.log('Loading initial data:', initialData);
+      
+      // Resetar o formulário com os novos dados
+      reset({
+        name: initialData.name || "",
+        short_name: initialData.short_name || "",
+        comarca: initialData.comarca || "",
+        director: initialData.director || "",
+        responsible: initialData.responsible || "",
+        landline: initialData.landline || "",
+        functional: initialData.functional || "",
+        whatsapp: initialData.whatsapp || "",
+        email: initialData.email || "",
+        address: initialData.address || "",
+        capacity: initialData.capacity || 0,
+        current_population: initialData.current_population || 0,
+        municipalities: initialData.municipalities || "",
+        type: initialData.type || "CDP",
+      });
+    } else if (mode === 'create') {
+      // Limpar formulário para criação
+      reset({
+        name: "",
+        short_name: "",
+        comarca: "",
+        director: "",
+        responsible: "",
+        landline: "",
+        functional: "",
+        whatsapp: "",
+        email: "",
+        address: "",
+        capacity: 0,
+        current_population: 0,
+        municipalities: "",
+        type: "CDP",
+      });
+    }
+  }, [initialData, mode, reset]);
 
   const onSubmit = async (data: UnidadeFormData) => {
     setIsSubmitting(true);

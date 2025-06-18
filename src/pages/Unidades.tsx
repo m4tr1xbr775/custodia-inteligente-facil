@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Building, Plus, Search, Phone, MessageCircle, MapPin, Edit, Trash2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -199,6 +199,7 @@ const Unidades = () => {
   };
 
   const handleEditUnit = (unit: PrisonUnit) => {
+    console.log('Editing unit:', unit); // Debug log
     setEditingUnit(unit);
     setIsFormOpen(true);
   };
@@ -437,7 +438,10 @@ const Unidades = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleEditUnit(unit)}
+                          onClick={() => {
+                            console.log('Edit button clicked for unit:', unit.name);
+                            handleEditUnit(unit);
+                          }}
                           className="flex items-center space-x-2"
                         >
                           <Edit className="h-4 w-4" />
@@ -496,7 +500,10 @@ const Unidades = () => {
       {/* Formulário de Unidade */}
       <UnidadeForm
         isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
+        onClose={() => {
+          setIsFormOpen(false);
+          setEditingUnit(null);
+        }}
         onSave={handleSaveUnit}
         initialData={editingUnit}
         mode={editingUnit ? 'edit' : 'create'}
