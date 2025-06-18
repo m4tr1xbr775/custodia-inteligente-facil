@@ -319,7 +319,7 @@ const Dashboard = () => {
             </div>
           </div>
         </CardContent>
-      </div>
+      </Card>
     </div>
   );
 };
