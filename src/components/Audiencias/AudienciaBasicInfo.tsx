@@ -20,6 +20,20 @@ const AudienciaBasicInfo = ({ form }: AudienciaBasicInfoProps) => {
     <div className="space-y-4">
       <FormField
         control={form.control}
+        name="process_number"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Número do Processo *</FormLabel>
+            <FormControl>
+              <Input placeholder="Digite o número do processo" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
         name="defendant_name"
         render={({ field }) => (
           <FormItem>
@@ -40,20 +54,6 @@ const AudienciaBasicInfo = ({ form }: AudienciaBasicInfoProps) => {
             <FormLabel>Documento do Réu</FormLabel>
             <FormControl>
               <Input placeholder="CPF ou RG" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="process_number"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Número do Processo *</FormLabel>
-            <FormControl>
-              <Input placeholder="Digite o número do processo" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
