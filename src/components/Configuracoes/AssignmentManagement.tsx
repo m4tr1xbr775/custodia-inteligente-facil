@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,6 +59,7 @@ interface Assignment {
 
 const AssignmentManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string>("");
   const [formData, setFormData] = useState({
     region_id: "",
@@ -195,20 +195,48 @@ const AssignmentManagement = () => {
         title: "Sucesso",
         description: "Atribuição criada com sucesso!",
       });
-      setIsDialogOpen(false);
-      setFormData({
-        region_id: "",
-        magistrate_id: "none",
-        prosecutor_id: "none",
-        defender_id: "none",
-        date: "",
-        shift: "diurno",
-      });
+      handleCloseDialog();
     },
     onError: (error: any) => {
       toast({
         title: "Erro",
         description: `Erro ao criar atribuição: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update assignment mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, assignmentData }: { id: string; assignmentData: any }) => {
+      // Clean data - convert "none" values to null/undefined
+      const cleanData = { ...assignmentData, schedule_id: selectedScheduleId };
+      if (cleanData.magistrate_id === "none") cleanData.magistrate_id = null;
+      if (cleanData.prosecutor_id === "none") cleanData.prosecutor_id = null;
+      if (cleanData.defender_id === "none") cleanData.defender_id = null;
+
+      const { data, error } = await supabase
+        .from('schedule_assignments')
+        .update(cleanData)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedule_assignments', selectedScheduleId] });
+      toast({
+        title: "Sucesso",
+        description: "Atribuição atualizada com sucesso!",
+      });
+      handleCloseDialog();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: `Erro ao atualizar atribuição: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -252,7 +280,11 @@ const AssignmentManagement = () => {
       return;
     }
 
-    createMutation.mutate(formData);
+    if (editingAssignment) {
+      updateMutation.mutate({ id: editingAssignment.id, assignmentData: formData });
+    } else {
+      createMutation.mutate(formData);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -260,6 +292,32 @@ const AssignmentManagement = () => {
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleEdit = (assignment: Assignment) => {
+    setEditingAssignment(assignment);
+    setFormData({
+      region_id: assignment.region_id,
+      magistrate_id: assignment.magistrate_id || "none",
+      prosecutor_id: assignment.prosecutor_id || "none",
+      defender_id: assignment.defender_id || "none",
+      date: assignment.date,
+      shift: assignment.shift,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingAssignment(null);
+    setFormData({
+      region_id: "",
+      magistrate_id: "none",
+      prosecutor_id: "none",
+      defender_id: "none",
+      date: "",
+      shift: "diurno",
+    });
   };
 
   const handleDelete = (id: string) => {
@@ -333,14 +391,16 @@ const AssignmentManagement = () => {
             <h3 className="text-lg font-semibold text-gray-900">Atribuições da Escala</h3>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="flex items-center space-x-2">
+                <Button className="flex items-center space-x-2" onClick={() => setEditingAssignment(null)}>
                   <Plus className="h-4 w-4" />
                   <span>Adicionar Atribuição</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                  <DialogTitle>Adicionar Nova Atribuição</DialogTitle>
+                  <DialogTitle>
+                    {editingAssignment ? "Editar Atribuição" : "Adicionar Nova Atribuição"}
+                  </DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
@@ -436,11 +496,11 @@ const AssignmentManagement = () => {
                   </div>
 
                   <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    <Button type="button" variant="outline" onClick={handleCloseDialog}>
                       Cancelar
                     </Button>
-                    <Button type="submit" disabled={createMutation.isPending}>
-                      {createMutation.isPending ? "Salvando..." : "Salvar"}
+                    <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                      {createMutation.isPending || updateMutation.isPending ? "Salvando..." : "Salvar"}
                     </Button>
                   </div>
                 </form>
@@ -500,7 +560,7 @@ const AssignmentManagement = () => {
                           <TableCell>{assignment.defender?.name || "-"}</TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
-                              <Button size="sm" variant="outline">
+                              <Button size="sm" variant="outline" onClick={() => handleEdit(assignment)}>
                                 <Edit className="h-4 w-4" />
                               </Button>
                               <Button 

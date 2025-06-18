@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,6 +44,7 @@ interface Region {
 
 const RegionManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingRegion, setEditingRegion] = useState<Region | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     code: "",
@@ -99,20 +99,49 @@ const RegionManagement = () => {
         title: "Sucesso",
         description: "Região criada com sucesso!",
       });
-      setIsDialogOpen(false);
-      setFormData({
-        name: "",
-        code: "",
-        responsible: "",
-        phone: "",
-        type: "macrorregiao",
-      });
+      handleCloseDialog();
     },
     onError: (error: any) => {
       console.error('Error creating region:', error);
       toast({
         title: "Erro",
         description: `Erro ao criar região: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, regionData }: { id: string; regionData: any }) => {
+      console.log('Updating region with id:', id, regionData);
+      const { data, error } = await supabase
+        .from('regions')
+        .update(regionData)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error updating region:', error);
+        throw error;
+      }
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['regions'] });
+      toast({
+        title: "Sucesso",
+        description: "Região atualizada com sucesso!",
+      });
+      handleCloseDialog();
+    },
+    onError: (error: any) => {
+      console.error('Error updating region:', error);
+      toast({
+        title: "Erro",
+        description: `Erro ao atualizar região: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -162,7 +191,12 @@ const RegionManagement = () => {
     }
 
     console.log("Region form submitted:", formData);
-    createMutation.mutate(formData);
+    
+    if (editingRegion) {
+      updateMutation.mutate({ id: editingRegion.id, regionData: formData });
+    } else {
+      createMutation.mutate(formData);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -170,6 +204,30 @@ const RegionManagement = () => {
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleEdit = (region: Region) => {
+    setEditingRegion(region);
+    setFormData({
+      name: region.name,
+      code: region.code,
+      responsible: region.responsible || "",
+      phone: region.phone || "",
+      type: region.type,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingRegion(null);
+    setFormData({
+      name: "",
+      code: "",
+      responsible: "",
+      phone: "",
+      type: "macrorregiao",
+    });
   };
 
   const handleDelete = (id: string) => {
@@ -202,14 +260,16 @@ const RegionManagement = () => {
         <h2 className="text-2xl font-bold text-gray-900">Gerenciar Regiões</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="flex items-center space-x-2">
+            <Button className="flex items-center space-x-2" onClick={() => setEditingRegion(null)}>
               <Plus className="h-4 w-4" />
               <span>Adicionar Região</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Adicionar Nova Região</DialogTitle>
+              <DialogTitle>
+                {editingRegion ? "Editar Região" : "Adicionar Nova Região"}
+              </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -263,11 +323,11 @@ const RegionManagement = () => {
                 />
               </div>
               <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button type="button" variant="outline" onClick={handleCloseDialog}>
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? "Salvando..." : "Salvar"}
+                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                  {createMutation.isPending || updateMutation.isPending ? "Salvando..." : "Salvar"}
                 </Button>
               </div>
             </form>
@@ -333,7 +393,7 @@ const RegionManagement = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        <Button size="sm" variant="outline">
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(region)}>
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button 

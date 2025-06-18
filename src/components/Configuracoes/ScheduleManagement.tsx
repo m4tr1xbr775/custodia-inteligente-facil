@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,6 +46,7 @@ interface Schedule {
 
 const ScheduleManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -101,20 +101,49 @@ const ScheduleManagement = () => {
         title: "Sucesso",
         description: "Escala criada com sucesso!",
       });
-      setIsDialogOpen(false);
-      setFormData({
-        title: "",
-        description: "",
-        start_date: "",
-        end_date: "",
-        status: "rascunho",
-      });
+      handleCloseDialog();
     },
     onError: (error: any) => {
       console.error('Error creating schedule:', error);
       toast({
         title: "Erro",
         description: `Erro ao criar escala: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, scheduleData }: { id: string; scheduleData: any }) => {
+      console.log('Updating schedule with id:', id, scheduleData);
+      const { data, error } = await supabase
+        .from('schedules')
+        .update(scheduleData)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error updating schedule:', error);
+        throw error;
+      }
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      toast({
+        title: "Sucesso",
+        description: "Escala atualizada com sucesso!",
+      });
+      handleCloseDialog();
+    },
+    onError: (error: any) => {
+      console.error('Error updating schedule:', error);
+      toast({
+        title: "Erro",
+        description: `Erro ao atualizar escala: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -173,7 +202,12 @@ const ScheduleManagement = () => {
     }
 
     console.log("Schedule form submitted:", formData);
-    createMutation.mutate(formData);
+    
+    if (editingSchedule) {
+      updateMutation.mutate({ id: editingSchedule.id, scheduleData: formData });
+    } else {
+      createMutation.mutate(formData);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -181,6 +215,30 @@ const ScheduleManagement = () => {
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleEdit = (schedule: Schedule) => {
+    setEditingSchedule(schedule);
+    setFormData({
+      title: schedule.title,
+      description: schedule.description || "",
+      start_date: schedule.start_date,
+      end_date: schedule.end_date,
+      status: schedule.status,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingSchedule(null);
+    setFormData({
+      title: "",
+      description: "",
+      start_date: "",
+      end_date: "",
+      status: "rascunho",
+    });
   };
 
   const handleDelete = (id: string) => {
@@ -216,14 +274,16 @@ const ScheduleManagement = () => {
         <h2 className="text-2xl font-bold text-gray-900">Escalas de Plantão</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="flex items-center space-x-2">
+            <Button className="flex items-center space-x-2" onClick={() => setEditingSchedule(null)}>
               <Plus className="h-4 w-4" />
               <span>Nova Escala</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Criar Nova Escala</DialogTitle>
+              <DialogTitle>
+                {editingSchedule ? "Editar Escala" : "Criar Nova Escala"}
+              </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -282,11 +342,11 @@ const ScheduleManagement = () => {
                 </Select>
               </div>
               <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button type="button" variant="outline" onClick={handleCloseDialog}>
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? "Criando..." : "Criar Escala"}
+                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                  {createMutation.isPending || updateMutation.isPending ? "Salvando..." : (editingSchedule ? "Atualizar Escala" : "Criar Escala")}
                 </Button>
               </div>
             </form>
@@ -344,7 +404,7 @@ const ScheduleManagement = () => {
                         <Button size="sm" variant="outline" title="Gerenciar Atribuições">
                           <Users className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="outline">
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(schedule)}>
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button 
