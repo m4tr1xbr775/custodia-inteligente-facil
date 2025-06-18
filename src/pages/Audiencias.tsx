@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Calendar, Plus, Search, Filter, ExternalLink, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,27 +21,64 @@ const Audiencias = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAudienciaId, setEditingAudienciaId] = useState<string | undefined>();
 
-  // Fetch audiences with related data
+  // Fetch audiences with related data using manual joins
   const { data: audiencesData, isLoading } = useQuery({
     queryKey: ['audiences'],
     queryFn: async () => {
       console.log("Buscando audiências...");
-      const { data, error } = await supabase
+      
+      // Primeiro, buscar as audiências
+      const { data: audiences, error: audiencesError } = await supabase
         .from('audiences')
-        .select(`
-          *,
-          regions(id, name, type),
-          prison_units_extended(id, name, short_name)
-        `)
+        .select('*')
         .order('scheduled_date', { ascending: true });
       
-      if (error) {
-        console.error("Erro ao buscar audiências:", error);
-        throw error;
+      if (audiencesError) {
+        console.error("Erro ao buscar audiências:", audiencesError);
+        throw audiencesError;
       }
       
-      console.log("Audiências encontradas:", data);
-      return data;
+      if (!audiences || audiences.length === 0) {
+        console.log("Nenhuma audiência encontrada");
+        return [];
+      }
+      
+      // Buscar as unidades prisionais
+      const prisonUnitIds = [...new Set(audiences.map(a => a.prison_unit_id))];
+      const { data: prisonUnits, error: prisonUnitsError } = await supabase
+        .from('prison_units_extended')
+        .select('id, name, short_name')
+        .in('id', prisonUnitIds);
+      
+      if (prisonUnitsError) {
+        console.error("Erro ao buscar unidades prisionais:", prisonUnitsError);
+      }
+      
+      // Buscar as regiões
+      const regionIds = [...new Set(audiences.map(a => a.region_id).filter(Boolean))];
+      const { data: regions, error: regionsError } = await supabase
+        .from('regions')
+        .select('id, name, type')
+        .in('id', regionIds);
+      
+      if (regionsError) {
+        console.error("Erro ao buscar regiões:", regionsError);
+      }
+      
+      // Combinar os dados
+      const audiencesWithRelations = audiences.map(audience => {
+        const prisonUnit = prisonUnits?.find(pu => pu.id === audience.prison_unit_id);
+        const region = regions?.find(r => r.id === audience.region_id);
+        
+        return {
+          ...audience,
+          prison_units_extended: prisonUnit,
+          regions: region
+        };
+      });
+      
+      console.log("Audiências encontradas:", audiencesWithRelations);
+      return audiencesWithRelations;
     },
   });
 
