@@ -163,6 +163,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
       console.log("Dados finais para inserção:", audienceData);
       
       if (isEditing && initialData?.id) {
+        console.log("Atualizando audiência com ID:", initialData.id);
         const { data: result, error } = await supabase
           .from("audiences")
           .update(audienceData)
@@ -170,21 +171,32 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
           .select()
           .single();
         
-        if (error) throw error;
+        if (error) {
+          console.error("Erro ao atualizar audiência:", error);
+          throw error;
+        }
+        console.log("Audiência atualizada com sucesso:", result);
         return result;
       } else {
+        console.log("Criando nova audiência");
         const { data: result, error } = await supabase
           .from("audiences")
           .insert([audienceData])
           .select()
           .single();
         
-        if (error) throw error;
+        if (error) {
+          console.error("Erro ao criar audiência:", error);
+          throw error;
+        }
+        console.log("Audiência criada com sucesso:", result);
         return result;
       }
     },
     onSuccess: () => {
+      console.log("Operação bem-sucedida, invalidando queries");
       queryClient.invalidateQueries({ queryKey: ["audiences"] });
+      queryClient.invalidateQueries({ queryKey: ["audiencia", initialData?.id] });
       toast({
         title: "Sucesso",
         description: isEditing ? "Audiência atualizada com sucesso!" : "Audiência criada com sucesso!",
@@ -204,6 +216,11 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
   const onSubmit = (data: AudienciaFormData) => {
     console.log("Formulário submetido com dados:", data);
     mutation.mutate(data);
+  };
+
+  const handleCancel = () => {
+    console.log("Cancelando operação");
+    onSuccess(); // Fecha o modal
   };
 
   return (
@@ -227,7 +244,18 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
         </div>
 
         <div className="flex justify-end space-x-4">
-          <Button type="submit" disabled={mutation.isPending}>
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={handleCancel}
+            disabled={mutation.isPending}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            type="submit" 
+            disabled={mutation.isPending}
+          >
             {mutation.isPending ? "Salvando..." : isEditing ? "Atualizar" : "Criar Audiência"}
           </Button>
         </div>

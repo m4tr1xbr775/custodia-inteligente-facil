@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Calendar, Plus, Search, Filter, ExternalLink, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -130,16 +131,19 @@ const Audiencias = () => {
   };
 
   const handleNewAudiencia = () => {
+    console.log("Abrindo modal para nova audiência");
     setEditingAudienciaId(undefined);
     setIsFormOpen(true);
   };
 
   const handleEditAudiencia = (audienciaId: string) => {
+    console.log("Editando audiência com ID:", audienciaId);
     setEditingAudienciaId(audienciaId);
     setIsFormOpen(true);
   };
 
   const handleCloseForm = () => {
+    console.log("Fechando modal");
     setIsFormOpen(false);
     setEditingAudienciaId(undefined);
   };
@@ -264,6 +268,14 @@ const Audiencias = () => {
                             </p>
                           </div>
                         </div>
+
+                        {/* Mostrar observações se a unidade negou */}
+                        {audience.unit_acknowledgment === "negado" && audience.observations && (
+                          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+                            <p className="text-sm font-medium text-red-800 mb-1">Motivo da Negação:</p>
+                            <p className="text-sm text-red-700">{audience.observations}</p>
+                          </div>
+                        )}
                       </div>
                       
                       <div className="flex flex-col space-y-2 lg:ml-6">
