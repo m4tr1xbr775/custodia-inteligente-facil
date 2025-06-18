@@ -1,8 +1,6 @@
 
 import React from "react";
 import { UseFormReturn } from "react-hook-form";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import {
   FormControl,
   FormField,
@@ -17,82 +15,99 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RegionBasedAssignmentsProps {
   form: UseFormReturn<any>;
-  selectedRegionId: string | null;
-  selectedDate: string | null;
+  selectedScheduleId?: string;
+  selectedDate?: string;
 }
 
-const RegionBasedAssignments = ({ form, selectedRegionId, selectedDate }: RegionBasedAssignmentsProps) => {
-  // Buscar assignments baseados na região e data selecionadas
-  const { data: assignments } = useQuery({
-    queryKey: ["schedule-assignments", selectedRegionId, selectedDate],
+const RegionBasedAssignments = ({ form, selectedScheduleId, selectedDate }: RegionBasedAssignmentsProps) => {
+  // Fetch active schedules
+  const { data: schedules, isLoading: schedulesLoading } = useQuery({
+    queryKey: ['schedules'],
     queryFn: async () => {
-      if (!selectedRegionId || !selectedDate) return [];
+      const { data, error } = await supabase
+        .from('schedules')
+        .select('*')
+        .eq('status', 'ativa')
+        .order('start_date', { ascending: true });
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch prison units
+  const { data: prisonUnits, isLoading: prisonUnitsLoading } = useQuery({
+    queryKey: ['prison-units'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('prison_units_extended')
+        .select('id, name, short_name')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch schedule assignments based on selected schedule and date
+  const { data: assignments, isLoading: assignmentsLoading } = useQuery({
+    queryKey: ['schedule-assignments', selectedScheduleId, selectedDate],
+    queryFn: async () => {
+      if (!selectedScheduleId || !selectedDate) return [];
       
       const { data, error } = await supabase
-        .from("schedule_assignments")
+        .from('schedule_assignments')
         .select(`
           *,
           magistrates(id, name),
           prosecutors(id, name),
-          defenders(id, name)
+          defenders(id, name),
+          regions(id, name)
         `)
-        .eq("region_id", selectedRegionId)
-        .eq("date", selectedDate);
+        .eq('schedule_id', selectedScheduleId)
+        .eq('date', selectedDate);
       
       if (error) throw error;
-      return data || [];
+      return data;
     },
-    enabled: !!selectedRegionId && !!selectedDate,
+    enabled: !!selectedScheduleId && !!selectedDate,
   });
 
-  // Extrair listas únicas de cada tipo de profissional
-  const magistrates = assignments?.filter(a => a.magistrates).map(a => a.magistrates).filter((v, i, a) => a.findIndex(t => t.id === v.id) === i) || [];
-  const prosecutors = assignments?.filter(a => a.prosecutors).map(a => a.prosecutors).filter((v, i, a) => a.findIndex(t => t.id === v.id) === i) || [];
-  const defenders = assignments?.filter(a => a.defenders).map(a => a.defenders).filter((v, i, a) => a.findIndex(t => t.id === v.id) === i) || [];
-
-  if (!selectedRegionId || !selectedDate) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-gray-500">
-          Selecione uma região e data para visualizar os plantonistas disponíveis.
-        </p>
-      </div>
-    );
-  }
-
-  if (assignments?.length === 0) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-yellow-600">
-          Nenhum plantonista encontrado para esta região e data. Verifique se existem escalas cadastradas.
-        </p>
-      </div>
-    );
-  }
+  const formatScheduleLabel = (schedule: any) => {
+    const startDate = new Date(schedule.start_date).toLocaleDateString('pt-BR');
+    const endDate = new Date(schedule.end_date).toLocaleDateString('pt-BR');
+    return `${schedule.title} (${startDate} - ${endDate})`;
+  };
 
   return (
     <div className="space-y-4">
       <FormField
         control={form.control}
-        name="magistrate_id"
+        name="schedule_id"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Magistrado</FormLabel>
+            <FormLabel>Escala *</FormLabel>
             <Select onValueChange={field.onChange} value={field.value}>
               <FormControl>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione um magistrado" />
+                  <SelectValue placeholder="Selecione uma escala" />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {magistrates.map((magistrate) => (
-                  <SelectItem key={magistrate.id} value={magistrate.id}>
-                    {magistrate.name}
-                  </SelectItem>
-                ))}
+                {schedulesLoading ? (
+                  <SelectItem value="" disabled>Carregando escalas...</SelectItem>
+                ) : (
+                  schedules?.map((schedule) => (
+                    <SelectItem key={schedule.id} value={schedule.id}>
+                      {formatScheduleLabel(schedule)}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
             <FormMessage />
@@ -102,22 +117,26 @@ const RegionBasedAssignments = ({ form, selectedRegionId, selectedDate }: Region
 
       <FormField
         control={form.control}
-        name="prosecutor_id"
+        name="prison_unit_id"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Promotor</FormLabel>
+            <FormLabel>Unidade Prisional *</FormLabel>
             <Select onValueChange={field.onChange} value={field.value}>
               <FormControl>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione um promotor" />
+                  <SelectValue placeholder="Selecione uma unidade prisional" />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {prosecutors.map((prosecutor) => (
-                  <SelectItem key={prosecutor.id} value={prosecutor.id}>
-                    {prosecutor.name}
-                  </SelectItem>
-                ))}
+                {prisonUnitsLoading ? (
+                  <SelectItem value="" disabled>Carregando unidades...</SelectItem>
+                ) : (
+                  prisonUnits?.map((unit) => (
+                    <SelectItem key={unit.id} value={unit.id}>
+                      {unit.name} ({unit.short_name})
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
             <FormMessage />
@@ -125,30 +144,95 @@ const RegionBasedAssignments = ({ form, selectedRegionId, selectedDate }: Region
         )}
       />
 
-      <FormField
-        control={form.control}
-        name="defender_id"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Defensor</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um defensor" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {defenders.map((defender) => (
-                  <SelectItem key={defender.id} value={defender.id}>
-                    {defender.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {assignments && assignments.length > 0 && (
+        <div className="space-y-4">
+          <h4 className="text-sm font-medium">Plantonistas Disponíveis</h4>
+          
+          <FormField
+            control={form.control}
+            name="magistrate_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Magistrado</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um magistrado" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum</SelectItem>
+                    {assignments
+                      .filter(a => a.magistrates)
+                      .map((assignment) => (
+                        <SelectItem key={assignment.magistrates.id} value={assignment.magistrates.id}>
+                          {assignment.magistrates.name} - {assignment.regions?.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="prosecutor_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Promotor</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um promotor" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum</SelectItem>
+                    {assignments
+                      .filter(a => a.prosecutors)
+                      .map((assignment) => (
+                        <SelectItem key={assignment.prosecutors.id} value={assignment.prosecutors.id}>
+                          {assignment.prosecutors.name} - {assignment.regions?.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="defender_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Defensor</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um defensor" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum</SelectItem>
+                    {assignments
+                      .filter(a => a.defenders)
+                      .map((assignment) => (
+                        <SelectItem key={assignment.defenders.id} value={assignment.defenders.id}>
+                          {assignment.defenders.name} - {assignment.regions?.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      )}
     </div>
   );
 };

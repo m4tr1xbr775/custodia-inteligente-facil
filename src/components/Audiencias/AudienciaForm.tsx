@@ -18,7 +18,7 @@ const audienciaSchema = z.object({
   process_number: z.string().min(1, "Número do processo é obrigatório"),
   scheduled_date: z.string().min(1, "Data é obrigatória"),
   scheduled_time: z.string().min(1, "Horário é obrigatório"),
-  region_id: z.string().min(1, "Região é obrigatória"),
+  schedule_id: z.string().min(1, "Escala é obrigatória"),
   prison_unit_id: z.string().min(1, "Unidade prisional é obrigatória"),
   magistrate_id: z.string().optional(),
   prosecutor_id: z.string().optional(),
@@ -47,7 +47,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
       process_number: initialData?.process_number || "",
       scheduled_date: initialData?.scheduled_date || "",
       scheduled_time: initialData?.scheduled_time || "",
-      region_id: initialData?.region_id || "",
+      schedule_id: initialData?.schedule_id || "",
       prison_unit_id: initialData?.prison_unit_id || "",
       magistrate_id: initialData?.magistrate_id || "",
       prosecutor_id: initialData?.prosecutor_id || "",
@@ -57,13 +57,29 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
     },
   });
 
-  // Watch dos campos de região e data para filtrar plantonistas
-  const selectedRegionId = form.watch("region_id");
+  // Watch dos campos de escala e data para filtrar plantonistas
+  const selectedScheduleId = form.watch("schedule_id");
   const selectedDate = form.watch("scheduled_date");
 
   const mutation = useMutation({
     mutationFn: async (data: AudienciaFormData) => {
       console.log("Dados sendo enviados:", data);
+      
+      // Buscar a região baseada na escala selecionada
+      let regionId = null;
+      if (data.schedule_id && data.scheduled_date) {
+        const { data: assignment } = await supabase
+          .from('schedule_assignments')
+          .select('region_id')
+          .eq('schedule_id', data.schedule_id)
+          .eq('date', data.scheduled_date)
+          .limit(1)
+          .single();
+        
+        if (assignment) {
+          regionId = assignment.region_id;
+        }
+      }
       
       // Preparar os dados para inserção/atualização
       const audienceData = {
@@ -72,7 +88,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
         process_number: data.process_number,
         scheduled_date: data.scheduled_date,
         scheduled_time: data.scheduled_time,
-        region_id: data.region_id,
+        region_id: regionId,
         prison_unit_id: data.prison_unit_id,
         magistrate_id: data.magistrate_id || null,
         prosecutor_id: data.prosecutor_id || null,
@@ -141,10 +157,10 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">Plantonistas</h3>
+          <h3 className="text-lg font-medium">Escala e Plantonistas</h3>
           <RegionBasedAssignments 
             form={form} 
-            selectedRegionId={selectedRegionId} 
+            selectedScheduleId={selectedScheduleId} 
             selectedDate={selectedDate} 
           />
         </div>
