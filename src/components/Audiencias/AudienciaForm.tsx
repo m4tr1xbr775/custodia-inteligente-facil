@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -195,8 +194,19 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
   const onSubmit = async (data: FormData) => {
     try {
       const audienceData = {
-        ...data,
+        defendant_name: data.defendant_name,
+        defendant_document: data.defendant_document || null,
+        process_number: data.process_number,
         scheduled_date: format(data.scheduled_date, "yyyy-MM-dd"),
+        scheduled_time: data.scheduled_time,
+        region_id: data.region_id,
+        prison_unit_id: data.prison_unit_id,
+        magistrate_id: data.magistrate_id || null,
+        prosecutor_id: data.prosecutor_id || null,
+        defender_id: data.defender_id || null,
+        police_officer_id: data.police_officer_id || null,
+        observations: data.observations || null,
+        virtual_room_url: data.virtual_room_url || null,
       };
 
       if (isEditing && initialData?.id) {
@@ -213,7 +223,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
       } else {
         const { error } = await supabase
           .from("audiences")
-          .insert([audienceData]);
+          .insert(audienceData);
 
         if (error) throw error;
         toast({

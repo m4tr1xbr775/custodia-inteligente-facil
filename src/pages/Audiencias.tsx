@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Calendar, Plus, Search, Filter, ExternalLink, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import AudienciaForm from "@/components/Audiencias/AudienciaForm";
+import AudienciaModal from "@/components/Audiencias/AudienciaModal";
 
 const Audiencias = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -268,7 +267,7 @@ const Audiencias = () => {
         </Card>
       )}
 
-      <AudienciaForm
+      <AudienciaModal
         isOpen={isFormOpen}
         onClose={handleCloseForm}
         audienciaId={editingAudienciaId}
