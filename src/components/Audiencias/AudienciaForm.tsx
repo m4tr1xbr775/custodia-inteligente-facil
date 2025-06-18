@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -64,19 +65,57 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
     mutationFn: async (data: AudienciaFormData) => {
       console.log("Dados sendo enviados:", data);
       
-      // Buscar a região baseada na escala selecionada
+      // Buscar a região baseada na escala selecionada e data
       let regionId = null;
       if (data.schedule_id && data.scheduled_date) {
-        const { data: assignment } = await supabase
+        console.log("Buscando region_id para schedule_id:", data.schedule_id, "e data:", data.scheduled_date);
+        
+        const { data: assignments, error: assignmentError } = await supabase
           .from('schedule_assignments')
           .select('region_id')
           .eq('schedule_id', data.schedule_id)
           .eq('date', data.scheduled_date)
-          .limit(1)
-          .single();
+          .limit(1);
         
-        if (assignment) {
-          regionId = assignment.region_id;
+        if (assignmentError) {
+          console.error("Erro ao buscar assignment:", assignmentError);
+        } else {
+          console.log("Assignments encontrados:", assignments);
+          if (assignments && assignments.length > 0) {
+            regionId = assignments[0].region_id;
+            console.log("Region ID encontrado:", regionId);
+          }
+        }
+      }
+      
+      // Se não encontrou region_id através dos assignments, tentar uma abordagem alternativa
+      if (!regionId && data.schedule_id) {
+        console.log("Tentando buscar region através de qualquer assignment da escala");
+        const { data: fallbackAssignments, error: fallbackError } = await supabase
+          .from('schedule_assignments')
+          .select('region_id')
+          .eq('schedule_id', data.schedule_id)
+          .limit(1);
+        
+        if (!fallbackError && fallbackAssignments && fallbackAssignments.length > 0) {
+          regionId = fallbackAssignments[0].region_id;
+          console.log("Region ID encontrado via fallback:", regionId);
+        }
+      }
+      
+      // Se ainda não encontrou region_id, usar uma região padrão ou criar erro
+      if (!regionId) {
+        console.log("Buscando uma região padrão");
+        const { data: defaultRegion, error: regionError } = await supabase
+          .from('regions')
+          .select('id')
+          .limit(1);
+        
+        if (!regionError && defaultRegion && defaultRegion.length > 0) {
+          regionId = defaultRegion[0].id;
+          console.log("Usando região padrão:", regionId);
+        } else {
+          throw new Error("Não foi possível determinar a região para esta audiência. Verifique se a escala tem assignments configurados.");
         }
       }
       
@@ -100,6 +139,8 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
         virtual_room_url: data.virtual_room_url || null,
         observations: data.observations || null,
       };
+      
+      console.log("Dados finais para inserção:", audienceData);
       
       if (isEditing && initialData?.id) {
         const { data: result, error } = await supabase
@@ -155,7 +196,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
           </div>
           
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Unidade Prisional e Agenda</h3>
+            <h3 className="text-lg font-medium">Agendamento</h3>
             <RegionBasedAssignments 
               form={form} 
               selectedScheduleId={selectedScheduleId} 
