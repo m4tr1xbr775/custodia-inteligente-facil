@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Calendar, CheckCircle, XCircle, Clock, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,32 +24,85 @@ const UnidadesPrisionais = () => {
   const { data: prisonUnits } = useQuery({
     queryKey: ['prison_units_extended'],
     queryFn: async () => {
+      console.log("Buscando unidades prisionais...");
       const { data, error } = await supabase
         .from('prison_units_extended')
         .select('*')
         .order('name');
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao buscar unidades prisionais:", error);
+        throw error;
+      }
+      console.log("Unidades prisionais encontradas:", data);
       return data;
     },
   });
 
-  // Fetch audiences for selected unit
+  // Fetch audiences for selected unit using manual joins
   const { data: audiences, isLoading } = useQuery({
     queryKey: ['unit_audiences', selectedUnit],
     queryFn: async () => {
       if (!selectedUnit) return [];
-      const { data, error } = await supabase
+      
+      console.log("Buscando audiências para unidade:", selectedUnit);
+      
+      // Primeiro, buscar as audiências da unidade
+      const { data: audiences, error: audiencesError } = await supabase
         .from('audiences')
-        .select(`
-          *,
-          regions(name),
-          prison_units_extended(name)
-        `)
+        .select('*')
         .eq('prison_unit_id', selectedUnit)
         .order('scheduled_date', { ascending: true });
       
-      if (error) throw error;
-      return data;
+      if (audiencesError) {
+        console.error("Erro ao buscar audiências:", audiencesError);
+        throw audiencesError;
+      }
+      
+      if (!audiences || audiences.length === 0) {
+        console.log("Nenhuma audiência encontrada para esta unidade");
+        return [];
+      }
+      
+      // Buscar as regiões relacionadas
+      const regionIds = [...new Set(audiences.map(a => a.region_id).filter(Boolean))];
+      let regions = [];
+      if (regionIds.length > 0) {
+        const { data: regionsData, error: regionsError } = await supabase
+          .from('regions')
+          .select('id, name, type')
+          .in('id', regionIds);
+        
+        if (regionsError) {
+          console.error("Erro ao buscar regiões:", regionsError);
+        } else {
+          regions = regionsData || [];
+        }
+      }
+      
+      // Buscar a unidade prisional
+      const { data: prisonUnit, error: prisonUnitError } = await supabase
+        .from('prison_units_extended')
+        .select('id, name, short_name')
+        .eq('id', selectedUnit)
+        .single();
+      
+      if (prisonUnitError) {
+        console.error("Erro ao buscar unidade prisional:", prisonUnitError);
+      }
+      
+      // Combinar os dados
+      const audiencesWithRelations = audiences.map(audience => {
+        const region = regions.find(r => r.id === audience.region_id);
+        
+        return {
+          ...audience,
+          regions: region,
+          prison_units_extended: prisonUnit
+        };
+      });
+      
+      console.log("Audiências com relações encontradas:", audiencesWithRelations);
+      return audiencesWithRelations;
     },
     enabled: !!selectedUnit,
   });
@@ -196,7 +250,7 @@ const UnidadesPrisionais = () => {
                               <span className="font-medium">Processo:</span> {audience.process_number}
                             </p>
                             <p className="text-sm text-gray-600">
-                              <span className="font-medium">Central:</span> {audience.regions?.name}
+                              <span className="font-medium">Central:</span> {audience.regions?.name || 'Não informado'}
                             </p>
                           </div>
 
