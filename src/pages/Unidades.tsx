@@ -1,15 +1,31 @@
 
 import { useState } from "react";
-import { Building, Plus, Search, Phone, MessageCircle, MapPin } from "lucide-react";
+import { Building, Plus, Search, Phone, MessageCircle, MapPin, Edit, Trash2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import UnidadeForm from "@/components/Unidades/UnidadeForm";
 
 const Unidades = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingUnit, setEditingUnit] = useState<any>(null);
+  const [deletingUnitId, setDeletingUnitId] = useState<number | null>(null);
+  const { toast } = useToast();
 
-  const units = [
+  const [units, setUnits] = useState([
     {
       id: 1,
       name: "Centro de Detenção Provisória de Aparecida de Goiânia",
@@ -78,7 +94,7 @@ const Unidades = () => {
       municipalities: ["Anápolis", "Nerópolis", "Campo Limpo de Goiás"],
       type: "CPP"
     }
-  ];
+  ]);
 
   const getTypeBadge = (type: string) => {
     switch (type) {
@@ -113,11 +129,67 @@ const Unidades = () => {
     window.open(`https://wa.me/55${phone.replace(/\D/g, '')}?text=${message}`, '_blank');
   };
 
+  const handleCreateUnit = () => {
+    setEditingUnit(null);
+    setIsFormOpen(true);
+  };
+
+  const handleEditUnit = (unit: any) => {
+    setEditingUnit({
+      ...unit,
+      municipalities: unit.municipalities.join(", ")
+    });
+    setIsFormOpen(true);
+  };
+
+  const handleDeleteUnit = (unitId: number) => {
+    setDeletingUnitId(unitId);
+  };
+
+  const confirmDeleteUnit = () => {
+    if (deletingUnitId) {
+      setUnits(units.filter(unit => unit.id !== deletingUnitId));
+      toast({
+        title: "Sucesso",
+        description: "Unidade excluída com sucesso!",
+      });
+      setDeletingUnitId(null);
+    }
+  };
+
+  const handleSaveUnit = async (data: any) => {
+    const municipalitiesArray = data.municipalities.split(',').map((m: string) => m.trim());
+    
+    if (editingUnit) {
+      // Editar unidade existente
+      setUnits(units.map(unit => 
+        unit.id === editingUnit.id 
+          ? { ...unit, ...data, municipalities: municipalitiesArray }
+          : unit
+      ));
+    } else {
+      // Criar nova unidade
+      const newUnit = {
+        id: Math.max(...units.map(u => u.id)) + 1,
+        ...data,
+        municipalities: municipalitiesArray
+      };
+      setUnits([...units, newUnit]);
+    }
+  };
+
+  const handleViewUnit = (unit: any) => {
+    toast({
+      title: "Visualização",
+      description: `Visualizando detalhes de ${unit.shortName}`,
+    });
+  };
+
   const filteredUnits = units.filter(unit => 
     unit.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     unit.shortName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     unit.comarca.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    unit.municipalities.some(municipality => 
+    unit.municipalities.some((municipality: string) => 
       municipality.toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
@@ -129,7 +201,10 @@ const Unidades = () => {
           <h1 className="text-3xl font-bold text-gray-900">Unidades Prisionais</h1>
           <p className="text-gray-600">Gerencie todas as unidades do sistema penitenciário</p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700">
+        <Button 
+          className="bg-blue-600 hover:bg-blue-700"
+          onClick={handleCreateUnit}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Nova Unidade
         </Button>
@@ -270,7 +345,7 @@ const Unidades = () => {
                         <span className="font-medium">Municípios Atendidos:</span>
                       </p>
                       <div className="flex flex-wrap gap-1">
-                        {unit.municipalities.map((municipality, index) => (
+                        {unit.municipalities.map((municipality: string, index: number) => (
                           <Badge key={index} variant="outline" className="text-xs">
                             {municipality}
                           </Badge>
@@ -284,25 +359,57 @@ const Unidades = () => {
                     </div>
                   </div>
                   
-                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 lg:ml-6">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCall(unit.landline)}
-                      className="flex items-center space-x-2"
-                    >
-                      <Phone className="h-4 w-4" />
-                      <span>Ligar</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleWhatsApp(unit.whatsapp, unit.shortName)}
-                      className="flex items-center space-x-2 text-green-600 border-green-300 hover:bg-green-50"
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      <span>WhatsApp</span>
-                    </Button>
+                  <div className="flex flex-col space-y-2 lg:ml-6">
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewUnit(unit)}
+                        className="flex items-center space-x-2"
+                      >
+                        <Eye className="h-4 w-4" />
+                        <span>Ver</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditUnit(unit)}
+                        className="flex items-center space-x-2"
+                      >
+                        <Edit className="h-4 w-4" />
+                        <span>Editar</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteUnit(unit.id)}
+                        className="flex items-center space-x-2 text-red-600 border-red-300 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span>Excluir</span>
+                      </Button>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCall(unit.landline)}
+                        className="flex items-center space-x-2"
+                      >
+                        <Phone className="h-4 w-4" />
+                        <span>Ligar</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleWhatsApp(unit.whatsapp, unit.shortName)}
+                        className="flex items-center space-x-2 text-green-600 border-green-300 hover:bg-green-50"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        <span>WhatsApp</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -320,6 +427,36 @@ const Unidades = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Formulário de Unidade */}
+      <UnidadeForm
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        onSave={handleSaveUnit}
+        initialData={editingUnit}
+        mode={editingUnit ? 'edit' : 'create'}
+      />
+
+      {/* Dialog de Confirmação de Exclusão */}
+      <AlertDialog open={!!deletingUnitId} onOpenChange={() => setDeletingUnitId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta unidade? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteUnit}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
