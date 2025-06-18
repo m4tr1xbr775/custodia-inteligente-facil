@@ -81,6 +81,11 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
         }
       }
       
+      // Helper function to handle "none" values
+      const handleNoneValue = (value?: string) => {
+        return value === "none" || !value ? null : value;
+      };
+      
       // Preparar os dados para inserção/atualização
       const audienceData = {
         defendant_name: data.defendant_name,
@@ -90,9 +95,9 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
         scheduled_time: data.scheduled_time,
         region_id: regionId,
         prison_unit_id: data.prison_unit_id,
-        magistrate_id: data.magistrate_id || null,
-        prosecutor_id: data.prosecutor_id || null,
-        defender_id: data.defender_id || null,
+        magistrate_id: handleNoneValue(data.magistrate_id),
+        prosecutor_id: handleNoneValue(data.prosecutor_id),
+        defender_id: handleNoneValue(data.defender_id),
         virtual_room_url: data.virtual_room_url || null,
         observations: data.observations || null,
       };

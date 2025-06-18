@@ -100,7 +100,7 @@ const RegionBasedAssignments = ({ form, selectedScheduleId, selectedDate }: Regi
               </FormControl>
               <SelectContent>
                 {schedulesLoading ? (
-                  <SelectItem value="" disabled>Carregando escalas...</SelectItem>
+                  <SelectItem value="loading" disabled>Carregando escalas...</SelectItem>
                 ) : (
                   schedules?.map((schedule) => (
                     <SelectItem key={schedule.id} value={schedule.id}>
@@ -129,7 +129,7 @@ const RegionBasedAssignments = ({ form, selectedScheduleId, selectedDate }: Regi
               </FormControl>
               <SelectContent>
                 {prisonUnitsLoading ? (
-                  <SelectItem value="" disabled>Carregando unidades...</SelectItem>
+                  <SelectItem value="loading" disabled>Carregando unidades...</SelectItem>
                 ) : (
                   prisonUnits?.map((unit) => (
                     <SelectItem key={unit.id} value={unit.id}>
@@ -154,16 +154,16 @@ const RegionBasedAssignments = ({ form, selectedScheduleId, selectedDate }: Regi
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Magistrado</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select onValueChange={field.onChange} value={field.value || ""}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um magistrado" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {assignments
-                      .filter(a => a.magistrates)
+                      .filter(a => a.magistrates && a.magistrates.id)
                       .map((assignment) => (
                         <SelectItem key={assignment.magistrates.id} value={assignment.magistrates.id}>
                           {assignment.magistrates.name} - {assignment.regions?.name}
@@ -182,16 +182,16 @@ const RegionBasedAssignments = ({ form, selectedScheduleId, selectedDate }: Regi
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Promotor</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select onValueChange={field.onChange} value={field.value || ""}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um promotor" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {assignments
-                      .filter(a => a.prosecutors)
+                      .filter(a => a.prosecutors && a.prosecutors.id)
                       .map((assignment) => (
                         <SelectItem key={assignment.prosecutors.id} value={assignment.prosecutors.id}>
                           {assignment.prosecutors.name} - {assignment.regions?.name}
@@ -210,16 +210,16 @@ const RegionBasedAssignments = ({ form, selectedScheduleId, selectedDate }: Regi
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Defensor</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select onValueChange={field.onChange} value={field.value || ""}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um defensor" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {assignments
-                      .filter(a => a.defenders)
+                      .filter(a => a.defenders && a.defenders.id)
                       .map((assignment) => (
                         <SelectItem key={assignment.defenders.id} value={assignment.defenders.id}>
                           {assignment.defenders.name} - {assignment.regions?.name}
