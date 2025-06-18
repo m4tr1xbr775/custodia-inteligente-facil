@@ -16,6 +16,7 @@ export type Database = {
           defendant_document: string | null
           defendant_name: string
           defender_id: string | null
+          duration_minutes: number | null
           id: string
           magistrate_id: string | null
           observations: string | null
@@ -27,6 +28,9 @@ export type Database = {
           scheduled_date: string
           scheduled_time: string
           status: Database["public"]["Enums"]["audience_status"]
+          unit_confirmed: boolean | null
+          unit_confirmed_at: string | null
+          unit_confirmed_by: string | null
           updated_at: string
           virtual_room_url: string | null
         }
@@ -36,6 +40,7 @@ export type Database = {
           defendant_document?: string | null
           defendant_name: string
           defender_id?: string | null
+          duration_minutes?: number | null
           id?: string
           magistrate_id?: string | null
           observations?: string | null
@@ -47,6 +52,9 @@ export type Database = {
           scheduled_date: string
           scheduled_time: string
           status?: Database["public"]["Enums"]["audience_status"]
+          unit_confirmed?: boolean | null
+          unit_confirmed_at?: string | null
+          unit_confirmed_by?: string | null
           updated_at?: string
           virtual_room_url?: string | null
         }
@@ -56,6 +64,7 @@ export type Database = {
           defendant_document?: string | null
           defendant_name?: string
           defender_id?: string | null
+          duration_minutes?: number | null
           id?: string
           magistrate_id?: string | null
           observations?: string | null
@@ -67,6 +76,9 @@ export type Database = {
           scheduled_date?: string
           scheduled_time?: string
           status?: Database["public"]["Enums"]["audience_status"]
+          unit_confirmed?: boolean | null
+          unit_confirmed_at?: string | null
+          unit_confirmed_by?: string | null
           updated_at?: string
           virtual_room_url?: string | null
         }
@@ -354,6 +366,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      region_schedules: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          region_id: string
+          slot_duration_minutes: number | null
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          region_id: string
+          slot_duration_minutes?: number | null
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          region_id?: string
+          slot_duration_minutes?: number | null
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "region_schedules_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       regions: {
         Row: {
