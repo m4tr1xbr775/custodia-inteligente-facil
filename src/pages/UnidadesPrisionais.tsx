@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Calendar, CheckCircle, XCircle, Clock, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,12 +19,12 @@ const UnidadesPrisionais = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch prison units
+  // Fetch prison units from the new table
   const { data: prisonUnits } = useQuery({
-    queryKey: ['prison_units'],
+    queryKey: ['prison_units_extended'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('prison_units')
+        .from('prison_units_extended')
         .select('*')
         .order('name');
       if (error) throw error;
@@ -43,7 +42,7 @@ const UnidadesPrisionais = () => {
         .select(`
           *,
           regions(name),
-          prison_units(name)
+          prison_units_extended(name)
         `)
         .eq('prison_unit_id', selectedUnit)
         .order('scheduled_date', { ascending: true });

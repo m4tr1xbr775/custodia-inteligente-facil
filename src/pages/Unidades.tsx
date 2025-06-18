@@ -16,85 +16,128 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import UnidadeForm from "@/components/Unidades/UnidadeForm";
 
 const Unidades = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<any>(null);
-  const [deletingUnitId, setDeletingUnitId] = useState<number | null>(null);
+  const [deletingUnitId, setDeletingUnitId] = useState<string | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const [units, setUnits] = useState([
-    {
-      id: 1,
-      name: "Centro de Detenção Provisória de Aparecida de Goiânia",
-      shortName: "CDP Aparecida",
-      comarca: "Aparecida de Goiânia",
-      director: "Dr. João Carlos Silva",
-      responsible: "Inspetor José Maria Santos",
-      landline: "(62) 3201-4444",
-      functional: "(62) 3201-4445",
-      whatsapp: "(62) 99999-4444",
-      email: "cdp.aparecida@dgap.go.gov.br",
-      address: "Av. Presidente Vargas, 1000 - Aparecida de Goiânia/GO",
-      capacity: 850,
-      currentPopulation: 720,
-      municipalities: ["Aparecida de Goiânia", "Senador Canedo", "Bela Vista de Goiás"],
-      type: "CDP"
+  // Fetch units from Supabase
+  const { data: units = [], isLoading } = useQuery({
+    queryKey: ['prison_units_extended'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('prison_units_extended')
+        .select('*')
+        .order('name');
+      
+      if (error) {
+        console.error('Error fetching units:', error);
+        throw error;
+      }
+      
+      return data?.map(unit => ({
+        ...unit,
+        municipalities: unit.municipalities.split(',').map((m: string) => m.trim())
+      })) || [];
     },
-    {
-      id: 2,
-      name: "Presídio Feminino de Goiânia",
-      shortName: "Presídio Feminino",
-      comarca: "Goiânia",
-      director: "Dra. Maria Fernanda Costa",
-      responsible: "Inspetora Maria José Silva",
-      landline: "(62) 3201-5555",
-      functional: "(62) 3201-5556",
-      whatsapp: "(62) 99999-5555",
-      email: "presidio.feminino@dgap.go.gov.br",
-      address: "Rua das Flores, 500 - Goiânia/GO",
-      capacity: 400,
-      currentPopulation: 380,
-      municipalities: ["Goiânia", "Trindade", "Goianira"],
-      type: "Presídio"
+  });
+
+  // Create unit mutation
+  const createUnitMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const { error } = await supabase
+        .from('prison_units_extended')
+        .insert([{
+          ...data,
+          municipalities: Array.isArray(data.municipalities) 
+            ? data.municipalities.join(', ') 
+            : data.municipalities
+        }]);
+      
+      if (error) throw error;
     },
-    {
-      id: 3,
-      name: "Complexo Prisional de Goiânia",
-      shortName: "CPP Goiânia",
-      comarca: "Goiânia",
-      director: "Dr. Pedro Henrique Oliveira",
-      responsible: "Inspetor João Carlos Santos",
-      landline: "(62) 3201-6666",
-      functional: "(62) 3201-6667",
-      whatsapp: "(62) 99999-6666",
-      email: "cpp.goiania@dgap.go.gov.br",
-      address: "BR-153, Km 10 - Goiânia/GO",
-      capacity: 1200,
-      currentPopulation: 1150,
-      municipalities: ["Goiânia", "Hidrolândia", "Aragoiânia"],
-      type: "CPP"
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prison_units_extended'] });
+      toast({
+        title: "Sucesso",
+        description: "Unidade criada com sucesso!",
+      });
     },
-    {
-      id: 4,
-      name: "Casa de Prisão Provisória de Anápolis",
-      shortName: "CPP Anápolis",
-      comarca: "Anápolis",
-      director: "Dr. Roberto Lima Santos",
-      responsible: "Inspetor Carlos Eduardo Lima",
-      landline: "(62) 3201-7777",
-      functional: "(62) 3201-7778",
-      whatsapp: "(62) 99999-7777",
-      email: "cpp.anapolis@dgap.go.gov.br",
-      address: "Av. Brasília, 2000 - Anápolis/GO",
-      capacity: 600,
-      currentPopulation: 580,
-      municipalities: ["Anápolis", "Nerópolis", "Campo Limpo de Goiás"],
-      type: "CPP"
-    }
-  ]);
+    onError: (error) => {
+      console.error('Error creating unit:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao criar unidade",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update unit mutation
+  const updateUnitMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const { error } = await supabase
+        .from('prison_units_extended')
+        .update({
+          ...data,
+          municipalities: Array.isArray(data.municipalities) 
+            ? data.municipalities.join(', ') 
+            : data.municipalities
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prison_units_extended'] });
+      toast({
+        title: "Sucesso",
+        description: "Unidade atualizada com sucesso!",
+      });
+    },
+    onError: (error) => {
+      console.error('Error updating unit:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar unidade",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete unit mutation
+  const deleteUnitMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('prison_units_extended')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prison_units_extended'] });
+      toast({
+        title: "Sucesso",
+        description: "Unidade excluída com sucesso!",
+      });
+    },
+    onError: (error) => {
+      console.error('Error deleting unit:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir unidade",
+        variant: "destructive",
+      });
+    },
+  });
 
   const getTypeBadge = (type: string) => {
     switch (type) {
@@ -137,62 +180,60 @@ const Unidades = () => {
   const handleEditUnit = (unit: any) => {
     setEditingUnit({
       ...unit,
-      municipalities: unit.municipalities.join(", ")
+      municipalities: Array.isArray(unit.municipalities) 
+        ? unit.municipalities.join(", ")
+        : unit.municipalities
     });
     setIsFormOpen(true);
   };
 
-  const handleDeleteUnit = (unitId: number) => {
+  const handleDeleteUnit = (unitId: string) => {
     setDeletingUnitId(unitId);
   };
 
   const confirmDeleteUnit = () => {
     if (deletingUnitId) {
-      setUnits(units.filter(unit => unit.id !== deletingUnitId));
-      toast({
-        title: "Sucesso",
-        description: "Unidade excluída com sucesso!",
-      });
+      deleteUnitMutation.mutate(deletingUnitId);
       setDeletingUnitId(null);
     }
   };
 
   const handleSaveUnit = async (data: any) => {
-    const municipalitiesArray = data.municipalities.split(',').map((m: string) => m.trim());
-    
     if (editingUnit) {
-      // Editar unidade existente
-      setUnits(units.map(unit => 
-        unit.id === editingUnit.id 
-          ? { ...unit, ...data, municipalities: municipalitiesArray }
-          : unit
-      ));
+      updateUnitMutation.mutate({ id: editingUnit.id, data });
     } else {
-      // Criar nova unidade
-      const newUnit = {
-        id: Math.max(...units.map(u => u.id)) + 1,
-        ...data,
-        municipalities: municipalitiesArray
-      };
-      setUnits([...units, newUnit]);
+      createUnitMutation.mutate(data);
     }
   };
 
   const handleViewUnit = (unit: any) => {
     toast({
       title: "Visualização",
-      description: `Visualizando detalhes de ${unit.shortName}`,
+      description: `Visualizando detalhes de ${unit.short_name}`,
     });
   };
 
   const filteredUnits = units.filter(unit => 
     unit.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    unit.shortName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    unit.short_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     unit.comarca.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    unit.municipalities.some((municipality: string) => 
-      municipality.toLowerCase().includes(searchTerm.toLowerCase())
+    (Array.isArray(unit.municipalities) 
+      ? unit.municipalities.some((municipality: string) => 
+          municipality.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : unit.municipalities.toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <div className="text-lg">Carregando unidades...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -299,7 +340,7 @@ const Unidades = () => {
                     <div className="flex items-center space-x-3 mb-2">
                       <h3 className="font-semibold text-lg text-gray-900">{unit.name}</h3>
                       {getTypeBadge(unit.type)}
-                      {getOccupancyBadge(unit.currentPopulation, unit.capacity)}
+                      {getOccupancyBadge(unit.current_population, unit.capacity)}
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -332,10 +373,10 @@ const Unidades = () => {
                           <span className="font-medium">Capacidade:</span> {unit.capacity} vagas
                         </p>
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">População Atual:</span> {unit.currentPopulation}
+                          <span className="font-medium">População Atual:</span> {unit.current_population}
                         </p>
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">Ocupação:</span> {Math.round((unit.currentPopulation / unit.capacity) * 100)}%
+                          <span className="font-medium">Ocupação:</span> {Math.round((unit.current_population / unit.capacity) * 100)}%
                         </p>
                       </div>
                     </div>
@@ -345,9 +386,9 @@ const Unidades = () => {
                         <span className="font-medium">Municípios Atendidos:</span>
                       </p>
                       <div className="flex flex-wrap gap-1">
-                        {unit.municipalities.map((municipality: string, index: number) => (
+                        {(Array.isArray(unit.municipalities) ? unit.municipalities : unit.municipalities.split(',')).map((municipality: string, index: number) => (
                           <Badge key={index} variant="outline" className="text-xs">
-                            {municipality}
+                            {municipality.trim()}
                           </Badge>
                         ))}
                       </div>
@@ -403,7 +444,7 @@ const Unidades = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleWhatsApp(unit.whatsapp, unit.shortName)}
+                        onClick={() => handleWhatsApp(unit.whatsapp, unit.short_name)}
                         className="flex items-center space-x-2 text-green-600 border-green-300 hover:bg-green-50"
                       >
                         <MessageCircle className="h-4 w-4" />

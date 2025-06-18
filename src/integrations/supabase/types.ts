@@ -379,6 +379,77 @@ export type Database = {
           },
         ]
       }
+      prison_units_extended: {
+        Row: {
+          address: string
+          capacity: number
+          comarca: string
+          created_at: string
+          current_population: number
+          director: string
+          email: string
+          functional: string
+          id: string
+          landline: string
+          municipalities: string
+          name: string
+          region_id: string | null
+          responsible: string
+          short_name: string
+          type: string
+          updated_at: string
+          whatsapp: string
+        }
+        Insert: {
+          address: string
+          capacity: number
+          comarca: string
+          created_at?: string
+          current_population?: number
+          director: string
+          email: string
+          functional: string
+          id?: string
+          landline: string
+          municipalities: string
+          name: string
+          region_id?: string | null
+          responsible: string
+          short_name: string
+          type: string
+          updated_at?: string
+          whatsapp: string
+        }
+        Update: {
+          address?: string
+          capacity?: number
+          comarca?: string
+          created_at?: string
+          current_population?: number
+          director?: string
+          email?: string
+          functional?: string
+          id?: string
+          landline?: string
+          municipalities?: string
+          name?: string
+          region_id?: string | null
+          responsible?: string
+          short_name?: string
+          type?: string
+          updated_at?: string
+          whatsapp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prison_units_extended_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prosecutors: {
         Row: {
           active: boolean | null

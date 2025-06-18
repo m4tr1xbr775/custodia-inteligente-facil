@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const unidadeSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
-  shortName: z.string().min(1, "Nome curto é obrigatório"),
+  short_name: z.string().min(1, "Nome curto é obrigatório"),
   comarca: z.string().min(1, "Comarca é obrigatória"),
   director: z.string().min(1, "Diretor é obrigatório"),
   responsible: z.string().min(1, "Responsável é obrigatório"),
@@ -35,7 +35,7 @@ const unidadeSchema = z.object({
   email: z.string().email("Email inválido"),
   address: z.string().min(1, "Endereço é obrigatório"),
   capacity: z.number().min(1, "Capacidade deve ser maior que 0"),
-  currentPopulation: z.number().min(0, "População atual deve ser 0 ou maior"),
+  current_population: z.number().min(0, "População atual deve ser 0 ou maior"),
   municipalities: z.string().min(1, "Municípios são obrigatórios"),
   type: z.enum(["CDP", "Presídio", "CPP"]),
 });
@@ -65,7 +65,7 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
     resolver: zodResolver(unidadeSchema),
     defaultValues: {
       name: initialData?.name || "",
-      shortName: initialData?.shortName || "",
+      short_name: initialData?.short_name || "",
       comarca: initialData?.comarca || "",
       director: initialData?.director || "",
       responsible: initialData?.responsible || "",
@@ -75,7 +75,7 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
       email: initialData?.email || "",
       address: initialData?.address || "",
       capacity: initialData?.capacity || 0,
-      currentPopulation: initialData?.currentPopulation || 0,
+      current_population: initialData?.current_population || 0,
       municipalities: initialData?.municipalities || "",
       type: initialData?.type || "CDP",
     },
@@ -126,14 +126,14 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="shortName">Nome Curto *</Label>
+              <Label htmlFor="short_name">Nome Curto *</Label>
               <Input
-                id="shortName"
-                {...register("shortName")}
+                id="short_name"
+                {...register("short_name")}
                 placeholder="CDP Aparecida"
               />
-              {errors.shortName && (
-                <p className="text-sm text-red-500">{errors.shortName.message}</p>
+              {errors.short_name && (
+                <p className="text-sm text-red-500">{errors.short_name.message}</p>
               )}
             </div>
 
@@ -253,15 +253,15 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="currentPopulation">População Atual *</Label>
+              <Label htmlFor="current_population">População Atual *</Label>
               <Input
-                id="currentPopulation"
+                id="current_population"
                 type="number"
-                {...register("currentPopulation", { valueAsNumber: true })}
+                {...register("current_population", { valueAsNumber: true })}
                 placeholder="720"
               />
-              {errors.currentPopulation && (
-                <p className="text-sm text-red-500">{errors.currentPopulation.message}</p>
+              {errors.current_population && (
+                <p className="text-sm text-red-500">{errors.current_population.message}</p>
               )}
             </div>
           </div>
