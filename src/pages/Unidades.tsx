@@ -20,10 +20,31 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import UnidadeForm from "@/components/Unidades/UnidadeForm";
 
+interface PrisonUnit {
+  id: string;
+  name: string;
+  short_name: string;
+  type: string;
+  comarca: string;
+  director: string;
+  responsible: string;
+  landline: string;
+  functional: string;
+  whatsapp: string;
+  email: string;
+  capacity: number;
+  current_population: number;
+  address: string;
+  municipalities: string;
+  region_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const Unidades = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingUnit, setEditingUnit] = useState<any>(null);
+  const [editingUnit, setEditingUnit] = useState<PrisonUnit | null>(null);
   const [deletingUnitId, setDeletingUnitId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -42,10 +63,7 @@ const Unidades = () => {
         throw error;
       }
       
-      return data?.map(unit => ({
-        ...unit,
-        municipalities: unit.municipalities.split(',').map((m: string) => m.trim())
-      })) || [];
+      return data || [];
     },
   });
 
@@ -177,13 +195,8 @@ const Unidades = () => {
     setIsFormOpen(true);
   };
 
-  const handleEditUnit = (unit: any) => {
-    setEditingUnit({
-      ...unit,
-      municipalities: Array.isArray(unit.municipalities) 
-        ? unit.municipalities.join(", ")
-        : unit.municipalities
-    });
+  const handleEditUnit = (unit: PrisonUnit) => {
+    setEditingUnit(unit);
     setIsFormOpen(true);
   };
 
@@ -206,24 +219,26 @@ const Unidades = () => {
     }
   };
 
-  const handleViewUnit = (unit: any) => {
+  const handleViewUnit = (unit: PrisonUnit) => {
     toast({
       title: "Visualização",
       description: `Visualizando detalhes de ${unit.short_name}`,
     });
   };
 
-  const filteredUnits = units.filter(unit => 
-    unit.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    unit.short_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    unit.comarca.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (Array.isArray(unit.municipalities) 
-      ? unit.municipalities.some((municipality: string) => 
-          municipality.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      : unit.municipalities.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
+  const filteredUnits = units.filter(unit => {
+    const searchLower = searchTerm.toLowerCase();
+    const municipalitiesArray = typeof unit.municipalities === 'string' 
+      ? unit.municipalities.split(',').map(m => m.trim()) 
+      : [];
+    
+    return unit.name.toLowerCase().includes(searchLower) ||
+           unit.short_name.toLowerCase().includes(searchLower) ||
+           unit.comarca.toLowerCase().includes(searchLower) ||
+           municipalitiesArray.some((municipality: string) => 
+             municipality.toLowerCase().includes(searchLower)
+           );
+  });
 
   if (isLoading) {
     return (
@@ -331,132 +346,138 @@ const Unidades = () => {
 
       {/* Lista de Unidades */}
       <div className="space-y-4">
-        {filteredUnits.map((unit) => (
-          <Card key={unit.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between space-y-4 lg:space-y-0">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="font-semibold text-lg text-gray-900">{unit.name}</h3>
-                      {getTypeBadge(unit.type)}
-                      {getOccupancyBadge(unit.current_population, unit.capacity)}
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Comarca:</span> {unit.comarca}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Diretor:</span> {unit.director}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Responsável:</span> {unit.responsible}
-                        </p>
+        {filteredUnits.map((unit) => {
+          const municipalitiesArray = typeof unit.municipalities === 'string' 
+            ? unit.municipalities.split(',').map(m => m.trim()) 
+            : [];
+
+          return (
+            <Card key={unit.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between space-y-4 lg:space-y-0">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="font-semibold text-lg text-gray-900">{unit.name}</h3>
+                        {getTypeBadge(unit.type)}
+                        {getOccupancyBadge(unit.current_population, unit.capacity)}
                       </div>
                       
-                      <div>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Telefone:</span> {unit.landline}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Funcional:</span> {unit.functional}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">WhatsApp:</span> {unit.whatsapp}
-                        </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">Comarca:</span> {unit.comarca}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">Diretor:</span> {unit.director}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">Responsável:</span> {unit.responsible}
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">Telefone:</span> {unit.landline}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">Funcional:</span> {unit.functional}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">WhatsApp:</span> {unit.whatsapp}
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">Capacidade:</span> {unit.capacity} vagas
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">População Atual:</span> {unit.current_population}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">Ocupação:</span> {Math.round((unit.current_population / unit.capacity) * 100)}%
+                          </p>
+                        </div>
                       </div>
                       
-                      <div>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Capacidade:</span> {unit.capacity} vagas
+                      <div className="mt-3">
+                        <p className="text-sm text-gray-600 mb-1">
+                          <span className="font-medium">Municípios Atendidos:</span>
                         </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">População Atual:</span> {unit.current_population}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Ocupação:</span> {Math.round((unit.current_population / unit.capacity) * 100)}%
-                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {municipalitiesArray.map((municipality: string, index: number) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {municipality}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="mt-3 flex items-start space-x-2">
+                        <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-gray-600">{unit.address}</p>
                       </div>
                     </div>
                     
-                    <div className="mt-3">
-                      <p className="text-sm text-gray-600 mb-1">
-                        <span className="font-medium">Municípios Atendidos:</span>
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {(Array.isArray(unit.municipalities) ? unit.municipalities : unit.municipalities.split(',')).map((municipality: string, index: number) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {municipality.trim()}
-                          </Badge>
-                        ))}
+                    <div className="flex flex-col space-y-2 lg:ml-6">
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewUnit(unit)}
+                          className="flex items-center space-x-2"
+                        >
+                          <Eye className="h-4 w-4" />
+                          <span>Ver</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditUnit(unit)}
+                          className="flex items-center space-x-2"
+                        >
+                          <Edit className="h-4 w-4" />
+                          <span>Editar</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteUnit(unit.id)}
+                          className="flex items-center space-x-2 text-red-600 border-red-300 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span>Excluir</span>
+                        </Button>
                       </div>
-                    </div>
-                    
-                    <div className="mt-3 flex items-start space-x-2">
-                      <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-gray-600">{unit.address}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col space-y-2 lg:ml-6">
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewUnit(unit)}
-                        className="flex items-center space-x-2"
-                      >
-                        <Eye className="h-4 w-4" />
-                        <span>Ver</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditUnit(unit)}
-                        className="flex items-center space-x-2"
-                      >
-                        <Edit className="h-4 w-4" />
-                        <span>Editar</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteUnit(unit.id)}
-                        className="flex items-center space-x-2 text-red-600 border-red-300 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span>Excluir</span>
-                      </Button>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCall(unit.landline)}
-                        className="flex items-center space-x-2"
-                      >
-                        <Phone className="h-4 w-4" />
-                        <span>Ligar</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleWhatsApp(unit.whatsapp, unit.short_name)}
-                        className="flex items-center space-x-2 text-green-600 border-green-300 hover:bg-green-50"
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                        <span>WhatsApp</span>
-                      </Button>
+                      
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCall(unit.landline)}
+                          className="flex items-center space-x-2"
+                        >
+                          <Phone className="h-4 w-4" />
+                          <span>Ligar</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleWhatsApp(unit.whatsapp, unit.short_name)}
+                          className="flex items-center space-x-2 text-green-600 border-green-300 hover:bg-green-50"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          <span>WhatsApp</span>
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {filteredUnits.length === 0 && (
