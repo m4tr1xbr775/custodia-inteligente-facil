@@ -95,20 +95,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "audiences_police_officer_id_fkey"
-            columns: ["police_officer_id"]
-            isOneToOne: false
-            referencedRelation: "police_officers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "audiences_prison_unit_id_fkey"
-            columns: ["prison_unit_id"]
-            isOneToOne: false
-            referencedRelation: "prison_units"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "audiences_prosecutor_id_fkey"
             columns: ["prosecutor_id"]
             isOneToOne: false
@@ -243,53 +229,6 @@ export type Database = {
         }
         Relationships: []
       }
-      police_officers: {
-        Row: {
-          active: boolean | null
-          created_at: string
-          email: string | null
-          id: string
-          name: string
-          phone: string | null
-          rank: string | null
-          registration: string | null
-          unit_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          active?: boolean | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          name: string
-          phone?: string | null
-          rank?: string | null
-          registration?: string | null
-          unit_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          active?: boolean | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          name?: string
-          phone?: string | null
-          rank?: string | null
-          registration?: string | null
-          unit_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "police_officers_unit_id_fkey"
-            columns: ["unit_id"]
-            isOneToOne: false
-            referencedRelation: "prison_units"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       prison_unit_slots: {
         Row: {
           audience_id: string | null
@@ -333,48 +272,7 @@ export type Database = {
             foreignKeyName: "prison_unit_slots_prison_unit_id_fkey"
             columns: ["prison_unit_id"]
             isOneToOne: false
-            referencedRelation: "prison_units"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      prison_units: {
-        Row: {
-          address: string | null
-          capacity: number | null
-          created_at: string
-          id: string
-          name: string
-          phone: string | null
-          region_id: string
-          updated_at: string
-        }
-        Insert: {
-          address?: string | null
-          capacity?: number | null
-          created_at?: string
-          id?: string
-          name: string
-          phone?: string | null
-          region_id: string
-          updated_at?: string
-        }
-        Update: {
-          address?: string | null
-          capacity?: number | null
-          created_at?: string
-          id?: string
-          name?: string
-          phone?: string | null
-          region_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "prison_units_region_id_fkey"
-            columns: ["region_id"]
-            isOneToOne: false
-            referencedRelation: "regions"
+            referencedRelation: "prison_units_extended"
             referencedColumns: ["id"]
           },
         ]

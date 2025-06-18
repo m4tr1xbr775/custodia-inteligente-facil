@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -66,9 +67,9 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
     },
   });
 
-  // Fetch prison units based on selected region
+  // Fetch prison units based on selected region - ATUALIZADO para usar prison_units_extended
   const { data: prisonUnits } = useQuery({
-    queryKey: ['prison_units', formData.region_id],
+    queryKey: ['prison_units_extended', formData.region_id],
     queryFn: async () => {
       if (!formData.region_id) {
         console.log('No region selected, returning empty array');
@@ -76,7 +77,7 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
       }
       console.log('Fetching prison units for region:', formData.region_id);
       const { data, error } = await supabase
-        .from('prison_units')
+        .from('prison_units_extended')
         .select('*')
         .eq('region_id', formData.region_id)
         .order('name');
