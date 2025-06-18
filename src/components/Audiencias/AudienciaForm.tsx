@@ -94,7 +94,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
       } else {
         const { data: result, error } = await supabase
           .from("audiences")
-          .insert(audienceData)
+          .insert([audienceData])
           .select()
           .single();
         
