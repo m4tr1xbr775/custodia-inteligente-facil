@@ -1,40 +1,53 @@
 
-import { Building2, Calendar, Users, Phone, Settings, Shield, Building } from "lucide-react";
+import { 
+  Calendar, 
+  Users, 
+  Building2, 
+  Phone, 
+  Settings, 
+  BarChart3,
+  Clock
+} from "lucide-react";
 
 export const navItems = [
   {
     title: "Dashboard",
-    url: "/",
-    icon: Calendar,
+    href: "/",
+    icon: BarChart3,
   },
   {
     title: "Audiências",
-    url: "/audiencias",
+    href: "/audiencias",
     icon: Calendar,
   },
   {
     title: "Plantões",
-    url: "/plantoes",
+    href: "/plantoes",
     icon: Users,
   },
   {
-    title: "Contatos",
-    url: "/contatos",
-    icon: Phone,
-  },
-  {
     title: "Unidades",
-    url: "/unidades",
+    href: "/unidades",
     icon: Building2,
   },
   {
-    title: "Painel Unidades Prisionais",
-    url: "/unidades-prisionais",
-    icon: Shield,
+    title: "Unidades Prisionais",
+    href: "/unidades-prisionais",
+    icon: Building2,
+  },
+  {
+    title: "Contatos",
+    href: "/contatos",
+    icon: Phone,
+  },
+  {
+    title: "Slots",
+    href: "/configuracoes-slots",
+    icon: Clock,
   },
   {
     title: "Configurações",
-    url: "/configuracoes",
+    href: "/configuracoes",
     icon: Settings,
   },
 ];
