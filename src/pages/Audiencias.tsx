@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Calendar, Plus, Search, Filter, ExternalLink, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ const Audiencias = () => {
         .select(`
           *,
           regions(id, name, type),
-          prison_units(id, name),
+          prison_units_extended(id, name, short_name),
           schedule_assignments(
             magistrates(name),
             prosecutors(name),
@@ -75,7 +76,7 @@ const Audiencias = () => {
       const matchesSearch = 
         audience.defendant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         audience.process_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        audience.prison_units?.name.toLowerCase().includes(searchTerm.toLowerCase());
+        audience.prison_units_extended?.name.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === "todos" || audience.status === statusFilter;
       
@@ -211,7 +212,7 @@ const Audiencias = () => {
                           <div>
                             <h3 className="font-semibold text-gray-900">{audience.defendant_name}</h3>
                             <p className="text-sm text-gray-600">Processo: {audience.process_number}</p>
-                            <p className="text-sm text-gray-600">Unidade: {audience.prison_units?.name}</p>
+                            <p className="text-sm text-gray-600">Unidade: {audience.prison_units_extended?.name}</p>
                           </div>
                           
                           <div className="space-y-1">

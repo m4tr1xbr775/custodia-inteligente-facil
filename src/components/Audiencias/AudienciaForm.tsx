@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -19,10 +20,35 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { CalendarIcon, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Database } from "@/integrations/supabase/types";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
-type AudienceStatus = Database["public"]["Enums"]["audience_status"];
+const audienciaSchema = z.object({
+  defendant_name: z.string().min(1, "Nome do réu é obrigatório"),
+  defendant_document: z.string().optional(),
+  process_number: z.string().min(1, "Número do processo é obrigatório"),
+  scheduled_date: z.date({
+    required_error: "Data é obrigatória",
+  }),
+  scheduled_time: z.string().min(1, "Horário é obrigatório"),
+  region_id: z.string().min(1, "Central/Região é obrigatória"),
+  prison_unit_id: z.string().min(1, "Unidade prisional é obrigatória"),
+  virtual_room_url: z.string().url().optional().or(z.literal("")),
+  observations: z.string().optional(),
+});
+
+type AudienciaFormData = z.infer<typeof audienciaSchema>;
 
 interface AudienciaFormProps {
   isOpen: boolean;
@@ -31,568 +57,423 @@ interface AudienciaFormProps {
 }
 
 const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => {
+  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [selectedUnitId, setSelectedUnitId] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const isEditing = !!audienciaId;
 
-  const [formData, setFormData] = useState({
-    defendant_name: "",
-    process_number: "",
-    scheduled_date: "",
-    region_id: "",
-    prison_unit_id: "",
-    audience_slot_time: "",
-    virtual_room_url: "",
-    observations: "",
-    status: "agendada" as AudienceStatus,
-    unit_acknowledgment: "pendente",
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    watch,
+    reset,
+  } = useForm<AudienciaFormData>({
+    resolver: zodResolver(audienciaSchema),
   });
 
-  // Fetch regions (centrais)
-  const { data: regions, isLoading: regionsLoading } = useQuery({
+  const watchedRegionId = watch("region_id");
+  const watchedPrisonUnitId = watch("prison_unit_id");
+
+  // Fetch regions
+  const { data: regions = [] } = useQuery({
     queryKey: ['regions'],
     queryFn: async () => {
-      console.log('Fetching regions...');
       const { data, error } = await supabase
         .from('regions')
         .select('*')
         .order('name');
-      if (error) {
-        console.error('Error fetching regions:', error);
-        throw error;
-      }
-      console.log('Regions fetched:', data);
+      
+      if (error) throw error;
       return data;
     },
   });
 
-  // Fetch prison units - CORRIGIDO para buscar sempre que houver region_id
-  const { data: prisonUnits, isLoading: unitsLoading } = useQuery({
-    queryKey: ['prison_units_for_region', formData.region_id],
+  // Fetch all prison units (not filtered by region since they serve the entire state)
+  const { data: prisonUnits = [] } = useQuery({
+    queryKey: ['prison_units_extended'],
     queryFn: async () => {
-      if (!formData.region_id) {
-        console.log('No region selected, skipping prison units fetch');
-        return [];
-      }
-      
-      console.log('Fetching prison units for region:', formData.region_id);
       const { data, error } = await supabase
         .from('prison_units_extended')
         .select('*')
-        .eq('region_id', formData.region_id)
         .order('name');
       
-      if (error) {
-        console.error('Error fetching prison units:', error);
-        throw error;
-      }
-      
-      console.log('Prison units fetched for region', formData.region_id, ':', data?.length, 'units');
-      console.log('Prison units data:', data);
-      return data || [];
+      if (error) throw error;
+      return data;
     },
-    enabled: !!formData.region_id,
   });
 
-  // Fetch available time slots for selected unit and date
-  const { data: availableSlots } = useQuery({
-    queryKey: ['available_slots', formData.prison_unit_id, formData.scheduled_date],
+  // Fetch available slots for selected unit and date
+  const { data: availableSlots = [] } = useQuery({
+    queryKey: ['prison_unit_slots', selectedUnitId, selectedDate],
     queryFn: async () => {
-      if (!formData.prison_unit_id || !formData.scheduled_date) return [];
-      console.log('Fetching available slots for unit:', formData.prison_unit_id, 'date:', formData.scheduled_date);
+      if (!selectedUnitId || !selectedDate) return [];
+      
       const { data, error } = await supabase
         .from('prison_unit_slots')
         .select('*')
-        .eq('prison_unit_id', formData.prison_unit_id)
-        .eq('date', formData.scheduled_date)
+        .eq('prison_unit_id', selectedUnitId)
+        .eq('date', format(selectedDate, 'yyyy-MM-dd'))
         .eq('is_available', true)
         .order('time');
-      if (error) {
-        console.error('Error fetching available slots:', error);
-        throw error;
-      }
-      console.log('Available slots fetched:', data);
+      
+      if (error) throw error;
       return data;
     },
-    enabled: !!(formData.prison_unit_id && formData.scheduled_date),
+    enabled: !!selectedUnitId && !!selectedDate,
   });
 
-  // Fetch plantonistas for the selected region and date
-  const { data: scheduleAssignments } = useQuery({
-    queryKey: ['schedule_assignments', formData.region_id, formData.scheduled_date],
+  // Fetch existing audiencia data for editing
+  const { data: audienciaData } = useQuery({
+    queryKey: ['audiencia', audienciaId],
     queryFn: async () => {
-      if (!formData.region_id || !formData.scheduled_date) return [];
-      console.log('Fetching schedule assignments for region:', formData.region_id, 'date:', formData.scheduled_date);
+      if (!audienciaId) return null;
+      
       const { data, error } = await supabase
-        .from('schedule_assignments')
-        .select(`
-          *,
-          magistrates(id, name),
-          prosecutors(id, name),
-          defenders(id, name)
-        `)
-        .eq('region_id', formData.region_id)
-        .eq('date', formData.scheduled_date);
-      if (error) {
-        console.error('Error fetching schedule assignments:', error);
-        throw error;
-      }
-      console.log('Schedule assignments fetched:', data);
+        .from('audiences')
+        .select('*')
+        .eq('id', audienciaId)
+        .single();
+      
+      if (error) throw error;
       return data;
     },
-    enabled: !!(formData.region_id && formData.scheduled_date),
+    enabled: !!audienciaId,
   });
 
-  // Reset dependent fields when selections change
-  useEffect(() => {
-    if (formData.region_id) {
-      console.log('Region changed to:', formData.region_id, 'resetting prison unit and slot time');
-      setFormData(prev => ({
-        ...prev,
-        prison_unit_id: "",
-        audience_slot_time: "",
-      }));
-    }
-  }, [formData.region_id]);
-
-  useEffect(() => {
-    if (formData.prison_unit_id || formData.scheduled_date) {
-      console.log('Prison unit or date changed, resetting slot time');
-      setFormData(prev => ({
-        ...prev,
-        audience_slot_time: "",
-      }));
-    }
-  }, [formData.prison_unit_id, formData.scheduled_date]);
-
-  // Fetch existing audiencia data if editing
-  useEffect(() => {
-    if (isEditing && audienciaId) {
-      const fetchAudiencia = async () => {
-        const { data, error } = await supabase
-          .from('audiences')
-          .select('*')
-          .eq('id', audienciaId)
-          .single();
-        
-        if (error) {
-          console.error('Error fetching audiencia:', error);
-          toast({
-            title: "Erro",
-            description: "Erro ao carregar dados da audiência",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        if (data) {
-          setFormData({
-            defendant_name: data.defendant_name || "",
-            process_number: data.process_number || "",
-            scheduled_date: data.scheduled_date || "",
-            region_id: data.region_id || "",
-            prison_unit_id: data.prison_unit_id || "",
-            audience_slot_time: data.audience_slot_time || "",
-            virtual_room_url: data.virtual_room_url || "",
-            observations: data.observations || "",
-            status: data.status || "agendada",
-            unit_acknowledgment: data.unit_acknowledgment || "pendente",
-          });
-        }
-      };
-
-      fetchAudiencia();
-    }
-  }, [audienciaId, isEditing, toast]);
-
-  // Create/Update mutation
-  const saveMutation = useMutation({
-    mutationFn: async (data: any) => {
-      if (isEditing) {
-        const { data: result, error } = await supabase
-          .from('audiences')
-          .update({
-            defendant_name: data.defendant_name,
-            process_number: data.process_number,
-            scheduled_date: data.scheduled_date,
-            scheduled_time: data.audience_slot_time,
-            audience_slot_time: data.audience_slot_time,
-            region_id: data.region_id,
-            prison_unit_id: data.prison_unit_id,
-            virtual_room_url: data.virtual_room_url,
-            observations: data.observations,
-            status: data.status,
-            unit_acknowledgment: data.unit_acknowledgment,
-          })
-          .eq('id', audienciaId)
-          .select()
-          .single();
-        if (error) throw error;
-        return result;
-      } else {
-        // Reserve the time slot
-        const { error: slotError } = await supabase
-          .from('prison_unit_slots')
-          .update({ is_available: false })
-          .eq('prison_unit_id', data.prison_unit_id)
-          .eq('date', data.scheduled_date)
-          .eq('time', data.audience_slot_time);
-
-        if (slotError) throw slotError;
-
-        // Create the audience
-        const { data: result, error } = await supabase
-          .from('audiences')
-          .insert([{
-            defendant_name: data.defendant_name,
-            process_number: data.process_number,
-            scheduled_date: data.scheduled_date,
-            scheduled_time: data.audience_slot_time,
-            audience_slot_time: data.audience_slot_time,
-            region_id: data.region_id,
-            prison_unit_id: data.prison_unit_id,
-            virtual_room_url: data.virtual_room_url,
-            observations: data.observations,
-            status: data.status,
-            unit_acknowledgment: data.unit_acknowledgment,
-          }])
-          .select()
-          .single();
-        if (error) throw error;
-
-        // Update the slot with the audience ID
-        await supabase
-          .from('prison_unit_slots')
-          .update({ audience_id: result.id })
-          .eq('prison_unit_id', data.prison_unit_id)
-          .eq('date', data.scheduled_date)
-          .eq('time', data.audience_slot_time);
-
-        return result;
-      }
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: async (data: AudienciaFormData) => {
+      const { error } = await supabase
+        .from('audiences')
+        .insert([{
+          defendant_name: data.defendant_name,
+          defendant_document: data.defendant_document || null,
+          process_number: data.process_number,
+          scheduled_date: format(data.scheduled_date, 'yyyy-MM-dd'),
+          scheduled_time: data.scheduled_time,
+          region_id: data.region_id,
+          prison_unit_id: data.prison_unit_id,
+          virtual_room_url: data.virtual_room_url || null,
+          observations: data.observations || null,
+          status: 'agendada',
+        }]);
+      
+      if (error) throw error;
+      
+      // Mark the slot as unavailable
+      await supabase
+        .from('prison_unit_slots')
+        .update({ is_available: false })
+        .eq('prison_unit_id', data.prison_unit_id)
+        .eq('date', format(data.scheduled_date, 'yyyy-MM-dd'))
+        .eq('time', data.scheduled_time);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['audiences'] });
-      queryClient.invalidateQueries({ queryKey: ['available_slots'] });
+      queryClient.invalidateQueries({ queryKey: ['prison_unit_slots'] });
       toast({
         title: "Sucesso",
-        description: `Audiência ${isEditing ? 'atualizada' : 'criada'} com sucesso!`,
+        description: "Audiência criada com sucesso!",
       });
-      onClose();
-      resetForm();
+      handleClose();
     },
     onError: (error) => {
-      console.error('Error saving audiencia:', error);
+      console.error('Error creating audiencia:', error);
       toast({
         title: "Erro",
-        description: `Erro ao ${isEditing ? 'atualizar' : 'criar'} audiência`,
+        description: "Erro ao criar audiência",
         variant: "destructive",
       });
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    console.log('Form data on submit:', formData);
-    
-    if (!formData.defendant_name || !formData.process_number || !formData.scheduled_date || 
-        !formData.region_id || !formData.prison_unit_id || !formData.audience_slot_time) {
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: async (data: AudienciaFormData) => {
+      if (!audienciaId) throw new Error("ID da audiência não fornecido");
+      
+      const { error } = await supabase
+        .from('audiences')
+        .update({
+          defendant_name: data.defendant_name,
+          defendant_document: data.defendant_document || null,
+          process_number: data.process_number,
+          scheduled_date: format(data.scheduled_date, 'yyyy-MM-dd'),
+          scheduled_time: data.scheduled_time,
+          region_id: data.region_id,
+          prison_unit_id: data.prison_unit_id,
+          virtual_room_url: data.virtual_room_url || null,
+          observations: data.observations || null,
+        })
+        .eq('id', audienciaId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['audiences'] });
+      queryClient.invalidateQueries({ queryKey: ['prison_unit_slots'] });
+      toast({
+        title: "Sucesso",
+        description: "Audiência atualizada com sucesso!",
+      });
+      handleClose();
+    },
+    onError: (error) => {
+      console.error('Error updating audiencia:', error);
       toast({
         title: "Erro",
-        description: "Preencha todos os campos obrigatórios",
+        description: "Erro ao atualizar audiência",
         variant: "destructive",
       });
-      return;
+    },
+  });
+
+  // Load existing data when editing
+  useEffect(() => {
+    if (audienciaData) {
+      setValue("defendant_name", audienciaData.defendant_name);
+      setValue("defendant_document", audienciaData.defendant_document || "");
+      setValue("process_number", audienciaData.process_number);
+      setValue("region_id", audienciaData.region_id);
+      setValue("prison_unit_id", audienciaData.prison_unit_id);
+      setValue("virtual_room_url", audienciaData.virtual_room_url || "");
+      setValue("observations", audienciaData.observations || "");
+      setValue("scheduled_time", audienciaData.scheduled_time);
+      
+      const date = new Date(audienciaData.scheduled_date);
+      setValue("scheduled_date", date);
+      setSelectedDate(date);
+      setSelectedUnitId(audienciaData.prison_unit_id);
     }
+  }, [audienciaData, setValue]);
 
-    saveMutation.mutate(formData);
+  // Update selected unit when form value changes
+  useEffect(() => {
+    if (watchedPrisonUnitId) {
+      setSelectedUnitId(watchedPrisonUnitId);
+    }
+  }, [watchedPrisonUnitId]);
+
+  const handleClose = () => {
+    reset();
+    setSelectedDate(undefined);
+    setSelectedUnitId("");
+    onClose();
   };
 
-  const resetForm = () => {
-    setFormData({
-      defendant_name: "",
-      process_number: "",
-      scheduled_date: "",
-      region_id: "",
-      prison_unit_id: "",
-      audience_slot_time: "",
-      virtual_room_url: "",
-      observations: "",
-      status: "agendada" as AudienceStatus,
-      unit_acknowledgment: "pendente",
-    });
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    console.log(`Changing ${field} to:`, value);
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const onSubmit = (data: AudienciaFormData) => {
+    if (audienciaId) {
+      updateMutation.mutate(data);
+    } else {
+      createMutation.mutate(data);
+    }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? 'Editar Audiência' : 'Nova Audiência'}
+            {audienciaId ? "Editar Audiência" : "Nova Audiência de Custódia"}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Seção 1: Central/Região */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">1. Selecione a Central/Região</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div>
-                <Label htmlFor="region_id">Central/Região *</Label>
-                <Select value={formData.region_id} onValueChange={(value) => handleInputChange('region_id', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma central ou região" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {regionsLoading ? (
-                      <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                    ) : regions && regions.length > 0 ? (
-                      regions.map((region) => (
-                        <SelectItem key={region.id} value={region.id}>
-                          {region.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="empty" disabled>Nenhuma região encontrada</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="defendant_name">Nome do Réu *</Label>
+              <Input
+                id="defendant_name"
+                {...register("defendant_name")}
+                placeholder="Digite o nome completo"
+              />
+              {errors.defendant_name && (
+                <p className="text-sm text-red-500">{errors.defendant_name.message}</p>
+              )}
+            </div>
 
-          {/* Seção 2: Unidade Prisional */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">2. Unidade Prisional</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div>
-                <Label htmlFor="prison_unit_id">Unidade Prisional *</Label>
-                <Select 
-                  value={formData.prison_unit_id} 
-                  onValueChange={(value) => handleInputChange('prison_unit_id', value)}
-                  disabled={!formData.region_id}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={
-                      !formData.region_id 
-                        ? "Selecione uma região primeiro" 
-                        : unitsLoading 
-                        ? "Carregando..." 
-                        : "Selecione a unidade prisional"
-                    } />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {!formData.region_id ? (
-                      <SelectItem value="no-region" disabled>Selecione uma região primeiro</SelectItem>
-                    ) : unitsLoading ? (
-                      <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                    ) : prisonUnits && prisonUnits.length > 0 ? (
-                      prisonUnits.map((unit) => (
-                        <SelectItem key={unit.id} value={unit.id}>
-                          {unit.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="empty" disabled>Nenhuma unidade encontrada para esta região</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                {formData.region_id && !unitsLoading && (
-                  <div className="mt-2">
-                    {prisonUnits && prisonUnits.length > 0 ? (
-                      <p className="text-sm text-green-600">
-                        {prisonUnits.length} unidade{prisonUnits.length !== 1 ? 's' : ''} encontrada{prisonUnits.length !== 1 ? 's' : ''} para esta região.
-                      </p>
-                    ) : (
-                      <p className="text-sm text-amber-600">
-                        Nenhuma unidade prisional encontrada para esta região. Verifique se há unidades cadastradas para "{regions?.find(r => r.id === formData.region_id)?.name}".
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+            <div className="space-y-2">
+              <Label htmlFor="defendant_document">CPF/RG</Label>
+              <Input
+                id="defendant_document"
+                {...register("defendant_document")}
+                placeholder="Digite o CPF ou RG"
+              />
+            </div>
+          </div>
 
-          {/* Seção 3: Data */}
-          {formData.prison_unit_id && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">3. Data da Audiência</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div>
-                  <Label htmlFor="scheduled_date">Data *</Label>
-                  <Input
-                    id="scheduled_date"
-                    type="date"
-                    value={formData.scheduled_date}
-                    onChange={(e) => handleInputChange('scheduled_date', e.target.value)}
-                    required
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <div className="space-y-2">
+            <Label htmlFor="process_number">Número do Processo *</Label>
+            <Input
+              id="process_number"
+              {...register("process_number")}
+              placeholder="Ex: 1234567-89.2024.8.09.0137"
+            />
+            {errors.process_number && (
+              <p className="text-sm text-red-500">{errors.process_number.message}</p>
+            )}
+          </div>
 
-          {/* Seção 4: Horário Disponível */}
-          {formData.scheduled_date && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">4. Horário Disponível</CardTitle>
-                <p className="text-sm text-gray-600">Apenas horários livres na unidade selecionada</p>
-              </CardHeader>
-              <CardContent>
-                <div>
-                  <Label htmlFor="audience_slot_time">Horário *</Label>
-                  <Select 
-                    value={formData.audience_slot_time} 
-                    onValueChange={(value) => handleInputChange('audience_slot_time', value)}
+          <div className="space-y-2">
+            <Label>Central/Região *</Label>
+            <Select
+              value={watchedRegionId || ""}
+              onValueChange={(value) => setValue("region_id", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a central ou região" />
+              </SelectTrigger>
+              <SelectContent>
+                {regions.map((region) => (
+                  <SelectItem key={region.id} value={region.id}>
+                    {region.name} ({region.code})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.region_id && (
+              <p className="text-sm text-red-500">{errors.region_id.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Unidade Prisional *</Label>
+            <Select
+              value={watchedPrisonUnitId || ""}
+              onValueChange={(value) => setValue("prison_unit_id", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a unidade prisional" />
+              </SelectTrigger>
+              <SelectContent>
+                {prisonUnits.map((unit) => (
+                  <SelectItem key={unit.id} value={unit.id}>
+                    {unit.short_name} - {unit.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.prison_unit_id && (
+              <p className="text-sm text-red-500">{errors.prison_unit_id.message}</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Data da Audiência *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !selectedDate && "text-muted-foreground"
+                    )}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um horário disponível" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableSlots?.map((slot) => (
-                        <SelectItem key={`${slot.date}-${slot.time}`} value={slot.time}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDate ? (
+                      format(selectedDate, "PPP", { locale: ptBR })
+                    ) : (
+                      <span>Selecione a data</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => {
+                      setSelectedDate(date);
+                      if (date) {
+                        setValue("scheduled_date", date);
+                      }
+                    }}
+                    disabled={(date) => date < new Date()}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {errors.scheduled_date && (
+                <p className="text-sm text-red-500">{errors.scheduled_date.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Horário da Audiência *</Label>
+              <Select
+                value={watch("scheduled_time") || ""}
+                onValueChange={(value) => setValue("scheduled_time", value)}
+                disabled={!selectedUnitId || !selectedDate}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={
+                    !selectedUnitId || !selectedDate 
+                      ? "Selecione unidade e data primeiro" 
+                      : "Selecione o horário"
+                  } />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSlots.length === 0 && selectedUnitId && selectedDate ? (
+                    <SelectItem value="no-slots" disabled>
+                      Nenhum horário disponível
+                    </SelectItem>
+                  ) : (
+                    availableSlots.map((slot) => (
+                      <SelectItem key={`${slot.date}-${slot.time}`} value={slot.time}>
+                        <div className="flex items-center">
+                          <Clock className="mr-2 h-4 w-4" />
                           {slot.time}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {availableSlots && availableSlots.length === 0 && (
-                    <p className="text-sm text-amber-600 mt-2">
-                      Nenhum horário disponível para esta data nesta unidade.
-                    </p>
+                        </div>
+                      </SelectItem>
+                    ))
                   )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                </SelectContent>
+              </Select>
+              {errors.scheduled_time && (
+                <p className="text-sm text-red-500">{errors.scheduled_time.message}</p>
+              )}
+            </div>
+          </div>
 
-          {/* Seção 5: Plantonistas */}
-          {formData.audience_slot_time && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">5. Plantonistas do Período</CardTitle>
-                <p className="text-sm text-gray-600">Preenchido automaticamente</p>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label>Magistrado Plantonista</Label>
-                    <Input
-                      value={scheduleAssignments?.[0]?.magistrates?.name || "Não definido"}
-                      disabled
-                      className="bg-gray-50"
-                    />
-                  </div>
-                  <div>
-                    <Label>Promotor Plantonista</Label>
-                    <Input
-                      value={scheduleAssignments?.[0]?.prosecutors?.name || "Não definido"}
-                      disabled
-                      className="bg-gray-50"
-                    />
-                  </div>
-                  <div>
-                    <Label>Defensor Plantonista</Label>
-                    <Input
-                      value={scheduleAssignments?.[0]?.defenders?.name || "Não definido"}
-                      disabled
-                      className="bg-gray-50"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <div className="space-y-2">
+            <Label htmlFor="virtual_room_url">URL da Sala Virtual</Label>
+            <Input
+              id="virtual_room_url"
+              {...register("virtual_room_url")}
+              placeholder="https://meet.google.com/..."
+              type="url"
+            />
+            {errors.virtual_room_url && (
+              <p className="text-sm text-red-500">{errors.virtual_room_url.message}</p>
+            )}
+          </div>
 
-          {/* Seção 6: Dados do Processo */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">6. Dados do Custodiado e Processo</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="defendant_name">Nome do Custodiado *</Label>
-                  <Input
-                    id="defendant_name"
-                    value={formData.defendant_name}
-                    onChange={(e) => handleInputChange('defendant_name', e.target.value)}
-                    placeholder="Nome completo"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="process_number">Número do Processo *</Label>
-                  <Input
-                    id="process_number"
-                    value={formData.process_number}
-                    onChange={(e) => handleInputChange('process_number', e.target.value)}
-                    placeholder="0000000-00.0000.0.00.0000"
-                    required
-                  />
-                </div>
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="observations">Observações</Label>
+            <Textarea
+              id="observations"
+              {...register("observations")}
+              placeholder="Observações adicionais sobre a audiência"
+              rows={3}
+            />
+          </div>
 
-              <div className="mt-4 space-y-4">
-                <div>
-                  <Label htmlFor="virtual_room_url">URL da Sala Virtual</Label>
-                  <Input
-                    id="virtual_room_url"
-                    value={formData.virtual_room_url}
-                    onChange={(e) => handleInputChange('virtual_room_url', e.target.value)}
-                    placeholder="https://zoom.us/j/123456789"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="observations">Observações</Label>
-                  <Textarea
-                    id="observations"
-                    value={formData.observations}
-                    onChange={(e) => handleInputChange('observations', e.target.value)}
-                    placeholder="Observações adicionais..."
-                    rows={3}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="agendada">Agendada</SelectItem>
-                      <SelectItem value="realizada">Realizada</SelectItem>
-                      <SelectItem value="cancelada">Cancelada</SelectItem>
-                      <SelectItem value="nao_compareceu">Não Compareceu</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button type="button" variant="outline" onClick={handleClose}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? 'Salvando...' : (isEditing ? 'Atualizar' : 'Criar')}
+            <Button 
+              type="submit" 
+              disabled={createMutation.isPending || updateMutation.isPending}
+            >
+              {createMutation.isPending || updateMutation.isPending 
+                ? "Salvando..." 
+                : audienciaId 
+                  ? "Atualizar" 
+                  : "Criar Audiência"
+              }
             </Button>
           </div>
         </form>
