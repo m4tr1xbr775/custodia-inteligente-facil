@@ -1,9 +1,9 @@
-
 import { useState } from "react";
 import { Calendar, CheckCircle, XCircle, Clock, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const UnidadesPrisionais = () => {
   const [selectedUnit, setSelectedUnit] = useState("");
+  const [denialReasons, setDenialReasons] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -109,10 +110,17 @@ const UnidadesPrisionais = () => {
 
   // Mutation to update acknowledgment status
   const updateAcknowledgmentMutation = useMutation({
-    mutationFn: async ({ audienceId, status }: { audienceId: string, status: string }) => {
+    mutationFn: async ({ audienceId, status, denialReason }: { audienceId: string, status: string, denialReason?: string }) => {
+      const updateData: any = { unit_acknowledgment: status };
+      
+      // Se o status for negado e houver motivo, adicionar às observações
+      if (status === 'negado' && denialReason) {
+        updateData.observations = denialReason;
+      }
+      
       const { data, error } = await supabase
         .from('audiences')
-        .update({ unit_acknowledgment: status })
+        .update(updateData)
         .eq('id', audienceId)
         .select()
         .single();
@@ -155,16 +163,36 @@ const UnidadesPrisionais = () => {
   const getAcknowledgmentBadge = (acknowledgment: string) => {
     switch (acknowledgment) {
       case "confirmado":
-        return <Badge className="bg-green-100 text-green-800">Confirmado</Badge>;
+        return <Badge className="bg-green-500 text-white text-lg px-4 py-2 font-bold border-2 border-green-600">✓ CONFIRMADO</Badge>;
       case "negado":
-        return <Badge className="bg-red-100 text-red-800">Negado</Badge>;
+        return <Badge className="bg-red-500 text-white text-lg px-4 py-2 font-bold border-2 border-red-600">✗ NEGADO</Badge>;
       default:
-        return <Badge variant="outline" className="border-yellow-300 text-yellow-700">Pendente</Badge>;
+        return <Badge className="bg-yellow-500 text-white text-lg px-4 py-2 font-bold border-2 border-yellow-600">⏳ PENDENTE</Badge>;
     }
   };
 
   const handleAcknowledgmentChange = (audienceId: string, status: string) => {
-    updateAcknowledgmentMutation.mutate({ audienceId, status });
+    if (status === 'negado') {
+      const denialReason = denialReasons[audienceId];
+      if (!denialReason?.trim()) {
+        toast({
+          title: "Atenção",
+          description: "Por favor, informe o motivo da negação antes de confirmar.",
+          variant: "destructive",
+        });
+        return;
+      }
+      updateAcknowledgmentMutation.mutate({ audienceId, status, denialReason });
+    } else {
+      updateAcknowledgmentMutation.mutate({ audienceId, status });
+    }
+  };
+
+  const handleDenialReasonChange = (audienceId: string, reason: string) => {
+    setDenialReasons(prev => ({
+      ...prev,
+      [audienceId]: reason
+    }));
   };
 
   return (
@@ -240,6 +268,10 @@ const UnidadesPrisionais = () => {
                             </span>
                           </div>
                           {getStatusBadge(audience.status)}
+                        </div>
+
+                        {/* Status de confirmação em destaque */}
+                        <div className="flex justify-center lg:justify-start">
                           {getAcknowledgmentBadge(audience.unit_acknowledgment)}
                         </div>
 
@@ -291,37 +323,56 @@ const UnidadesPrisionais = () => {
                       </div>
 
                       <div className="lg:ml-6">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-700">Status da Confirmação:</label>
-                          <Select
-                            value={audience.unit_acknowledgment}
-                            onValueChange={(value) => handleAcknowledgmentChange(audience.id, value)}
-                            disabled={updateAcknowledgmentMutation.isPending}
-                          >
-                            <SelectTrigger className="w-[180px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pendente">
-                                <div className="flex items-center space-x-2">
-                                  <Clock className="h-4 w-4 text-yellow-500" />
-                                  <span>Pendente</span>
-                                </div>
-                              </SelectItem>
-                              <SelectItem value="confirmado">
-                                <div className="flex items-center space-x-2">
-                                  <CheckCircle className="h-4 w-4 text-green-500" />
-                                  <span>Confirmado</span>
-                                </div>
-                              </SelectItem>
-                              <SelectItem value="negado">
-                                <div className="flex items-center space-x-2">
-                                  <XCircle className="h-4 w-4 text-red-500" />
-                                  <span>Negado</span>
-                                </div>
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Status da Confirmação:</label>
+                            <Select
+                              value={audience.unit_acknowledgment}
+                              onValueChange={(value) => handleAcknowledgmentChange(audience.id, value)}
+                              disabled={updateAcknowledgmentMutation.isPending}
+                            >
+                              <SelectTrigger className="w-[180px] mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pendente">
+                                  <div className="flex items-center space-x-2">
+                                    <Clock className="h-4 w-4 text-yellow-500" />
+                                    <span>Pendente</span>
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="confirmado">
+                                  <div className="flex items-center space-x-2">
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                    <span>Confirmado</span>
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="negado">
+                                  <div className="flex items-center space-x-2">
+                                    <XCircle className="h-4 w-4 text-red-500" />
+                                    <span>Negado</span>
+                                  </div>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Campo para motivo da negação */}
+                          {(audience.unit_acknowledgment === 'negado' || 
+                            (audience.unit_acknowledgment === 'pendente' && denialReasons[audience.id])) && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                Motivo da Negação:
+                              </label>
+                              <Textarea
+                                placeholder="Informe o motivo da negação..."
+                                value={denialReasons[audience.id] || audience.observations || ''}
+                                onChange={(e) => handleDenialReasonChange(audience.id, e.target.value)}
+                                className="w-[280px] min-h-[80px] text-sm"
+                                disabled={updateAcknowledgmentMutation.isPending}
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
