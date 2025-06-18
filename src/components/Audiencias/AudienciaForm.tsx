@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,30 +66,33 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
     },
   });
 
-  // Fetch ALL prison units initially, then filter by region - CORRIGIDO
-  const { data: allPrisonUnits, isLoading: unitsLoading } = useQuery({
-    queryKey: ['prison_units_extended'],
+  // Fetch prison units - CORRIGIDO para buscar sempre que houver region_id
+  const { data: prisonUnits, isLoading: unitsLoading } = useQuery({
+    queryKey: ['prison_units_for_region', formData.region_id],
     queryFn: async () => {
-      console.log('Fetching all prison units...');
+      if (!formData.region_id) {
+        console.log('No region selected, skipping prison units fetch');
+        return [];
+      }
+      
+      console.log('Fetching prison units for region:', formData.region_id);
       const { data, error } = await supabase
         .from('prison_units_extended')
         .select('*')
+        .eq('region_id', formData.region_id)
         .order('name');
+      
       if (error) {
         console.error('Error fetching prison units:', error);
         throw error;
       }
-      console.log('All prison units fetched:', data?.length, 'units');
-      return data;
+      
+      console.log('Prison units fetched for region', formData.region_id, ':', data?.length, 'units');
+      console.log('Prison units data:', data);
+      return data || [];
     },
+    enabled: !!formData.region_id,
   });
-
-  // Filter prison units based on selected region
-  const prisonUnits = formData.region_id 
-    ? allPrisonUnits?.filter(unit => unit.region_id === formData.region_id)
-    : allPrisonUnits || [];
-
-  console.log('Filtered prison units for region', formData.region_id, ':', prisonUnits?.length);
 
   // Fetch available time slots for selected unit and date
   const { data: availableSlots } = useQuery({
@@ -144,7 +146,7 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
   // Reset dependent fields when selections change
   useEffect(() => {
     if (formData.region_id) {
-      console.log('Region changed, resetting prison unit and slot time');
+      console.log('Region changed to:', formData.region_id, 'resetting prison unit and slot time');
       setFormData(prev => ({
         ...prev,
         prison_unit_id: "",
@@ -363,11 +365,6 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
                     )}
                   </SelectContent>
                 </Select>
-                {regions && regions.length === 0 && (
-                  <p className="text-sm text-amber-600 mt-2">
-                    Nenhuma região encontrada. Cadastre regiões primeiro.
-                  </p>
-                )}
               </div>
             </CardContent>
           </Card>
@@ -395,7 +392,9 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
                     } />
                   </SelectTrigger>
                   <SelectContent>
-                    {unitsLoading ? (
+                    {!formData.region_id ? (
+                      <SelectItem value="no-region" disabled>Selecione uma região primeiro</SelectItem>
+                    ) : unitsLoading ? (
                       <SelectItem value="loading" disabled>Carregando...</SelectItem>
                     ) : prisonUnits && prisonUnits.length > 0 ? (
                       prisonUnits.map((unit) => (
@@ -403,22 +402,23 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
                           {unit.name}
                         </SelectItem>
                       ))
-                    ) : formData.region_id ? (
-                      <SelectItem value="empty" disabled>Nenhuma unidade encontrada para esta região</SelectItem>
                     ) : (
-                      <SelectItem value="no-region" disabled>Selecione uma região primeiro</SelectItem>
+                      <SelectItem value="empty" disabled>Nenhuma unidade encontrada para esta região</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
-                {formData.region_id && prisonUnits && prisonUnits.length === 0 && (
-                  <p className="text-sm text-amber-600 mt-2">
-                    Nenhuma unidade prisional encontrada para esta região. Cadastre unidades primeiro.
-                  </p>
-                )}
-                {formData.region_id && prisonUnits && prisonUnits.length > 0 && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    {prisonUnits.length} unidade{prisonUnits.length !== 1 ? 's' : ''} encontrada{prisonUnits.length !== 1 ? 's' : ''} para esta região.
-                  </p>
+                {formData.region_id && !unitsLoading && (
+                  <div className="mt-2">
+                    {prisonUnits && prisonUnits.length > 0 ? (
+                      <p className="text-sm text-green-600">
+                        {prisonUnits.length} unidade{prisonUnits.length !== 1 ? 's' : ''} encontrada{prisonUnits.length !== 1 ? 's' : ''} para esta região.
+                      </p>
+                    ) : (
+                      <p className="text-sm text-amber-600">
+                        Nenhuma unidade prisional encontrada para esta região. Verifique se há unidades cadastradas para "{regions?.find(r => r.id === formData.region_id)?.name}".
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </CardContent>
