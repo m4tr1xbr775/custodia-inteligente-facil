@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Building, Plus, Search, Phone, MessageCircle, MapPin, Edit, Trash2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -63,7 +62,11 @@ const Unidades = () => {
         throw error;
       }
       
-      return data || [];
+      // Type assertion to ensure data conforms to PrisonUnit interface
+      return (data || []).map(unit => ({
+        ...unit,
+        type: unit.type as "CDP" | "Presídio" | "CPP"
+      })) as PrisonUnit[];
     },
   });
 
