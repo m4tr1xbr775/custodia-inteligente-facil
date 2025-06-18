@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar, CheckCircle, XCircle, Clock, ExternalLink } from "lucide-react";
+import { Calendar, CheckCircle, XCircle, Clock, ExternalLink, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const UnidadesPrisionais = () => {
   const [selectedUnit, setSelectedUnit] = useState("");
-  const [denialReasons, setDenialReasons] = useState<Record<string, string>>({});
+  const [observationsChanges, setObservationsChanges] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -110,17 +110,10 @@ const UnidadesPrisionais = () => {
 
   // Mutation to update acknowledgment status
   const updateAcknowledgmentMutation = useMutation({
-    mutationFn: async ({ audienceId, status, denialReason }: { audienceId: string, status: string, denialReason?: string }) => {
-      const updateData: any = { unit_acknowledgment: status };
-      
-      // Se o status for negado e houver motivo, adicionar às observações
-      if (status === 'negado' && denialReason) {
-        updateData.observations = denialReason;
-      }
-      
+    mutationFn: async ({ audienceId, status }: { audienceId: string, status: string }) => {
       const { data, error } = await supabase
         .from('audiences')
-        .update(updateData)
+        .update({ unit_acknowledgment: status })
         .eq('id', audienceId)
         .select()
         .single();
@@ -145,6 +138,37 @@ const UnidadesPrisionais = () => {
     },
   });
 
+  // Mutation to update observations
+  const updateObservationsMutation = useMutation({
+    mutationFn: async ({ audienceId, observations }: { audienceId: string, observations: string }) => {
+      const { data, error } = await supabase
+        .from('audiences')
+        .update({ observations })
+        .eq('id', audienceId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['unit_audiences'] });
+      setObservationsChanges({});
+      toast({
+        title: "Sucesso",
+        description: "Observações atualizadas com sucesso!",
+      });
+    },
+    onError: (error) => {
+      console.error('Error updating observations:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar observações",
+        variant: "destructive",
+      });
+    },
+  });
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "agendada":
@@ -163,36 +187,35 @@ const UnidadesPrisionais = () => {
   const getAcknowledgmentBadge = (acknowledgment: string) => {
     switch (acknowledgment) {
       case "confirmado":
-        return <Badge className="bg-green-500 text-white text-lg px-4 py-2 font-bold border-2 border-green-600">✓ CONFIRMADO</Badge>;
+        return <Badge className="bg-green-500 text-white text-xs px-2 py-1 font-semibold">✓ CONFIRMADO</Badge>;
       case "negado":
-        return <Badge className="bg-red-500 text-white text-lg px-4 py-2 font-bold border-2 border-red-600">✗ NEGADO</Badge>;
+        return <Badge className="bg-red-500 text-white text-xs px-2 py-1 font-semibold">✗ NEGADO</Badge>;
       default:
-        return <Badge className="bg-yellow-500 text-white text-lg px-4 py-2 font-bold border-2 border-yellow-600">⏳ PENDENTE</Badge>;
+        return <Badge className="bg-yellow-500 text-white text-xs px-2 py-1 font-semibold">⏳ PENDENTE</Badge>;
     }
   };
 
   const handleAcknowledgmentChange = (audienceId: string, status: string) => {
-    if (status === 'negado') {
-      const denialReason = denialReasons[audienceId];
-      if (!denialReason?.trim()) {
-        toast({
-          title: "Atenção",
-          description: "Por favor, informe o motivo da negação antes de confirmar.",
-          variant: "destructive",
-        });
-        return;
-      }
-      updateAcknowledgmentMutation.mutate({ audienceId, status, denialReason });
-    } else {
-      updateAcknowledgmentMutation.mutate({ audienceId, status });
+    updateAcknowledgmentMutation.mutate({ audienceId, status });
+  };
+
+  const handleObservationsChange = (audienceId: string, observations: string) => {
+    setObservationsChanges(prev => ({
+      ...prev,
+      [audienceId]: observations
+    }));
+  };
+
+  const handleSaveObservations = (audienceId: string) => {
+    const newObservations = observationsChanges[audienceId];
+    if (newObservations !== undefined) {
+      updateObservationsMutation.mutate({ audienceId, observations: newObservations });
     }
   };
 
-  const handleDenialReasonChange = (audienceId: string, reason: string) => {
-    setDenialReasons(prev => ({
-      ...prev,
-      [audienceId]: reason
-    }));
+  const hasObservationsChanged = (audienceId: string, currentObservations: string) => {
+    return observationsChanges[audienceId] !== undefined && 
+           observationsChanges[audienceId] !== (currentObservations || '');
   };
 
   return (
@@ -261,6 +284,9 @@ const UnidadesPrisionais = () => {
                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between space-y-4 lg:space-y-0">
                       <div className="flex-1 space-y-3">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
+                          {/* Status de confirmação em posição destacada */}
+                          {getAcknowledgmentBadge(audience.unit_acknowledgment)}
+                          
                           <div className="flex items-center space-x-2">
                             <Calendar className="h-4 w-4 text-gray-500" />
                             <span className="font-medium text-lg">
@@ -268,11 +294,6 @@ const UnidadesPrisionais = () => {
                             </span>
                           </div>
                           {getStatusBadge(audience.status)}
-                        </div>
-
-                        {/* Status de confirmação em destaque */}
-                        <div className="flex justify-center lg:justify-start">
-                          {getAcknowledgmentBadge(audience.unit_acknowledgment)}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -313,13 +334,35 @@ const UnidadesPrisionais = () => {
                           </div>
                         )}
 
-                        {audience.observations && (
-                          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm">
-                              <span className="font-medium">Observações:</span> {audience.observations}
-                            </p>
+                        {/* Campo de observações com botão de atualização */}
+                        <div className="mt-4">
+                          <label className="text-sm font-medium text-gray-700 mb-2 block">
+                            Observações:
+                          </label>
+                          <div className="flex gap-2">
+                            <Textarea
+                              placeholder="Adicione observações ou motivo da negação..."
+                              value={observationsChanges[audience.id] !== undefined 
+                                ? observationsChanges[audience.id] 
+                                : (audience.observations || '')}
+                              onChange={(e) => handleObservationsChange(audience.id, e.target.value)}
+                              className="flex-1 min-h-[80px] text-sm"
+                              disabled={updateObservationsMutation.isPending}
+                            />
+                            {hasObservationsChanged(audience.id, audience.observations) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleSaveObservations(audience.id)}
+                                disabled={updateObservationsMutation.isPending}
+                                className="flex items-center space-x-2 self-start"
+                              >
+                                <Save className="h-4 w-4" />
+                                <span>Salvar</span>
+                              </Button>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </div>
 
                       <div className="lg:ml-6">
@@ -356,23 +399,6 @@ const UnidadesPrisionais = () => {
                               </SelectContent>
                             </Select>
                           </div>
-
-                          {/* Campo para motivo da negação */}
-                          {(audience.unit_acknowledgment === 'negado' || 
-                            (audience.unit_acknowledgment === 'pendente' && denialReasons[audience.id])) && (
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Motivo da Negação:
-                              </label>
-                              <Textarea
-                                placeholder="Informe o motivo da negação..."
-                                value={denialReasons[audience.id] || audience.observations || ''}
-                                onChange={(e) => handleDenialReasonChange(audience.id, e.target.value)}
-                                className="w-[280px] min-h-[80px] text-sm"
-                                disabled={updateAcknowledgmentMutation.isPending}
-                              />
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
