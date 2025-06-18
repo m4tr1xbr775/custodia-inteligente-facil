@@ -332,87 +332,108 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
             </CardContent>
           </Card>
 
-          {/* Seção 2: Unidade Prisional */}
-          {formData.region_id && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">2. Unidade Prisional</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div>
-                  <Label htmlFor="prison_unit_id">Unidade Prisional *</Label>
-                  <Select value={formData.prison_unit_id} onValueChange={(value) => handleInputChange('prison_unit_id', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a unidade prisional" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {prisonUnits?.map((unit) => (
-                        <SelectItem key={unit.id} value={unit.id}>
-                          {unit.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Seção 2: Unidade Prisional - Sempre visível após selecionar região */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">2. Unidade Prisional</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div>
+                <Label htmlFor="prison_unit_id">Unidade Prisional *</Label>
+                <Select 
+                  value={formData.prison_unit_id} 
+                  onValueChange={(value) => handleInputChange('prison_unit_id', value)}
+                  disabled={!formData.region_id}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={
+                      !formData.region_id 
+                        ? "Primeiro selecione uma região" 
+                        : "Selecione a unidade prisional"
+                    } />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {prisonUnits?.map((unit) => (
+                      <SelectItem key={unit.id} value={unit.id}>
+                        {unit.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formData.region_id && (!prisonUnits || prisonUnits.length === 0) && (
+                  <p className="text-sm text-amber-600 mt-2">
+                    Nenhuma unidade prisional encontrada para esta região.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Seção 3: Data */}
-          {formData.prison_unit_id && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">3. Data</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div>
-                  <Label htmlFor="scheduled_date">Data *</Label>
-                  <Input
-                    id="scheduled_date"
-                    type="date"
-                    value={formData.scheduled_date}
-                    onChange={(e) => handleInputChange('scheduled_date', e.target.value)}
-                    required
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Seção 3: Data - Sempre visível após selecionar unidade */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">3. Data da Audiência</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div>
+                <Label htmlFor="scheduled_date">Data *</Label>
+                <Input
+                  id="scheduled_date"
+                  type="date"
+                  value={formData.scheduled_date}
+                  onChange={(e) => handleInputChange('scheduled_date', e.target.value)}
+                  disabled={!formData.prison_unit_id}
+                  required
+                />
+                {!formData.prison_unit_id && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    Selecione uma unidade prisional primeiro.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Seção 4: Horário Disponível */}
-          {formData.scheduled_date && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">4. Horário Disponível</CardTitle>
-                <p className="text-sm text-gray-600">Apenas horários livres na unidade selecionada</p>
-              </CardHeader>
-              <CardContent>
-                <div>
-                  <Label htmlFor="audience_slot_time">Horário *</Label>
-                  <Select value={formData.audience_slot_time} onValueChange={(value) => handleInputChange('audience_slot_time', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um horário disponível" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableSlots?.map((slot) => (
-                        <SelectItem key={`${slot.date}-${slot.time}`} value={slot.time}>
-                          {slot.time}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {availableSlots?.length === 0 && formData.scheduled_date && (
-                    <p className="text-sm text-amber-600 mt-2">
-                      Nenhum horário disponível para esta data nesta unidade.
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Seção 4: Horário Disponível - Sempre visível após selecionar data */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">4. Horário Disponível</CardTitle>
+              <p className="text-sm text-gray-600">Apenas horários livres na unidade selecionada</p>
+            </CardHeader>
+            <CardContent>
+              <div>
+                <Label htmlFor="audience_slot_time">Horário *</Label>
+                <Select 
+                  value={formData.audience_slot_time} 
+                  onValueChange={(value) => handleInputChange('audience_slot_time', value)}
+                  disabled={!formData.scheduled_date}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={
+                      !formData.scheduled_date
+                        ? "Primeiro selecione uma data"
+                        : "Selecione um horário disponível"
+                    } />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSlots?.map((slot) => (
+                      <SelectItem key={`${slot.date}-${slot.time}`} value={slot.time}>
+                        {slot.time}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formData.scheduled_date && availableSlots?.length === 0 && (
+                  <p className="text-sm text-amber-600 mt-2">
+                    Nenhum horário disponível para esta data nesta unidade.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Seção 5: Plantonistas */}
-          {formData.audience_slot_time && scheduleAssignments && (
+          {/* Seção 5: Plantonistas - Sempre visível após selecionar horário */}
+          {formData.audience_slot_time && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">5. Plantonistas do Período</CardTitle>
@@ -449,76 +470,74 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
             </Card>
           )}
 
-          {/* Seção 6: Dados do Processo */}
-          {formData.audience_slot_time && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">6. Dados do Custodiado e Processo</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="defendant_name">Nome do Custodiado *</Label>
-                    <Input
-                      id="defendant_name"
-                      value={formData.defendant_name}
-                      onChange={(e) => handleInputChange('defendant_name', e.target.value)}
-                      placeholder="Nome completo"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="process_number">Número do Processo *</Label>
-                    <Input
-                      id="process_number"
-                      value={formData.process_number}
-                      onChange={(e) => handleInputChange('process_number', e.target.value)}
-                      placeholder="0000000-00.0000.0.00.0000"
-                      required
-                    />
-                  </div>
+          {/* Seção 6: Dados do Processo - Sempre visível */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">6. Dados do Custodiado e Processo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="defendant_name">Nome do Custodiado *</Label>
+                  <Input
+                    id="defendant_name"
+                    value={formData.defendant_name}
+                    onChange={(e) => handleInputChange('defendant_name', e.target.value)}
+                    placeholder="Nome completo"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="process_number">Número do Processo *</Label>
+                  <Input
+                    id="process_number"
+                    value={formData.process_number}
+                    onChange={(e) => handleInputChange('process_number', e.target.value)}
+                    placeholder="0000000-00.0000.0.00.0000"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-4">
+                <div>
+                  <Label htmlFor="virtual_room_url">URL da Sala Virtual</Label>
+                  <Input
+                    id="virtual_room_url"
+                    value={formData.virtual_room_url}
+                    onChange={(e) => handleInputChange('virtual_room_url', e.target.value)}
+                    placeholder="https://zoom.us/j/123456789"
+                  />
                 </div>
 
-                <div className="mt-4 space-y-4">
-                  <div>
-                    <Label htmlFor="virtual_room_url">URL da Sala Virtual</Label>
-                    <Input
-                      id="virtual_room_url"
-                      value={formData.virtual_room_url}
-                      onChange={(e) => handleInputChange('virtual_room_url', e.target.value)}
-                      placeholder="https://zoom.us/j/123456789"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="observations">Observações</Label>
-                    <Textarea
-                      id="observations"
-                      value={formData.observations}
-                      onChange={(e) => handleInputChange('observations', e.target.value)}
-                      placeholder="Observações adicionais..."
-                      rows={3}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="status">Status</Label>
-                    <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="agendada">Agendada</SelectItem>
-                        <SelectItem value="realizada">Realizada</SelectItem>
-                        <SelectItem value="cancelada">Cancelada</SelectItem>
-                        <SelectItem value="nao_compareceu">Não Compareceu</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div>
+                  <Label htmlFor="observations">Observações</Label>
+                  <Textarea
+                    id="observations"
+                    value={formData.observations}
+                    onChange={(e) => handleInputChange('observations', e.target.value)}
+                    placeholder="Observações adicionais..."
+                    rows={3}
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          )}
+
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="agendada">Agendada</SelectItem>
+                      <SelectItem value="realizada">Realizada</SelectItem>
+                      <SelectItem value="cancelada">Cancelada</SelectItem>
+                      <SelectItem value="nao_compareceu">Não Compareceu</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <div className="flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={onClose}>
