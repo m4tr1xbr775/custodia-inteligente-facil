@@ -12,6 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import AudienciaForm from "@/components/Audiencias/AudienciaForm";
 
 const Audiencias = () => {
@@ -20,99 +22,28 @@ const Audiencias = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAudienciaId, setEditingAudienciaId] = useState<string | undefined>();
 
-  // Audiências agrupadas por região
-  const audiencesByRegion = {
-    macrorregiao_02: [
-      {
-        id: "1",
-        date: "2024-06-15",
-        time: "09:00",
-        process: "0001234-56.2024.8.09.0000",
-        defendant: "João Silva Santos",
-        unit: "CDP Aparecida de Goiânia",
-        magistrate: "Dr. Carlos Eduardo Silva",
-        prosecutor: "Dra. Ana Paula Oliveira",
-        defender: "Dr. Roberto Santos Lima",
-        policeResponsible: "Inspetor José Maria",
-        status: "agendada",
-        virtualRoom: "https://zoom.us/j/123456789",
-        confirmed: false
-      },
-      {
-        id: "4",
-        date: "2024-06-15",
-        time: "11:00",
-        process: "0001237-56.2024.8.09.0000",
-        defendant: "Ana Carolina Mendes",
-        unit: "CDP Aparecida de Goiânia",
-        magistrate: "Dr. Carlos Eduardo Silva",
-        prosecutor: "Dra. Ana Paula Oliveira",
-        defender: "Dra. Fernanda Luz",
-        policeResponsible: "Inspetor José Maria",
-        status: "realizada",
-        virtualRoom: "https://zoom.us/j/789123456",
-        confirmed: true
-      }
-    ],
-    macrorregiao_03: [
-      {
-        id: "5",
-        date: "2024-06-15",
-        time: "15:30",
-        process: "0001238-56.2024.8.09.0000",
-        defendant: "Pedro Henrique Costa",
-        unit: "Casa de Prisão Provisória - Anápolis",
-        magistrate: "Dra. Mariana Santos",
-        prosecutor: "Dr. Pedro Henrique",
-        defender: "Dr. Roberto Santos Lima",
-        policeResponsible: "Inspetora Maria José",
-        status: "agendada",
-        virtualRoom: "https://zoom.us/j/654321987",
-        confirmed: true
-      }
-    ],
-    central_custodia_01: [
-      {
-        id: "2",
-        date: "2024-06-15",
-        time: "10:30",
-        process: "0001235-56.2024.8.09.0000",
-        defendant: "Maria Oliveira Costa",
-        unit: "Presídio Feminino",
-        magistrate: "Dr. Carlos Eduardo Silva",
-        prosecutor: "Dra. Ana Paula Oliveira",
-        defender: "Dra. Fernanda Luz",
-        policeResponsible: "Inspetora Maria José",
-        status: "realizada",
-        virtualRoom: "https://zoom.us/j/987654321",
-        confirmed: true
-      }
-    ],
-    central_custodia_03: [
-      {
-        id: "3",
-        date: "2024-06-15",
-        time: "14:00",
-        process: "0001236-56.2024.8.09.0000",
-        defendant: "Carlos Eduardo Lima",
-        unit: "CPP Goiânia",
-        magistrate: "Dr. Carlos Eduardo Silva",
-        prosecutor: "Dr. Pedro Henrique",
-        defender: "Dr. Roberto Santos Lima",
-        policeResponsible: "Inspetor João Carlos",
-        status: "cancelada",
-        virtualRoom: "https://zoom.us/j/456789123",
-        confirmed: false
-      }
-    ]
-  };
-
-  const regionNames = {
-    macrorregiao_02: "Macrorregião 02",
-    macrorregiao_03: "Macrorregião 03",
-    central_custodia_01: "Central de Custódia 01",
-    central_custodia_03: "Central de Custódia 03"
-  };
+  // Fetch audiences with related data
+  const { data: audiencesData, isLoading } = useQuery({
+    queryKey: ['audiences'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('audiences')
+        .select(`
+          *,
+          regions(id, name, type),
+          prison_units(id, name),
+          schedule_assignments(
+            magistrates(name),
+            prosecutors(name),
+            defenders(name)
+          )
+        `)
+        .order('scheduled_date', { ascending: true });
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -129,12 +60,23 @@ const Audiencias = () => {
     }
   };
 
+  const getUnitAcknowledgmentBadge = (acknowledgment: string) => {
+    switch (acknowledgment) {
+      case "confirmado":
+        return <Badge className="bg-green-100 text-green-800">Confirmado pela UP</Badge>;
+      case "negado":
+        return <Badge className="bg-red-100 text-red-800">Negado pela UP</Badge>;
+      default:
+        return <Badge variant="outline" className="border-yellow-300 text-yellow-700">Pendente Confirmação</Badge>;
+    }
+  };
+
   const filterAudiences = (audiences: any[]) => {
     return audiences.filter(audience => {
       const matchesSearch = 
-        audience.defendant.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        audience.process.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        audience.unit.toLowerCase().includes(searchTerm.toLowerCase());
+        audience.defendant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        audience.process_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        audience.prison_units?.name.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === "todos" || audience.status === statusFilter;
       
@@ -142,12 +84,12 @@ const Audiencias = () => {
     });
   };
 
-  const getRegionIcon = (regionKey: string) => {
-    return regionKey.includes('macrorregiao') ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200';
+  const getRegionIcon = (regionType: string) => {
+    return regionType === 'macrorregiao' ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200';
   };
 
-  const getRegionIconColor = (regionKey: string) => {
-    return regionKey.includes('macrorregiao') ? 'text-blue-600' : 'text-green-600';
+  const getRegionIconColor = (regionType: string) => {
+    return regionType === 'macrorregiao' ? 'text-blue-600' : 'text-green-600';
   };
 
   const handleNewAudiencia = () => {
@@ -165,11 +107,28 @@ const Audiencias = () => {
     setEditingAudienciaId(undefined);
   };
 
-  // Calcular totais
-  const totalAudiences = Object.values(audiencesByRegion).flat().length;
-  const filteredTotal = Object.values(audiencesByRegion)
-    .map(audiences => filterAudiences(audiences).length)
-    .reduce((sum, count) => sum + count, 0);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg">Carregando audiências...</div>
+      </div>
+    );
+  }
+
+  const filteredAudiences = audiencesData ? filterAudiences(audiencesData) : [];
+
+  // Group audiences by region
+  const audiencesByRegion = filteredAudiences.reduce((acc, audience) => {
+    const regionId = audience.region_id;
+    if (!acc[regionId]) {
+      acc[regionId] = {
+        region: audience.regions,
+        audiences: []
+      };
+    }
+    acc[regionId].audiences.push(audience);
+    return acc;
+  }, {} as Record<string, { region: any; audiences: any[] }>);
 
   return (
     <div className="space-y-6">
@@ -214,93 +173,92 @@ const Audiencias = () => {
             </Select>
           </div>
           <div className="mt-4 text-sm text-gray-600">
-            Mostrando {filteredTotal} de {totalAudiences} audiências
+            Mostrando {filteredAudiences.length} de {audiencesData?.length || 0} audiências
           </div>
         </CardContent>
       </Card>
 
       {/* Audiências Agrupadas por Região */}
       <div className="space-y-6">
-        {Object.entries(audiencesByRegion).map(([regionKey, audiences]) => {
-          const filteredAudiences = filterAudiences(audiences);
-          
-          if (filteredAudiences.length === 0) return null;
-
-          return (
-            <Card key={regionKey} className={`${getRegionIcon(regionKey)} border-2`}>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center space-x-3">
-                  <MapPin className={`h-6 w-6 ${getRegionIconColor(regionKey)}`} />
-                  <span className={getRegionIconColor(regionKey)}>{regionNames[regionKey as keyof typeof regionNames]}</span>
-                  <Badge variant="outline" className="ml-auto">
-                    {filteredAudiences.length} audiência{filteredAudiences.length !== 1 ? 's' : ''}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {filteredAudiences.map((audience) => (
-                  <Card key={audience.id} className="bg-white hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                        <div className="flex-1 space-y-3">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
-                            <div className="flex items-center space-x-2">
-                              <Calendar className="h-4 w-4 text-gray-500" />
-                              <span className="font-medium">{new Date(audience.date).toLocaleDateString('pt-BR')} - {audience.time}</span>
-                            </div>
-                            {getStatusBadge(audience.status)}
-                            {audience.confirmed ? (
-                              <Badge className="bg-green-100 text-green-800">Confirmado pela UP</Badge>
-                            ) : (
-                              <Badge variant="outline" className="border-yellow-300 text-yellow-700">Pendente Confirmação</Badge>
-                            )}
+        {Object.entries(audiencesByRegion).map(([regionId, { region, audiences }]) => (
+          <Card key={regionId} className={`${getRegionIcon(region?.type)} border-2`}>
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center space-x-3">
+                <MapPin className={`h-6 w-6 ${getRegionIconColor(region?.type)}`} />
+                <span className={getRegionIconColor(region?.type)}>{region?.name}</span>
+                <Badge variant="outline" className="ml-auto">
+                  {audiences.length} audiência{audiences.length !== 1 ? 's' : ''}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {audiences.map((audience) => (
+                <Card key={audience.id} className="bg-white hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                      <div className="flex-1 space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
+                          <div className="flex items-center space-x-2">
+                            <Calendar className="h-4 w-4 text-gray-500" />
+                            <span className="font-medium">
+                              {new Date(audience.scheduled_date).toLocaleDateString('pt-BR')} - {audience.scheduled_time}
+                            </span>
                           </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <h3 className="font-semibold text-gray-900">{audience.defendant}</h3>
-                              <p className="text-sm text-gray-600">Processo: {audience.process}</p>
-                              <p className="text-sm text-gray-600">Unidade: {audience.unit}</p>
-                            </div>
-                            
-                            <div className="space-y-1">
-                              <p className="text-sm"><span className="font-medium">Magistrado:</span> {audience.magistrate}</p>
-                              <p className="text-sm"><span className="font-medium">Promotor:</span> {audience.prosecutor}</p>
-                              <p className="text-sm"><span className="font-medium">Defensor:</span> {audience.defender}</p>
-                              <p className="text-sm"><span className="font-medium">Polícia Penal:</span> {audience.policeResponsible}</p>
-                            </div>
-                          </div>
+                          {getStatusBadge(audience.status)}
+                          {getUnitAcknowledgmentBadge(audience.unit_acknowledgment)}
                         </div>
                         
-                        <div className="flex flex-col space-y-2 lg:ml-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{audience.defendant_name}</h3>
+                            <p className="text-sm text-gray-600">Processo: {audience.process_number}</p>
+                            <p className="text-sm text-gray-600">Unidade: {audience.prison_units?.name}</p>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <p className="text-sm">
+                              <span className="font-medium">Magistrado:</span> {audience.schedule_assignments?.[0]?.magistrates?.name || 'Não definido'}
+                            </p>
+                            <p className="text-sm">
+                              <span className="font-medium">Promotor:</span> {audience.schedule_assignments?.[0]?.prosecutors?.name || 'Não definido'}
+                            </p>
+                            <p className="text-sm">
+                              <span className="font-medium">Defensor:</span> {audience.schedule_assignments?.[0]?.defenders?.name || 'Não definido'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col space-y-2 lg:ml-6">
+                        {audience.virtual_room_url && (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open(audience.virtualRoom, '_blank')}
+                            onClick={() => window.open(audience.virtual_room_url, '_blank')}
                             className="flex items-center space-x-2"
                           >
                             <ExternalLink className="h-4 w-4" />
                             <span>Sala Virtual</span>
                           </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleEditAudiencia(audience.id)}
-                          >
-                            Editar
-                          </Button>
-                        </div>
+                        )}
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleEditAudiencia(audience.id)}
+                        >
+                          Editar
+                        </Button>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </CardContent>
-            </Card>
-          );
-        })}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {filteredTotal === 0 && (
+      {filteredAudiences.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">
             <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />

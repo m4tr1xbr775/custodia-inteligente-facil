@@ -40,20 +40,16 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
     defendant_name: "",
     process_number: "",
     scheduled_date: "",
-    scheduled_time: "",
     region_id: "",
     prison_unit_id: "",
-    magistrate_id: "",
-    prosecutor_id: "",
-    defender_id: "",
-    police_officer_id: "",
+    audience_slot_time: "",
     virtual_room_url: "",
     observations: "",
     status: "agendada" as AudienceStatus,
-    confirmed_by_unit: false,
+    unit_acknowledgment: "pendente",
   });
 
-  // Fetch data for dropdowns
+  // Fetch regions (centrais)
   const { data: regions } = useQuery({
     queryKey: ['regions'],
     queryFn: async () => {
@@ -66,6 +62,7 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
     },
   });
 
+  // Fetch prison units based on selected region
   const { data: prisonUnits } = useQuery({
     queryKey: ['prison_units', formData.region_id],
     queryFn: async () => {
@@ -81,20 +78,22 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
     enabled: !!formData.region_id,
   });
 
-  const { data: policeOfficers } = useQuery({
-    queryKey: ['police_officers', formData.prison_unit_id],
+  // Fetch available time slots for selected unit and date
+  const { data: availableSlots } = useQuery({
+    queryKey: ['available_slots', formData.prison_unit_id, formData.scheduled_date],
     queryFn: async () => {
-      if (!formData.prison_unit_id) return [];
+      if (!formData.prison_unit_id || !formData.scheduled_date) return [];
       const { data, error } = await supabase
-        .from('police_officers')
+        .from('prison_unit_slots')
         .select('*')
-        .eq('unit_id', formData.prison_unit_id)
-        .eq('active', true)
-        .order('name');
+        .eq('prison_unit_id', formData.prison_unit_id)
+        .eq('date', formData.scheduled_date)
+        .eq('is_available', true)
+        .order('time');
       if (error) throw error;
       return data;
     },
-    enabled: !!formData.prison_unit_id,
+    enabled: !!(formData.prison_unit_id && formData.scheduled_date),
   });
 
   // Fetch plantonistas for the selected region and date
@@ -118,39 +117,22 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
     enabled: !!(formData.region_id && formData.scheduled_date),
   });
 
-  // Auto-fill plantonistas when region and date are selected
-  useEffect(() => {
-    if (scheduleAssignments && scheduleAssignments.length > 0) {
-      const assignment = scheduleAssignments[0]; // Take first assignment for the date
-      setFormData(prev => ({
-        ...prev,
-        magistrate_id: assignment.magistrate_id || "",
-        prosecutor_id: assignment.prosecutor_id || "",
-        defender_id: assignment.defender_id || "",
-      }));
-    }
-  }, [scheduleAssignments]);
-
-  // Reset dependent fields when region changes
+  // Reset dependent fields when selections change
   useEffect(() => {
     if (formData.region_id) {
       setFormData(prev => ({
         ...prev,
         prison_unit_id: "",
-        police_officer_id: "",
-        magistrate_id: "",
-        prosecutor_id: "",
-        defender_id: "",
+        audience_slot_time: "",
       }));
     }
   }, [formData.region_id]);
 
-  // Reset police officer when prison unit changes
   useEffect(() => {
     if (formData.prison_unit_id) {
       setFormData(prev => ({
         ...prev,
-        police_officer_id: "",
+        audience_slot_time: "",
       }));
     }
   }, [formData.prison_unit_id]);
@@ -180,17 +162,13 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
             defendant_name: data.defendant_name || "",
             process_number: data.process_number || "",
             scheduled_date: data.scheduled_date || "",
-            scheduled_time: data.scheduled_time || "",
             region_id: data.region_id || "",
             prison_unit_id: data.prison_unit_id || "",
-            magistrate_id: data.magistrate_id || "",
-            prosecutor_id: data.prosecutor_id || "",
-            defender_id: data.defender_id || "",
-            police_officer_id: data.police_officer_id || "",
+            audience_slot_time: data.audience_slot_time || "",
             virtual_room_url: data.virtual_room_url || "",
             observations: data.observations || "",
             status: data.status || "agendada",
-            confirmed_by_unit: data.confirmed_by_unit || false,
+            unit_acknowledgment: data.unit_acknowledgment || "pendente",
           });
         }
       };
@@ -202,34 +180,72 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
   // Create/Update mutation
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
-      // Clean data - convert empty strings to null for optional foreign keys
-      const cleanData = { ...data };
-      if (!cleanData.magistrate_id) cleanData.magistrate_id = null;
-      if (!cleanData.prosecutor_id) cleanData.prosecutor_id = null;
-      if (!cleanData.defender_id) cleanData.defender_id = null;
-      if (!cleanData.police_officer_id) cleanData.police_officer_id = null;
-
       if (isEditing) {
         const { data: result, error } = await supabase
           .from('audiences')
-          .update(cleanData)
+          .update({
+            defendant_name: data.defendant_name,
+            process_number: data.process_number,
+            scheduled_date: data.scheduled_date,
+            scheduled_time: data.audience_slot_time,
+            audience_slot_time: data.audience_slot_time,
+            region_id: data.region_id,
+            prison_unit_id: data.prison_unit_id,
+            virtual_room_url: data.virtual_room_url,
+            observations: data.observations,
+            status: data.status,
+            unit_acknowledgment: data.unit_acknowledgment,
+          })
           .eq('id', audienciaId)
           .select()
           .single();
         if (error) throw error;
         return result;
       } else {
+        // Reserve the time slot
+        const { error: slotError } = await supabase
+          .from('prison_unit_slots')
+          .update({ is_available: false })
+          .eq('prison_unit_id', data.prison_unit_id)
+          .eq('date', data.scheduled_date)
+          .eq('time', data.audience_slot_time);
+
+        if (slotError) throw slotError;
+
+        // Create the audience
         const { data: result, error } = await supabase
           .from('audiences')
-          .insert([cleanData])
+          .insert([{
+            defendant_name: data.defendant_name,
+            process_number: data.process_number,
+            scheduled_date: data.scheduled_date,
+            scheduled_time: data.audience_slot_time,
+            audience_slot_time: data.audience_slot_time,
+            region_id: data.region_id,
+            prison_unit_id: data.prison_unit_id,
+            virtual_room_url: data.virtual_room_url,
+            observations: data.observations,
+            status: data.status,
+            unit_acknowledgment: data.unit_acknowledgment,
+          }])
           .select()
           .single();
         if (error) throw error;
+
+        // Update the slot with the audience ID
+        await supabase
+          .from('prison_unit_slots')
+          .update({ audience_id: result.id })
+          .eq('prison_unit_id', data.prison_unit_id)
+          .eq('date', data.scheduled_date)
+          .eq('time', data.audience_slot_time);
+
         return result;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['audiences'] });
+      queryClient.invalidateQueries({ queryKey: ['available_slots'] });
       toast({
         title: "Sucesso",
         description: `Audiência ${isEditing ? 'atualizada' : 'criada'} com sucesso!`,
@@ -251,7 +267,7 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
     e.preventDefault();
     
     if (!formData.defendant_name || !formData.process_number || !formData.scheduled_date || 
-        !formData.scheduled_time || !formData.region_id || !formData.prison_unit_id) {
+        !formData.region_id || !formData.prison_unit_id || !formData.audience_slot_time) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos obrigatórios",
@@ -268,21 +284,17 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
       defendant_name: "",
       process_number: "",
       scheduled_date: "",
-      scheduled_time: "",
       region_id: "",
       prison_unit_id: "",
-      magistrate_id: "",
-      prosecutor_id: "",
-      defender_id: "",
-      police_officer_id: "",
+      audience_slot_time: "",
       virtual_room_url: "",
       observations: "",
       status: "agendada" as AudienceStatus,
-      confirmed_by_unit: false,
+      unit_acknowledgment: "pendente",
     });
   };
 
-  const handleInputChange = (field: string, value: string | boolean) => {
+  const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -296,17 +308,17 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Seção 1: Região/Central - Primeira seleção */}
+          {/* Seção 1: Central/Região */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">1. Selecione a Região ou Central</CardTitle>
+              <CardTitle className="text-lg">1. Selecione a Central/Região</CardTitle>
             </CardHeader>
             <CardContent>
               <div>
-                <Label htmlFor="region_id">Região/Central *</Label>
+                <Label htmlFor="region_id">Central/Região *</Label>
                 <Select value={formData.region_id} onValueChange={(value) => handleInputChange('region_id', value)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma região ou central" />
+                    <SelectValue placeholder="Selecione uma central ou região" />
                   </SelectTrigger>
                   <SelectContent>
                     {regions?.map((region) => (
@@ -320,50 +332,96 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
             </CardContent>
           </Card>
 
-          {/* Seção 2: Data e Hora */}
+          {/* Seção 2: Unidade Prisional */}
           {formData.region_id && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">2. Data e Horário</CardTitle>
+                <CardTitle className="text-lg">2. Unidade Prisional</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="scheduled_date">Data *</Label>
-                    <Input
-                      id="scheduled_date"
-                      type="date"
-                      value={formData.scheduled_date}
-                      onChange={(e) => handleInputChange('scheduled_date', e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="scheduled_time">Horário *</Label>
-                    <Input
-                      id="scheduled_time"
-                      type="time"
-                      value={formData.scheduled_time}
-                      onChange={(e) => handleInputChange('scheduled_time', e.target.value)}
-                      required
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="prison_unit_id">Unidade Prisional *</Label>
+                  <Select value={formData.prison_unit_id} onValueChange={(value) => handleInputChange('prison_unit_id', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a unidade prisional" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {prisonUnits?.map((unit) => (
+                        <SelectItem key={unit.id} value={unit.id}>
+                          {unit.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Seção 3: Plantonistas (preenchido automaticamente) */}
+          {/* Seção 3: Data */}
+          {formData.prison_unit_id && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">3. Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div>
+                  <Label htmlFor="scheduled_date">Data *</Label>
+                  <Input
+                    id="scheduled_date"
+                    type="date"
+                    value={formData.scheduled_date}
+                    onChange={(e) => handleInputChange('scheduled_date', e.target.value)}
+                    required
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Seção 4: Horário Disponível */}
           {formData.scheduled_date && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">3. Plantonistas do Período</CardTitle>
-                <p className="text-sm text-gray-600">Preenchido automaticamente com base na região e data selecionada</p>
+                <CardTitle className="text-lg">4. Horário Disponível</CardTitle>
+                <p className="text-sm text-gray-600">Apenas horários livres na unidade selecionada</p>
+              </CardHeader>
+              <CardContent>
+                <div>
+                  <Label htmlFor="audience_slot_time">Horário *</Label>
+                  <Select value={formData.audience_slot_time} onValueChange={(value) => handleInputChange('audience_slot_time', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um horário disponível" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableSlots?.map((slot) => (
+                        <SelectItem key={`${slot.date}-${slot.time}`} value={slot.time}>
+                          {slot.time}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {availableSlots?.length === 0 && formData.scheduled_date && (
+                    <p className="text-sm text-amber-600 mt-2">
+                      Nenhum horário disponível para esta data nesta unidade.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Seção 5: Plantonistas */}
+          {formData.audience_slot_time && scheduleAssignments && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">5. Plantonistas do Período</CardTitle>
+                <p className="text-sm text-gray-600">Preenchido automaticamente</p>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <Label htmlFor="magistrate_id">Magistrado Plantonista</Label>
+                    <Label>Magistrado Plantonista</Label>
                     <Input
                       value={scheduleAssignments?.[0]?.magistrates?.name || "Não definido"}
                       disabled
@@ -371,7 +429,7 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
                     />
                   </div>
                   <div>
-                    <Label htmlFor="prosecutor_id">Promotor Plantonista</Label>
+                    <Label>Promotor Plantonista</Label>
                     <Input
                       value={scheduleAssignments?.[0]?.prosecutors?.name || "Não definido"}
                       disabled
@@ -379,7 +437,7 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
                     />
                   </div>
                   <div>
-                    <Label htmlFor="defender_id">Advogado Dativo Plantonista</Label>
+                    <Label>Defensor Plantonista</Label>
                     <Input
                       value={scheduleAssignments?.[0]?.defenders?.name || "Não definido"}
                       disabled
@@ -391,11 +449,11 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
             </Card>
           )}
 
-          {/* Seção 4: Dados do Réu e Processo */}
-          {formData.scheduled_date && (
+          {/* Seção 6: Dados do Processo */}
+          {formData.audience_slot_time && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">4. Dados do Custodiado e Processo</CardTitle>
+                <CardTitle className="text-lg">6. Dados do Custodiado e Processo</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -420,105 +478,43 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
                     />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
 
-          {/* Seção 5: Unidade Prisional e Polícia Penal */}
-          {formData.defendant_name && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">5. Unidade Prisional</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="mt-4 space-y-4">
                   <div>
-                    <Label htmlFor="prison_unit_id">Unidade Prisional onde está preso *</Label>
-                    <Select value={formData.prison_unit_id} onValueChange={(value) => handleInputChange('prison_unit_id', value)}>
+                    <Label htmlFor="virtual_room_url">URL da Sala Virtual</Label>
+                    <Input
+                      id="virtual_room_url"
+                      value={formData.virtual_room_url}
+                      onChange={(e) => handleInputChange('virtual_room_url', e.target.value)}
+                      placeholder="https://zoom.us/j/123456789"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="observations">Observações</Label>
+                    <Textarea
+                      id="observations"
+                      value={formData.observations}
+                      onChange={(e) => handleInputChange('observations', e.target.value)}
+                      placeholder="Observações adicionais..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="status">Status</Label>
+                    <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione a unidade prisional" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {prisonUnits?.map((unit) => (
-                          <SelectItem key={unit.id} value={unit.id}>
-                            {unit.name}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="agendada">Agendada</SelectItem>
+                        <SelectItem value="realizada">Realizada</SelectItem>
+                        <SelectItem value="cancelada">Cancelada</SelectItem>
+                        <SelectItem value="nao_compareceu">Não Compareceu</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label htmlFor="police_officer_id">Polícia Penal Responsável</Label>
-                    <Select value={formData.police_officer_id} onValueChange={(value) => handleInputChange('police_officer_id', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um policial" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Nenhum</SelectItem>
-                        {policeOfficers?.map((officer) => (
-                          <SelectItem key={officer.id} value={officer.id}>
-                            {officer.name} - {officer.rank}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Seção 6: Informações Adicionais */}
-          {formData.prison_unit_id && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">6. Informações Adicionais</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="virtual_room_url">URL da Sala Virtual</Label>
-                  <Input
-                    id="virtual_room_url"
-                    value={formData.virtual_room_url}
-                    onChange={(e) => handleInputChange('virtual_room_url', e.target.value)}
-                    placeholder="https://zoom.us/j/123456789"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="observations">Observações</Label>
-                  <Textarea
-                    id="observations"
-                    value={formData.observations}
-                    onChange={(e) => handleInputChange('observations', e.target.value)}
-                    placeholder="Observações adicionais..."
-                    rows={3}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="agendada">Agendada</SelectItem>
-                      <SelectItem value="realizada">Realizada</SelectItem>
-                      <SelectItem value="cancelada">Cancelada</SelectItem>
-                      <SelectItem value="nao_compareceu">Não Compareceu</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="confirmed_by_unit"
-                    checked={formData.confirmed_by_unit}
-                    onChange={(e) => handleInputChange('confirmed_by_unit', e.target.checked)}
-                  />
-                  <Label htmlFor="confirmed_by_unit">Confirmado pela Unidade Prisional</Label>
                 </div>
               </CardContent>
             </Card>

@@ -11,6 +11,8 @@ export type Database = {
     Tables: {
       audiences: {
         Row: {
+          audience_slot_time: string | null
+          central_region_type: string | null
           confirmed_by_unit: boolean | null
           created_at: string
           defendant_document: string | null
@@ -27,10 +29,13 @@ export type Database = {
           scheduled_date: string
           scheduled_time: string
           status: Database["public"]["Enums"]["audience_status"]
+          unit_acknowledgment: string | null
           updated_at: string
           virtual_room_url: string | null
         }
         Insert: {
+          audience_slot_time?: string | null
+          central_region_type?: string | null
           confirmed_by_unit?: boolean | null
           created_at?: string
           defendant_document?: string | null
@@ -47,10 +52,13 @@ export type Database = {
           scheduled_date: string
           scheduled_time: string
           status?: Database["public"]["Enums"]["audience_status"]
+          unit_acknowledgment?: string | null
           updated_at?: string
           virtual_room_url?: string | null
         }
         Update: {
+          audience_slot_time?: string | null
+          central_region_type?: string | null
           confirmed_by_unit?: boolean | null
           created_at?: string
           defendant_document?: string | null
@@ -67,6 +75,7 @@ export type Database = {
           scheduled_date?: string
           scheduled_time?: string
           status?: Database["public"]["Enums"]["audience_status"]
+          unit_acknowledgment?: string | null
           updated_at?: string
           virtual_room_url?: string | null
         }
@@ -275,6 +284,54 @@ export type Database = {
           {
             foreignKeyName: "police_officers_unit_id_fkey"
             columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "prison_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prison_unit_slots: {
+        Row: {
+          audience_id: string | null
+          created_at: string
+          date: string
+          id: string
+          is_available: boolean | null
+          prison_unit_id: string
+          time: string
+          updated_at: string
+        }
+        Insert: {
+          audience_id?: string | null
+          created_at?: string
+          date: string
+          id?: string
+          is_available?: boolean | null
+          prison_unit_id: string
+          time: string
+          updated_at?: string
+        }
+        Update: {
+          audience_id?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          is_available?: boolean | null
+          prison_unit_id?: string
+          time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prison_unit_slots_audience_id_fkey"
+            columns: ["audience_id"]
+            isOneToOne: false
+            referencedRelation: "audiences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prison_unit_slots_prison_unit_id_fkey"
+            columns: ["prison_unit_id"]
             isOneToOne: false
             referencedRelation: "prison_units"
             referencedColumns: ["id"]
@@ -504,7 +561,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_daily_slots_all_units: {
+        Args: { slot_date: string }
+        Returns: undefined
+      }
+      generate_daily_slots_for_unit: {
+        Args: { unit_id: string; slot_date: string }
+        Returns: undefined
+      }
     }
     Enums: {
       audience_status: "agendada" | "realizada" | "cancelada" | "nao_compareceu"
