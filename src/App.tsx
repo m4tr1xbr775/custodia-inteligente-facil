@@ -4,10 +4,14 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { navItems } from "./nav-items";
 import MainLayout from "./components/Layout/MainLayout";
-import AgendamentoJuiz from "./pages/AgendamentoJuiz";
-import UnidadesPrisionais from "./pages/UnidadesPrisionais";
+import Dashboard from "./pages/Dashboard";
+import Audiencias from "./pages/Audiencias";
+import Plantoes from "./pages/Plantoes";
+import Contatos from "./pages/Contatos";
+import Unidades from "./pages/Unidades";
+import Configuracoes from "./pages/Configuracoes";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -17,15 +21,17 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <MainLayout>
-          <Routes>
-            {navItems.map(({ to, page }) => (
-              <Route key={to} path={to} element={page} />
-            ))}
-            <Route path="/agendamento-juiz" element={<AgendamentoJuiz />} />
-            <Route path="/unidades-prisionais" element={<UnidadesPrisionais />} />
-          </Routes>
-        </MainLayout>
+        <Routes>
+          <Route path="/" element={<MainLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="audiencias" element={<Audiencias />} />
+            <Route path="plantoes" element={<Plantoes />} />
+            <Route path="contatos" element={<Contatos />} />
+            <Route path="unidades" element={<Unidades />} />
+            <Route path="configuracoes" element={<Configuracoes />} />
+          </Route>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
