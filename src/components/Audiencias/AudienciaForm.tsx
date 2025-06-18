@@ -1,44 +1,36 @@
-import React, { useState, useEffect } from "react";
+
+import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
-import { format, addDays } from "date-fns";
-import { pt } from "date-fns/locale";
-import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
+import { Form } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import AudienciaBasicInfo from "./AudienciaBasicInfo";
+import AudienciaDateTime from "./AudienciaDateTime";
+import RegionBasedAssignments from "./RegionBasedAssignments";
 
-const formSchema = z.object({
+const audienciaSchema = z.object({
   defendant_name: z.string().min(1, "Nome do réu é obrigatório"),
   defendant_document: z.string().optional(),
   process_number: z.string().min(1, "Número do processo é obrigatório"),
-  scheduled_date: z.date({
-    required_error: "Data da audiência é obrigatória",
-  }),
+  scheduled_date: z.string().min(1, "Data é obrigatória"),
   scheduled_time: z.string().min(1, "Horário é obrigatório"),
-  region_id: z.string().min(1, "Central de plantão é obrigatória"),
+  region_id: z.string().min(1, "Região é obrigatória"),
   prison_unit_id: z.string().min(1, "Unidade prisional é obrigatória"),
   magistrate_id: z.string().optional(),
   prosecutor_id: z.string().optional(),
   defender_id: z.string().optional(),
-  police_officer_id: z.string().optional(),
+  virtual_room_url: z.string().url().optional().or(z.literal("")),
   observations: z.string().optional(),
-  virtual_room_url: z.string().optional(),
 });
 
-type FormData = z.infer<typeof formSchema>;
+type AudienciaFormData = z.infer<typeof audienciaSchema>;
 
 interface AudienciaFormProps {
-  onSuccess?: () => void;
+  onSuccess: () => void;
   initialData?: any;
   isEditing?: boolean;
 }
@@ -46,488 +38,104 @@ interface AudienciaFormProps {
 const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaFormProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
-  const [selectedUnit, setSelectedUnit] = useState<string>("");
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<AudienciaFormData>({
+    resolver: zodResolver(audienciaSchema),
     defaultValues: {
-      defendant_name: "",
-      defendant_document: "",
-      process_number: "",
-      scheduled_date: undefined,
-      scheduled_time: "",
-      region_id: "",
-      prison_unit_id: "",
-      magistrate_id: "",
-      prosecutor_id: "",
-      defender_id: "",
-      police_officer_id: "",
-      observations: "",
-      virtual_room_url: "",
-      ...initialData,
+      defendant_name: initialData?.defendant_name || "",
+      defendant_document: initialData?.defendant_document || "",
+      process_number: initialData?.process_number || "",
+      scheduled_date: initialData?.scheduled_date || "",
+      scheduled_time: initialData?.scheduled_time || "",
+      region_id: initialData?.region_id || "",
+      prison_unit_id: initialData?.prison_unit_id || "",
+      magistrate_id: initialData?.magistrate_id || "",
+      prosecutor_id: initialData?.prosecutor_id || "",
+      defender_id: initialData?.defender_id || "",
+      virtual_room_url: initialData?.virtual_room_url || "",
+      observations: initialData?.observations || "",
     },
   });
 
-  // Fetch regions
-  const { data: regions } = useQuery({
-    queryKey: ["regions"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("regions")
-        .select("*")
-        .order("name");
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Watch dos campos de região e data para filtrar plantonistas
+  const selectedRegionId = form.watch("region_id");
+  const selectedDate = form.watch("scheduled_date");
 
-  // Fetch prison units
-  const { data: prisonUnits } = useQuery({
-    queryKey: ["prisonUnits"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("prison_units_extended")
-        .select("*")
-        .order("name");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Fetch available time slots based on selected date and unit
-  const { data: availableSlots } = useQuery({
-    queryKey: ["availableSlots", selectedDate, selectedUnit],
-    queryFn: async () => {
-      if (!selectedDate || !selectedUnit) return [];
+  const mutation = useMutation({
+    mutationFn: async (data: AudienciaFormData) => {
+      console.log("Dados sendo enviados:", data);
       
-      const { data, error } = await supabase
-        .from("prison_unit_slots")
-        .select("time")
-        .eq("prison_unit_id", selectedUnit)
-        .eq("date", format(selectedDate, "yyyy-MM-dd"))
-        .eq("is_available", true)
-        .order("time");
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!selectedDate && !!selectedUnit,
-  });
-
-  // Fetch magistrates, prosecutors, defenders
-  const { data: magistrates } = useQuery({
-    queryKey: ["magistrates"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("magistrates")
-        .select("*")
-        .eq("active", true)
-        .order("name");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: prosecutors } = useQuery({
-    queryKey: ["prosecutors"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("prosecutors")
-        .select("*")
-        .eq("active", true)
-        .order("name");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: defenders } = useQuery({
-    queryKey: ["defenders"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("defenders")
-        .select("*")
-        .eq("active", true)
-        .order("name");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Watch for date and unit changes
-  useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name === "scheduled_date") {
-        setSelectedDate(value.scheduled_date);
-        form.setValue("scheduled_time", ""); // Reset time when date changes
-      }
-      if (name === "prison_unit_id") {
-        setSelectedUnit(value.prison_unit_id || "");
-        form.setValue("scheduled_time", ""); // Reset time when unit changes
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form]);
-
-  // Generate slots for future dates when a unit is selected
-  const generateSlotsForUnit = async (unitId: string) => {
-    try {
-      await supabase.rpc("generate_daily_slots_for_unit", {
-        unit_id: unitId,
-        slot_date: format(new Date(), "yyyy-MM-dd"),
-      });
-      
-      // Generate for next 30 days
-      for (let i = 1; i <= 30; i++) {
-        const futureDate = addDays(new Date(), i);
-        await supabase.rpc("generate_daily_slots_for_unit", {
-          unit_id: unitId,
-          slot_date: format(futureDate, "yyyy-MM-dd"),
-        });
-      }
-    } catch (error) {
-      console.error("Erro ao gerar slots:", error);
-    }
-  };
-
-  const onSubmit = async (data: FormData) => {
-    try {
-      const audienceData = {
-        defendant_name: data.defendant_name,
-        defendant_document: data.defendant_document || null,
-        process_number: data.process_number,
-        scheduled_date: format(data.scheduled_date, "yyyy-MM-dd"),
-        scheduled_time: data.scheduled_time,
-        region_id: data.region_id,
-        prison_unit_id: data.prison_unit_id,
-        magistrate_id: data.magistrate_id || null,
-        prosecutor_id: data.prosecutor_id || null,
-        defender_id: data.defender_id || null,
-        police_officer_id: data.police_officer_id || null,
-        observations: data.observations || null,
-        virtual_room_url: data.virtual_room_url || null,
-      };
-
       if (isEditing && initialData?.id) {
-        const { error } = await supabase
+        const { data: result, error } = await supabase
           .from("audiences")
-          .update(audienceData)
-          .eq("id", initialData.id);
-
+          .update(data)
+          .eq("id", initialData.id)
+          .select()
+          .single();
+        
         if (error) throw error;
-        toast({
-          title: "Sucesso",
-          description: "Audiência atualizada com sucesso!",
-        });
+        return result;
       } else {
-        const { error } = await supabase
+        const { data: result, error } = await supabase
           .from("audiences")
-          .insert(audienceData);
-
+          .insert([data])
+          .select()
+          .single();
+        
         if (error) throw error;
-        toast({
-          title: "Sucesso",
-          description: "Audiência agendada com sucesso!",
-        });
+        return result;
       }
-
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["audiences"] });
-      queryClient.invalidateQueries({ queryKey: ["availableSlots"] });
-      form.reset();
-      onSuccess?.();
-    } catch (error: any) {
+      toast({
+        title: "Sucesso",
+        description: isEditing ? "Audiência atualizada com sucesso!" : "Audiência criada com sucesso!",
+      });
+      onSuccess();
+    },
+    onError: (error: any) => {
+      console.error("Erro ao salvar audiência:", error);
       toast({
         title: "Erro",
         description: error.message || "Erro ao salvar audiência",
         variant: "destructive",
       });
-    }
+    },
+  });
+
+  const onSubmit = (data: AudienciaFormData) => {
+    console.log("Formulário submetido com dados:", data);
+    mutation.mutate(data);
   };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="defendant_name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nome do Réu</FormLabel>
-                <FormControl>
-                  <Input placeholder="Nome completo do réu" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Informações Básicas</h3>
+            <AudienciaBasicInfo form={form} />
+          </div>
+          
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Data e Horário</h3>
+            <AudienciaDateTime form={form} />
+          </div>
+        </div>
 
-          <FormField
-            control={form.control}
-            name="defendant_document"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>CPF/RG</FormLabel>
-                <FormControl>
-                  <Input placeholder="Documento do réu" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="process_number"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Número do Processo</FormLabel>
-                <FormControl>
-                  <Input placeholder="0000000-00.0000.0.00.0000" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="region_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Central de Plantão</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a central" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {regions?.map((region) => (
-                      <SelectItem key={region.id} value={region.id}>
-                        {region.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="prison_unit_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Unidade Prisional</FormLabel>
-                <Select 
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    generateSlotsForUnit(value);
-                  }} 
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a unidade" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {prisonUnits?.map((unit) => (
-                      <SelectItem key={unit.id} value={unit.id}>
-                        {unit.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="scheduled_date"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Data da Audiência</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "dd/MM/yyyy", { locale: pt })
-                        ) : (
-                          <span>Selecione a data</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) => date < new Date()}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="scheduled_time"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Horário</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o horário" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {availableSlots?.map((slot) => (
-                      <SelectItem key={slot.time} value={slot.time}>
-                        {slot.time.substring(0, 5)}
-                      </SelectItem>
-                    ))}
-                    {(!availableSlots || availableSlots.length === 0) && selectedDate && selectedUnit && (
-                      <div className="px-2 py-1.5 text-sm text-gray-500">
-                        Nenhum horário disponível
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="magistrate_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Magistrado</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o magistrado" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {magistrates?.map((magistrate) => (
-                      <SelectItem key={magistrate.id} value={magistrate.id}>
-                        {magistrate.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="prosecutor_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Promotor</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o promotor" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {prosecutors?.map((prosecutor) => (
-                      <SelectItem key={prosecutor.id} value={prosecutor.id}>
-                        {prosecutor.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="defender_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Defensor</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o defensor" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {defenders?.map((defender) => (
-                      <SelectItem key={defender.id} value={defender.id}>
-                        {defender.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="virtual_room_url"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>URL da Sala Virtual</FormLabel>
-                <FormControl>
-                  <Input placeholder="https://..." {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Plantonistas</h3>
+          <RegionBasedAssignments 
+            form={form} 
+            selectedRegionId={selectedRegionId} 
+            selectedDate={selectedDate} 
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="observations"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Observações</FormLabel>
-              <FormControl>
-                <Textarea 
-                  placeholder="Observações adicionais sobre a audiência..."
-                  className="min-h-[100px]"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="flex gap-4">
-          <Button type="submit" className="flex-1">
-            {isEditing ? "Atualizar Audiência" : "Agendar Audiência"}
+        <div className="flex justify-end space-x-4">
+          <Button type="submit" disabled={mutation.isPending}>
+            {mutation.isPending ? "Salvando..." : isEditing ? "Atualizar" : "Criar Audiência"}
           </Button>
         </div>
       </form>
