@@ -50,7 +50,7 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
   });
 
   // Fetch regions (centrais)
-  const { data: regions } = useQuery({
+  const { data: regions, isLoading: regionsLoading } = useQuery({
     queryKey: ['regions'],
     queryFn: async () => {
       console.log('Fetching regions...');
@@ -67,29 +67,30 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
     },
   });
 
-  // Fetch prison units based on selected region - ATUALIZADO para usar prison_units_extended
-  const { data: prisonUnits } = useQuery({
-    queryKey: ['prison_units_extended', formData.region_id],
+  // Fetch ALL prison units initially, then filter by region - CORRIGIDO
+  const { data: allPrisonUnits, isLoading: unitsLoading } = useQuery({
+    queryKey: ['prison_units_extended'],
     queryFn: async () => {
-      if (!formData.region_id) {
-        console.log('No region selected, returning empty array');
-        return [];
-      }
-      console.log('Fetching prison units for region:', formData.region_id);
+      console.log('Fetching all prison units...');
       const { data, error } = await supabase
         .from('prison_units_extended')
         .select('*')
-        .eq('region_id', formData.region_id)
         .order('name');
       if (error) {
         console.error('Error fetching prison units:', error);
         throw error;
       }
-      console.log('Prison units fetched:', data);
+      console.log('All prison units fetched:', data?.length, 'units');
       return data;
     },
-    enabled: !!formData.region_id,
   });
+
+  // Filter prison units based on selected region
+  const prisonUnits = formData.region_id 
+    ? allPrisonUnits?.filter(unit => unit.region_id === formData.region_id)
+    : allPrisonUnits || [];
+
+  console.log('Filtered prison units for region', formData.region_id, ':', prisonUnits?.length);
 
   // Fetch available time slots for selected unit and date
   const { data: availableSlots } = useQuery({
@@ -349,11 +350,17 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
                     <SelectValue placeholder="Selecione uma central ou região" />
                   </SelectTrigger>
                   <SelectContent>
-                    {regions?.map((region) => (
-                      <SelectItem key={region.id} value={region.id}>
-                        {region.name}
-                      </SelectItem>
-                    ))}
+                    {regionsLoading ? (
+                      <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                    ) : regions && regions.length > 0 ? (
+                      regions.map((region) => (
+                        <SelectItem key={region.id} value={region.id}>
+                          {region.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="empty" disabled>Nenhuma região encontrada</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
                 {regions && regions.length === 0 && (
@@ -366,43 +373,56 @@ const AudienciaForm = ({ isOpen, onClose, audienciaId }: AudienciaFormProps) => 
           </Card>
 
           {/* Seção 2: Unidade Prisional */}
-          {formData.region_id && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">2. Unidade Prisional</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div>
-                  <Label htmlFor="prison_unit_id">Unidade Prisional *</Label>
-                  <Select 
-                    value={formData.prison_unit_id} 
-                    onValueChange={(value) => handleInputChange('prison_unit_id', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a unidade prisional" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {prisonUnits?.map((unit) => (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">2. Unidade Prisional</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div>
+                <Label htmlFor="prison_unit_id">Unidade Prisional *</Label>
+                <Select 
+                  value={formData.prison_unit_id} 
+                  onValueChange={(value) => handleInputChange('prison_unit_id', value)}
+                  disabled={!formData.region_id}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={
+                      !formData.region_id 
+                        ? "Selecione uma região primeiro" 
+                        : unitsLoading 
+                        ? "Carregando..." 
+                        : "Selecione a unidade prisional"
+                    } />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unitsLoading ? (
+                      <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                    ) : prisonUnits && prisonUnits.length > 0 ? (
+                      prisonUnits.map((unit) => (
                         <SelectItem key={unit.id} value={unit.id}>
                           {unit.name}
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {prisonUnits && prisonUnits.length === 0 && (
-                    <p className="text-sm text-amber-600 mt-2">
-                      Nenhuma unidade prisional encontrada para esta região. Cadastre unidades primeiro.
-                    </p>
-                  )}
-                  {prisonUnits && prisonUnits.length > 0 && (
-                    <p className="text-sm text-gray-600 mt-2">
-                      {prisonUnits.length} unidade{prisonUnits.length !== 1 ? 's' : ''} encontrada{prisonUnits.length !== 1 ? 's' : ''} para esta região.
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                      ))
+                    ) : formData.region_id ? (
+                      <SelectItem value="empty" disabled>Nenhuma unidade encontrada para esta região</SelectItem>
+                    ) : (
+                      <SelectItem value="no-region" disabled>Selecione uma região primeiro</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                {formData.region_id && prisonUnits && prisonUnits.length === 0 && (
+                  <p className="text-sm text-amber-600 mt-2">
+                    Nenhuma unidade prisional encontrada para esta região. Cadastre unidades primeiro.
+                  </p>
+                )}
+                {formData.region_id && prisonUnits && prisonUnits.length > 0 && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    {prisonUnits.length} unidade{prisonUnits.length !== 1 ? 's' : ''} encontrada{prisonUnits.length !== 1 ? 's' : ''} para esta região.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Seção 3: Data */}
           {formData.prison_unit_id && (
