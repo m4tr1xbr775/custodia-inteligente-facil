@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Calendar, Plus, Search, Filter, ExternalLink, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -180,7 +179,7 @@ const Audiencias = () => {
 
       {/* Audiências Agrupadas por Região */}
       <div className="space-y-6">
-        {Object.entries(audiencesByRegion).map(([regionId, groupData]) => (
+        {Object.entries(audiencesByRegion).map(([regionId, groupData]: [string, { region: any; audiences: any[] }]) => (
           <Card key={regionId} className={`${getRegionIcon(groupData.region?.type)} border-2`}>
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center space-x-3">
