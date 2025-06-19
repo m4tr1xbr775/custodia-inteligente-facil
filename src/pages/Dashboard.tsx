@@ -252,12 +252,13 @@ const Dashboard = () => {
                 </div>
               ) : (
                 todayAudiences.map((audience) => {
-                  // Safely extract prison unit name
+                  // Safely extract prison unit name with proper typing
                   const prisonUnitName = (() => {
-                    if (Array.isArray(audience.prison_units_extended)) {
-                      return audience.prison_units_extended[0]?.name || 'Unidade não definida';
-                    } else if (audience.prison_units_extended && typeof audience.prison_units_extended === 'object') {
-                      return audience.prison_units_extended.name || 'Unidade não definida';
+                    const prisonUnit = audience.prison_units_extended as any;
+                    if (Array.isArray(prisonUnit)) {
+                      return prisonUnit[0]?.name || 'Unidade não definida';
+                    } else if (prisonUnit && typeof prisonUnit === 'object' && 'name' in prisonUnit) {
+                      return prisonUnit.name || 'Unidade não definida';
                     }
                     return 'Unidade não definida';
                   })();
