@@ -25,7 +25,7 @@ interface ScheduleAssignmentSelectorProps {
 }
 
 const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: ScheduleAssignmentSelectorProps) => {
-  // Buscar schedule_assignments disponíveis (não filtrado por data ainda)
+  // Buscar schedule_assignments disponíveis
   const { data: scheduleAssignments = [] } = useQuery({
     queryKey: ['schedule-assignments-available'],
     queryFn: async () => {
@@ -37,10 +37,16 @@ const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: 
           *,
           schedules!schedule_id(id, title, description),
           serventias!serventia_id(id, name, type),
-          magistrates!magistrate_id(id, name, virtual_room_url, judicial_assistant_id),
+          magistrates!magistrate_id(
+            id, 
+            name, 
+            virtual_room_url, 
+            judicial_assistant_id,
+            judicial_assistant:contacts!judicial_assistant_id(id, name, phone)
+          ),
           prosecutors!prosecutor_id(id, name),
           defenders!defender_id(id, name),
-          judicial_assistants:contacts!judicial_assistant_id(id, name, phone)
+          judicial_assistant:contacts!judicial_assistant_id(id, name, phone)
         `)
         .order('date', { ascending: false })
         .limit(50);
@@ -66,7 +72,15 @@ const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: 
       form.setValue("magistrate_id", selectedAssignment.magistrate_id);
       form.setValue("prosecutor_id", selectedAssignment.prosecutor_id);
       form.setValue("defender_id", selectedAssignment.defender_id);
-      form.setValue("judicial_assistant_id", selectedAssignment.judicial_assistant_id);
+      
+      // Preencher assessor judicial automaticamente
+      if (selectedAssignment.judicial_assistant_id) {
+        console.log("Preenchendo assessor judicial automaticamente:", selectedAssignment.judicial_assistant_id);
+        form.setValue("judicial_assistant_id", selectedAssignment.judicial_assistant_id);
+      } else if (selectedAssignment.magistrates?.judicial_assistant_id) {
+        console.log("Preenchendo assessor judicial do magistrado:", selectedAssignment.magistrates.judicial_assistant_id);
+        form.setValue("judicial_assistant_id", selectedAssignment.magistrates.judicial_assistant_id);
+      }
       
       // Preencher virtual_room_url do magistrate
       if (selectedAssignment.magistrates?.virtual_room_url) {

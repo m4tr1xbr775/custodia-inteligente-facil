@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit, Trash2, Calendar, Clock, MapPin } from "lucide-react";
+import { Plus, Edit, Trash2, Calendar, Clock, MapPin, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -42,17 +42,22 @@ interface Assignment {
   shift: string;
   created_at: string;
   updated_at: string;
+  judicial_assistant_id?: string;
   serventia?: {
     name: string;
     code: string;
   };
   magistrate?: {
     name: string;
+    judicial_assistant_id?: string;
   };
   prosecutor?: {
     name: string;
   };
   defender?: {
+    name: string;
+  };
+  judicial_assistant?: {
     name: string;
   };
 }
@@ -61,13 +66,14 @@ const AssignmentManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string>("");
+  const [selectedMagistrateId, setSelectedMagistrateId] = useState<string>("");
   const [formData, setFormData] = useState({
     serventia_id: "",
     magistrate_id: "none",
     prosecutor_id: "none",
     defender_id: "none",
-    date: "",
     shift: "diurno",
+    judicial_assistant_id: "none",
   });
 
   const { toast } = useToast();
@@ -102,13 +108,19 @@ const AssignmentManagement = () => {
     },
   });
 
-  // Fetch magistrates
+  // Fetch magistrates with judicial assistant info
   const { data: magistrates = [] } = useQuery({
     queryKey: ['magistrates'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('magistrates')
-        .select('*')
+        .select(`
+          *,
+          judicial_assistant:contacts!judicial_assistant_id(
+            id,
+            name
+          )
+        `)
         .eq('active', true)
         .order('name');
       
@@ -158,9 +170,10 @@ const AssignmentManagement = () => {
         .select(`
           *,
           serventia:serventias(name, code),
-          magistrate:magistrates(name),
+          magistrate:magistrates(name, judicial_assistant_id),
           prosecutor:prosecutors(name),
-          defender:defenders(name)
+          defender:defenders(name),
+          judicial_assistant:contacts!judicial_assistant_id(name)
         `)
         .eq('schedule_id', selectedScheduleId)
         .order('date');
@@ -171,6 +184,47 @@ const AssignmentManagement = () => {
     enabled: !!selectedScheduleId,
   });
 
+  // Handle magistrate selection and auto-fill judicial assistant
+  const handleMagistrateChange = (magistrateId: string) => {
+    console.log("Magistrado selecionado:", magistrateId);
+    setSelectedMagistrateId(magistrateId);
+    
+    if (magistrateId === "none") {
+      setFormData(prev => ({
+        ...prev,
+        magistrate_id: "none",
+        judicial_assistant_id: "none"
+      }));
+      return;
+    }
+
+    const selectedMagistrate = magistrates.find(m => m.id === magistrateId);
+    console.log("Dados do magistrado:", selectedMagistrate);
+    
+    if (selectedMagistrate?.judicial_assistant_id) {
+      console.log("Preenchendo assessor automaticamente:", selectedMagistrate.judicial_assistant_id);
+      setFormData(prev => ({
+        ...prev,
+        magistrate_id: magistrateId,
+        judicial_assistant_id: selectedMagistrate.judicial_assistant_id
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        magistrate_id: magistrateId,
+        judicial_assistant_id: "none"
+      }));
+    }
+  };
+
+  // Get selected magistrate's judicial assistant name for display
+  const getSelectedJudicialAssistantName = () => {
+    if (formData.judicial_assistant_id === "none" || !formData.judicial_assistant_id) return null;
+    
+    const selectedMagistrate = magistrates.find(m => m.id === selectedMagistrateId);
+    return selectedMagistrate?.judicial_assistant?.name || null;
+  };
+
   // Create assignment mutation
   const createMutation = useMutation({
     mutationFn: async (assignmentData: any) => {
@@ -179,6 +233,7 @@ const AssignmentManagement = () => {
       if (cleanData.magistrate_id === "none") delete cleanData.magistrate_id;
       if (cleanData.prosecutor_id === "none") delete cleanData.prosecutor_id;
       if (cleanData.defender_id === "none") delete cleanData.defender_id;
+      if (cleanData.judicial_assistant_id === "none") delete cleanData.judicial_assistant_id;
 
       const { data, error } = await supabase
         .from('schedule_assignments')
@@ -214,6 +269,7 @@ const AssignmentManagement = () => {
       if (cleanData.magistrate_id === "none") cleanData.magistrate_id = null;
       if (cleanData.prosecutor_id === "none") cleanData.prosecutor_id = null;
       if (cleanData.defender_id === "none") cleanData.defender_id = null;
+      if (cleanData.judicial_assistant_id === "none") cleanData.judicial_assistant_id = null;
 
       const { data, error } = await supabase
         .from('schedule_assignments')
@@ -271,10 +327,10 @@ const AssignmentManagement = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.serventia_id || !formData.date) {
+    if (!formData.serventia_id) {
       toast({
         title: "Erro",
-        description: "Serventia e data são obrigatórios",
+        description: "Serventia é obrigatória",
         variant: "destructive",
       });
       return;
@@ -296,13 +352,14 @@ const AssignmentManagement = () => {
 
   const handleEdit = (assignment: Assignment) => {
     setEditingAssignment(assignment);
+    setSelectedMagistrateId(assignment.magistrate_id || "");
     setFormData({
       serventia_id: assignment.serventia_id,
       magistrate_id: assignment.magistrate_id || "none",
       prosecutor_id: assignment.prosecutor_id || "none",
       defender_id: assignment.defender_id || "none",
-      date: assignment.date,
       shift: assignment.shift,
+      judicial_assistant_id: assignment.judicial_assistant_id || "none",
     });
     setIsDialogOpen(true);
   };
@@ -310,13 +367,14 @@ const AssignmentManagement = () => {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingAssignment(null);
+    setSelectedMagistrateId("");
     setFormData({
       serventia_id: "",
       magistrate_id: "none",
       prosecutor_id: "none",
       defender_id: "none",
-      date: "",
       shift: "diurno",
+      judicial_assistant_id: "none",
     });
   };
 
@@ -326,6 +384,7 @@ const AssignmentManagement = () => {
     }
   };
 
+  // Helper function to get shift badge color
   const getShiftBadgeColor = (shift: string) => {
     switch (shift) {
       case "diurno":
@@ -339,6 +398,7 @@ const AssignmentManagement = () => {
     }
   };
 
+  // Helper function to get shift label
   const getShiftLabel = (shift: string) => {
     switch (shift) {
       case "diurno":
@@ -420,17 +480,6 @@ const AssignmentManagement = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="date">Data *</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => handleInputChange("date", e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div>
                     <Label htmlFor="shift">Turno</Label>
                     <Select value={formData.shift} onValueChange={(value) => handleInputChange("shift", value)}>
                       <SelectTrigger>
@@ -446,7 +495,7 @@ const AssignmentManagement = () => {
 
                   <div>
                     <Label htmlFor="magistrate_id">Magistrado</Label>
-                    <Select value={formData.magistrate_id} onValueChange={(value) => handleInputChange("magistrate_id", value)}>
+                    <Select value={formData.magistrate_id} onValueChange={handleMagistrateChange}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione um magistrado" />
                       </SelectTrigger>
@@ -459,6 +508,14 @@ const AssignmentManagement = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {getSelectedJudicialAssistantName() && (
+                      <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                        <div className="flex items-center space-x-2 text-sm text-blue-800">
+                          <User className="h-4 w-4" />
+                          <span>Assessor: {getSelectedJudicialAssistantName()}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -526,6 +583,7 @@ const AssignmentManagement = () => {
                       <TableHead>Serventia</TableHead>
                       <TableHead>Turno</TableHead>
                       <TableHead>Magistrado</TableHead>
+                      <TableHead>Assessor</TableHead>
                       <TableHead>Promotor</TableHead>
                       <TableHead>Advogado</TableHead>
                       <TableHead>Ações</TableHead>
@@ -534,7 +592,7 @@ const AssignmentManagement = () => {
                   <TableBody>
                     {assignments.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center text-gray-500">
+                        <TableCell colSpan={8} className="text-center text-gray-500">
                           Nenhuma atribuição encontrada
                         </TableCell>
                       </TableRow>
@@ -556,6 +614,14 @@ const AssignmentManagement = () => {
                             </Badge>
                           </TableCell>
                           <TableCell>{assignment.magistrate?.name || "-"}</TableCell>
+                          <TableCell>
+                            {assignment.judicial_assistant?.name ? (
+                              <div className="flex items-center space-x-1">
+                                <User className="h-3 w-3 text-blue-600" />
+                                <span>{assignment.judicial_assistant.name}</span>
+                              </div>
+                            ) : "-"}
+                          </TableCell>
                           <TableCell>{assignment.prosecutor?.name || "-"}</TableCell>
                           <TableCell>{assignment.defender?.name || "-"}</TableCell>
                           <TableCell>
