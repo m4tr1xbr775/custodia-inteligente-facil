@@ -67,7 +67,7 @@ const RegionBasedAssignments = ({ form, selectedScheduleId, selectedDate }: Regi
           magistrates(id, name),
           prosecutors(id, name),
           defenders(id, name),
-          regions(id, name)
+          serventias(id, name)
         `)
         .eq('schedule_id', selectedScheduleId)
         .eq('date', selectedDate);
@@ -166,7 +166,7 @@ const RegionBasedAssignments = ({ form, selectedScheduleId, selectedDate }: Regi
                       .filter(a => a.magistrates && a.magistrates.id)
                       .map((assignment) => (
                         <SelectItem key={assignment.magistrates.id} value={assignment.magistrates.id}>
-                          {assignment.magistrates.name} - {assignment.regions?.name}
+                          {assignment.magistrates.name} - {assignment.serventias?.name}
                         </SelectItem>
                       ))}
                   </SelectContent>
@@ -194,7 +194,7 @@ const RegionBasedAssignments = ({ form, selectedScheduleId, selectedDate }: Regi
                       .filter(a => a.prosecutors && a.prosecutors.id)
                       .map((assignment) => (
                         <SelectItem key={assignment.prosecutors.id} value={assignment.prosecutors.id}>
-                          {assignment.prosecutors.name} - {assignment.regions?.name}
+                          {assignment.prosecutors.name} - {assignment.serventias?.name}
                         </SelectItem>
                       ))}
                   </SelectContent>
@@ -222,7 +222,7 @@ const RegionBasedAssignments = ({ form, selectedScheduleId, selectedDate }: Regi
                       .filter(a => a.defenders && a.defenders.id)
                       .map((assignment) => (
                         <SelectItem key={assignment.defenders.id} value={assignment.defenders.id}>
-                          {assignment.defenders.name} - {assignment.regions?.name}
+                          {assignment.defenders.name} - {assignment.serventias?.name}
                         </SelectItem>
                       ))}
                   </SelectContent>

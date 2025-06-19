@@ -47,7 +47,7 @@ interface Schedule {
 interface Assignment {
   id: string;
   schedule_id: string;
-  region_id: string;
+  serventia_id: string;
   magistrate_id?: string;
   prosecutor_id?: string;
   defender_id?: string;
@@ -55,7 +55,7 @@ interface Assignment {
   shift: string;
   created_at: string;
   updated_at: string;
-  region?: {
+  serventia?: {
     name: string;
     code: string;
   };
@@ -83,7 +83,7 @@ const ScheduleManagement = () => {
     status: "rascunho",
   });
   const [assignmentFormData, setAssignmentFormData] = useState({
-    region_id: "",
+    serventia_id: "",
     magistrate_id: "none",
     prosecutor_id: "none",
     defender_id: "none",
@@ -94,12 +94,12 @@ const ScheduleManagement = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch regions (Serventias)
-  const { data: regions = [] } = useQuery({
-    queryKey: ['regions'],
+  // Fetch serventias
+  const { data: serventias = [] } = useQuery({
+    queryKey: ['serventias'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('regions')
+        .from('serventias')
         .select('*')
         .order('name');
       
@@ -178,9 +178,9 @@ const ScheduleManagement = () => {
     mutationFn: async (scheduleData: any) => {
       console.log('Creating new schedule:', scheduleData);
       
-      // Get selected region name for title
-      const selectedRegion = regions.find(r => r.id === scheduleData.serventia_id);
-      const title = selectedRegion ? `${selectedRegion.name} - ${selectedRegion.code}` : 'Nova Escala';
+      // Get selected serventia name for title
+      const selectedServentia = serventias.find(s => s.id === scheduleData.serventia_id);
+      const title = selectedServentia ? `${selectedServentia.name} - ${selectedServentia.code}` : 'Nova Escala';
       
       const dataToInsert = {
         title,
@@ -226,9 +226,9 @@ const ScheduleManagement = () => {
     mutationFn: async ({ id, scheduleData }: { id: string; scheduleData: any }) => {
       console.log('Updating schedule with id:', id, scheduleData);
       
-      // Get selected region name for title
-      const selectedRegion = regions.find(r => r.id === scheduleData.serventia_id);
-      const title = selectedRegion ? `${selectedRegion.name} - ${selectedRegion.code}` : scheduleData.title || 'Escala Atualizada';
+      // Get selected serventia name for title
+      const selectedServentia = serventias.find(s => s.id === scheduleData.serventia_id);
+      const title = selectedServentia ? `${selectedServentia.name} - ${selectedServentia.code}` : scheduleData.title || 'Escala Atualizada';
       
       const dataToUpdate = {
         title,
@@ -368,10 +368,10 @@ const ScheduleManagement = () => {
   const handleAssignmentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!assignmentFormData.region_id || !assignmentFormData.date) {
+    if (!assignmentFormData.serventia_id || !assignmentFormData.date) {
       toast({
         title: "Erro",
-        description: "Região e data são obrigatórios",
+        description: "Serventia e data são obrigatórios",
         variant: "destructive",
       });
       return;
@@ -396,10 +396,10 @@ const ScheduleManagement = () => {
 
   const handleEdit = (schedule: Schedule) => {
     setEditingSchedule(schedule);
-    // Try to find the region that matches the title
-    const matchedRegion = regions.find(r => schedule.title.includes(r.name));
+    // Try to find the serventia that matches the title
+    const matchedServentia = serventias.find(s => schedule.title.includes(s.name));
     setFormData({
-      serventia_id: matchedRegion?.id || "",
+      serventia_id: matchedServentia?.id || "",
       description: schedule.description || "",
       start_date: schedule.start_date,
       end_date: schedule.end_date,
@@ -422,10 +422,10 @@ const ScheduleManagement = () => {
 
   const handleManageAssignments = (schedule: Schedule) => {
     setSelectedScheduleForAssignment(schedule);
-    // Find the region that matches the schedule title to pre-fill serventia
-    const matchedRegion = regions.find(r => schedule.title.includes(r.name));
+    // Find the serventia that matches the schedule title to pre-fill serventia
+    const matchedServentia = serventias.find(s => schedule.title.includes(s.name));
     setAssignmentFormData({
-      region_id: matchedRegion?.id || "",
+      serventia_id: matchedServentia?.id || "",
       magistrate_id: "none",
       prosecutor_id: "none",
       defender_id: "none",
@@ -439,7 +439,7 @@ const ScheduleManagement = () => {
     setIsAssignmentDialogOpen(false);
     setSelectedScheduleForAssignment(null);
     setAssignmentFormData({
-      region_id: "",
+      serventia_id: "",
       magistrate_id: "none",
       prosecutor_id: "none",
       defender_id: "none",
@@ -500,9 +500,9 @@ const ScheduleManagement = () => {
                     <SelectValue placeholder="Selecione uma serventia" />
                   </SelectTrigger>
                   <SelectContent>
-                    {regions.map((region) => (
-                      <SelectItem key={region.id} value={region.id}>
-                        {region.name} ({region.code})
+                    {serventias.map((serventia) => (
+                      <SelectItem key={serventia.id} value={serventia.id}>
+                        {serventia.name} ({serventia.code})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -579,15 +579,15 @@ const ScheduleManagement = () => {
           </DialogHeader>
           <form onSubmit={handleAssignmentSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="region_id">Serventia *</Label>
-              <Select value={assignmentFormData.region_id} onValueChange={(value) => handleAssignmentInputChange("region_id", value)}>
+              <Label htmlFor="serventia_id">Serventia *</Label>
+              <Select value={assignmentFormData.serventia_id} onValueChange={(value) => handleAssignmentInputChange("serventia_id", value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma serventia" />
                 </SelectTrigger>
                 <SelectContent>
-                  {regions.map((region) => (
-                    <SelectItem key={region.id} value={region.id}>
-                      {region.name} ({region.code})
+                  {serventias.map((serventia) => (
+                    <SelectItem key={serventia.id} value={serventia.id}>
+                      {serventia.name} ({serventia.code})
                     </SelectItem>
                   ))}
                 </SelectContent>

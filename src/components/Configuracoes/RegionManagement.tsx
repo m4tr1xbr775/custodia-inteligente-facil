@@ -42,7 +42,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-interface Region {
+interface Serventia {
   id: string;
   name: string;
   code: string;
@@ -55,9 +55,9 @@ interface Region {
 
 const RegionManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingRegion, setEditingRegion] = useState<Region | null>(null);
+  const [editingServentia, setEditingServentia] = useState<Serventia | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
-  const [regionToDelete, setRegionToDelete] = useState<string | null>(null);
+  const [serventiaToDelete, setServentiaToDelete] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     code: "",
@@ -69,57 +69,57 @@ const RegionManagement = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch regions from Supabase
-  const { data: regions = [], isLoading } = useQuery({
-    queryKey: ['regions'],
+  // Fetch serventias from Supabase
+  const { data: serventias = [], isLoading } = useQuery({
+    queryKey: ['serventias'],
     queryFn: async () => {
-      console.log('Fetching regions from database');
+      console.log('Fetching serventias from database');
       const { data, error } = await supabase
-        .from('regions')
+        .from('serventias')
         .select('*')
         .order('name');
       
       if (error) {
-        console.error('Error fetching regions:', error);
+        console.error('Error fetching serventias:', error);
         throw error;
       }
       
-      console.log('Fetched regions:', data);
-      return data as Region[];
+      console.log('Fetched serventias:', data);
+      return data as Serventia[];
     },
   });
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: async (regionData: any) => {
-      console.log('Creating new region:', regionData);
+    mutationFn: async (serventiaData: any) => {
+      console.log('Creating new serventia:', serventiaData);
       const { data, error } = await supabase
-        .from('regions')
-        .insert([regionData])
+        .from('serventias')
+        .insert([serventiaData])
         .select()
         .single();
       
       if (error) {
-        console.error('Error creating region:', error);
+        console.error('Error creating serventia:', error);
         throw error;
       }
       
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['regions'] });
+      queryClient.invalidateQueries({ queryKey: ['serventias'] });
       queryClient.invalidateQueries({ queryKey: ['custody-centers'] });
       toast({
         title: "Sucesso",
-        description: "Região criada com sucesso!",
+        description: "Serventia criada com sucesso!",
       });
       handleCloseDialog();
     },
     onError: (error: any) => {
-      console.error('Error creating region:', error);
+      console.error('Error creating serventia:', error);
       toast({
         title: "Erro",
-        description: `Erro ao criar região: ${error.message}`,
+        description: `Erro ao criar serventia: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -127,51 +127,51 @@ const RegionManagement = () => {
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: async ({ id, regionData }: { id: string; regionData: any }) => {
-      console.log('Updating region with id:', id, regionData);
+    mutationFn: async ({ id, serventiaData }: { id: string; serventiaData: any }) => {
+      console.log('Updating serventia with id:', id, serventiaData);
       const { data, error } = await supabase
-        .from('regions')
-        .update(regionData)
+        .from('serventias')
+        .update(serventiaData)
         .eq('id', id)
         .select()
         .single();
       
       if (error) {
-        console.error('Error updating region:', error);
+        console.error('Error updating serventia:', error);
         throw error;
       }
       
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['regions'] });
+      queryClient.invalidateQueries({ queryKey: ['serventias'] });
       queryClient.invalidateQueries({ queryKey: ['custody-centers'] });
       toast({
         title: "Sucesso",
-        description: "Região atualizada com sucesso!",
+        description: "Serventia atualizada com sucesso!",
       });
       handleCloseDialog();
     },
     onError: (error: any) => {
-      console.error('Error updating region:', error);
+      console.error('Error updating serventia:', error);
       toast({
         title: "Erro",
-        description: `Erro ao atualizar região: ${error.message}`,
+        description: `Erro ao atualizar serventia: ${error.message}`,
         variant: "destructive",
       });
     },
   });
 
-  // Check if region can be deleted
-  const checkRegionUsage = useMutation({
-    mutationFn: async (regionId: string) => {
-      console.log('Checking if region can be deleted:', regionId);
+  // Check if serventia can be deleted
+  const checkServentiaUsage = useMutation({
+    mutationFn: async (serventiaId: string) => {
+      console.log('Checking if serventia can be deleted:', serventiaId);
       
       // Check audiences
       const { data: audiences, error: audiencesError } = await supabase
         .from('audiences')
         .select('id')
-        .eq('region_id', regionId)
+        .eq('serventia_id', serventiaId)
         .limit(1);
       
       if (audiencesError) {
@@ -183,7 +183,6 @@ const RegionManagement = () => {
       const { data: contacts, error: contactsError } = await supabase
         .from('contacts')
         .select('id')
-        .eq('region_id', regionId)
         .limit(1);
       
       if (contactsError) {
@@ -195,7 +194,7 @@ const RegionManagement = () => {
       const { data: assignments, error: assignmentsError } = await supabase
         .from('schedule_assignments')
         .select('id')
-        .eq('region_id', regionId)
+        .eq('serventia_id', serventiaId)
         .limit(1);
       
       if (assignmentsError) {
@@ -209,7 +208,7 @@ const RegionManagement = () => {
         assignments: assignments && assignments.length > 0
       };
       
-      console.log('Region usage check result:', hasUsages);
+      console.log('Serventia usage check result:', hasUsages);
       return hasUsages;
     },
     onSuccess: (usages) => {
@@ -221,57 +220,57 @@ const RegionManagement = () => {
         
         toast({
           title: "Não é possível excluir",
-          description: `Esta região não pode ser removida pois está sendo utilizada em: ${usageMessages.join(', ')}.`,
+          description: `Esta serventia não pode ser removida pois está sendo utilizada em: ${usageMessages.join(', ')}.`,
           variant: "destructive",
         });
       } else {
         // Proceed with deletion
-        if (regionToDelete) {
-          deleteMutation.mutate(regionToDelete);
+        if (serventiaToDelete) {
+          deleteMutation.mutate(serventiaToDelete);
         }
       }
       setDeleteAlertOpen(false);
-      setRegionToDelete(null);
+      setServentiaToDelete(null);
     },
     onError: (error: any) => {
-      console.error('Error checking region usage:', error);
+      console.error('Error checking serventia usage:', error);
       toast({
         title: "Erro",
-        description: `Erro ao verificar uso da região: ${error.message}`,
+        description: `Erro ao verificar uso da serventia: ${error.message}`,
         variant: "destructive",
       });
       setDeleteAlertOpen(false);
-      setRegionToDelete(null);
+      setServentiaToDelete(null);
     },
   });
 
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      console.log('Deleting region with id:', id);
+      console.log('Deleting serventia with id:', id);
       const { error } = await supabase
-        .from('regions')
+        .from('serventias')
         .delete()
         .eq('id', id);
       
       if (error) {
-        console.error('Error deleting region:', error);
+        console.error('Error deleting serventia:', error);
         throw error;
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['regions'] });
+      queryClient.invalidateQueries({ queryKey: ['serventias'] });
       queryClient.invalidateQueries({ queryKey: ['custody-centers'] });
       toast({
         title: "Sucesso",
-        description: "Região removida com sucesso!",
+        description: "Serventia removida com sucesso!",
       });
     },
     onError: (error: any) => {
-      console.error('Error deleting region:', error);
+      console.error('Error deleting serventia:', error);
       toast({
         title: "Erro",
-        description: `Erro ao remover região: ${error.message}`,
+        description: `Erro ao remover serventia: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -289,10 +288,10 @@ const RegionManagement = () => {
       return;
     }
 
-    console.log("Region form submitted:", formData);
+    console.log("Serventia form submitted:", formData);
     
-    if (editingRegion) {
-      updateMutation.mutate({ id: editingRegion.id, regionData: formData });
+    if (editingServentia) {
+      updateMutation.mutate({ id: editingServentia.id, serventiaData: formData });
     } else {
       createMutation.mutate(formData);
     }
@@ -305,22 +304,22 @@ const RegionManagement = () => {
     }));
   };
 
-  const handleEdit = (region: Region) => {
-    console.log('Editing region:', region);
-    setEditingRegion(region);
+  const handleEdit = (serventia: Serventia) => {
+    console.log('Editing serventia:', serventia);
+    setEditingServentia(serventia);
     setFormData({
-      name: region.name,
-      code: region.code,
-      responsible: region.responsible || "",
-      phone: region.phone || "",
-      type: region.type,
+      name: serventia.name,
+      code: serventia.code,
+      responsible: serventia.responsible || "",
+      phone: serventia.phone || "",
+      type: serventia.type,
     });
     setIsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
-    setEditingRegion(null);
+    setEditingServentia(null);
     setFormData({
       name: "",
       code: "",
@@ -331,14 +330,14 @@ const RegionManagement = () => {
   };
 
   const handleDeleteClick = (id: string) => {
-    console.log('Delete clicked for region:', id);
-    setRegionToDelete(id);
+    console.log('Delete clicked for serventia:', id);
+    setServentiaToDelete(id);
     setDeleteAlertOpen(true);
   };
 
   const handleConfirmDelete = () => {
-    if (regionToDelete) {
-      checkRegionUsage.mutate(regionToDelete);
+    if (serventiaToDelete) {
+      checkServentiaUsage.mutate(serventiaToDelete);
     }
   };
 
@@ -363,28 +362,28 @@ const RegionManagement = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Gerenciar Regiões</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Gerenciar Serventias</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="flex items-center space-x-2" onClick={() => setEditingRegion(null)}>
+            <Button className="flex items-center space-x-2" onClick={() => setEditingServentia(null)}>
               <Plus className="h-4 w-4" />
-              <span>Adicionar Região</span>
+              <span>Adicionar Serventia</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>
-                {editingRegion ? "Editar Região" : "Adicionar Nova Região"}
+                {editingServentia ? "Editar Serventia" : "Adicionar Nova Serventia"}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="name">Nome da Região *</Label>
+                <Label htmlFor="name">Nome da Serventia *</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
-                  placeholder="Ex: Macrorregião 05"
+                  placeholder="Ex: Central de Custódia 01"
                   required
                 />
               </div>
@@ -394,7 +393,7 @@ const RegionManagement = () => {
                   id="code"
                   value={formData.code}
                   onChange={(e) => handleInputChange("code", e.target.value)}
-                  placeholder="Ex: MR05"
+                  placeholder="Ex: CC01"
                   required
                 />
               </div>
@@ -445,7 +444,7 @@ const RegionManagement = () => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <MapPin className="h-5 w-5 text-blue-600" />
-            <span>Regiões Cadastradas</span>
+            <span>Serventias Cadastradas</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -461,37 +460,37 @@ const RegionManagement = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {regions.length === 0 ? (
+              {serventias.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-gray-500">
-                    Nenhuma região encontrada
+                    Nenhuma serventia encontrada
                   </TableCell>
                 </TableRow>
               ) : (
-                regions.map((region) => (
-                  <TableRow key={region.id}>
-                    <TableCell className="font-medium">{region.name}</TableCell>
-                    <TableCell>{region.code}</TableCell>
+                serventias.map((serventia) => (
+                  <TableRow key={serventia.id}>
+                    <TableCell className="font-medium">{serventia.name}</TableCell>
+                    <TableCell>{serventia.code}</TableCell>
                     <TableCell>
-                      <Badge className={getTypeBadgeColor(region.type)}>
-                        {getTypeLabel(region.type)}
+                      <Badge className={getTypeBadgeColor(serventia.type)}>
+                        {getTypeLabel(serventia.type)}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {region.responsible ? (
+                      {serventia.responsible ? (
                         <div className="flex items-center space-x-1">
                           <User className="h-3 w-3" />
-                          <span>{region.responsible}</span>
+                          <span>{serventia.responsible}</span>
                         </div>
                       ) : (
                         <span className="text-gray-400">-</span>
                       )}
                     </TableCell>
                     <TableCell>
-                      {region.phone ? (
+                      {serventia.phone ? (
                         <div className="flex items-center space-x-1">
                           <Phone className="h-3 w-3" />
-                          <span>{region.phone}</span>
+                          <span>{serventia.phone}</span>
                         </div>
                       ) : (
                         <span className="text-gray-400">-</span>
@@ -499,14 +498,14 @@ const RegionManagement = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        <Button size="sm" variant="outline" onClick={() => handleEdit(region)}>
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(serventia)}>
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={() => handleDeleteClick(region.id)}
-                          disabled={deleteMutation.isPending || checkRegionUsage.isPending}
+                          onClick={() => handleDeleteClick(serventia.id)}
+                          disabled={deleteMutation.isPending || checkServentiaUsage.isPending}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -525,22 +524,22 @@ const RegionManagement = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja remover esta região? Esta ação não pode ser desfeita.
-              Verificaremos se a região está sendo utilizada antes de removê-la.
+              Tem certeza que deseja remover esta serventia? Esta ação não pode ser desfeita.
+              Verificaremos se a serventia está sendo utilizada antes de removê-la.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => {
               setDeleteAlertOpen(false);
-              setRegionToDelete(null);
+              setServentiaToDelete(null);
             }}>
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleConfirmDelete}
-              disabled={checkRegionUsage.isPending}
+              disabled={checkServentiaUsage.isPending}
             >
-              {checkRegionUsage.isPending ? "Verificando..." : "Confirmar"}
+              {checkServentiaUsage.isPending ? "Verificando..." : "Confirmar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
