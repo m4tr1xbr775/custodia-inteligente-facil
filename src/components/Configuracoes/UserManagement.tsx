@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,7 +51,7 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
   const { toast } = useToast();
   const { createMutation, updateMutation, deleteMutation } = useUserMutations(type, title);
 
-  // Fetch potential assessors (contacts with "Assessor de Juiz" profile) when managing magistrates
+  // Buscar assessores (contatos com perfil "Assessor de Juiz") para magistrados
   const { data: potentialAssessors = [] } = useQuery({
     queryKey: ['potential-assessors'],
     queryFn: async () => {

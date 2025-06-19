@@ -56,17 +56,19 @@ const UserForm = ({ type, initialData, onSubmit, onCancel, isLoading }: UserForm
     },
   });
 
-  // Buscar assistentes judiciais para o select
-  const { data: judicialAssistants } = useQuery({
-    queryKey: ['judicial-assistants'],
+  // Buscar assessores (contatos com perfil "Assessor de Juiz") para o select
+  const { data: assessors } = useQuery({
+    queryKey: ['assessors'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('magistrates')
+        .from('contacts')
         .select('id, name')
-        .not('judicial_assistant_id', 'is', null);
+        .eq('active', true)
+        .eq('profile', 'Assessor de Juiz')
+        .order('name');
       
       if (error) {
-        console.error("Erro ao buscar assistentes judiciais:", error);
+        console.error("Erro ao buscar assessores:", error);
         return [];
       }
       
@@ -161,19 +163,19 @@ const UserForm = ({ type, initialData, onSubmit, onCancel, isLoading }: UserForm
       {type === "magistrates" && (
         <>
           <div>
-            <Label htmlFor="judicial_assistant_id">Assistente Judicial</Label>
+            <Label htmlFor="judicial_assistant_id">Assessor</Label>
             <Select
               value={selectedJudicialAssistant || "none"}
               onValueChange={(value) => setValue("judicial_assistant_id", value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Selecione um assistente judicial" />
+                <SelectValue placeholder="Selecione um assessor" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Nenhum</SelectItem>
-                {judicialAssistants?.map((assistant) => (
-                  <SelectItem key={assistant.id} value={assistant.id}>
-                    {assistant.name}
+                {assessors?.map((assessor) => (
+                  <SelectItem key={assessor.id} value={assessor.id}>
+                    {assessor.name}
                   </SelectItem>
                 ))}
               </SelectContent>
