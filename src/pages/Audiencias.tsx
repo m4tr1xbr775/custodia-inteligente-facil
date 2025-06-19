@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar, Plus, Search, Filter, ExternalLink, MapPin, Trash2 } from "lucide-react";
+import { Calendar, Plus, Search, Filter, ExternalLink, MapPin, Trash2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AudienciaModal from "@/components/Audiencias/AudienciaModal";
@@ -34,6 +34,7 @@ const Audiencias = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAudienciaId, setEditingAudienciaId] = useState<string | undefined>();
   const [deletingAudienceId, setDeletingAudienceId] = useState<string | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -60,16 +61,49 @@ const Audiencias = () => {
     },
   });
 
-  // Fetch audiences with related data using manual joins
+  // Fetch audiences with related data including participants
   const { data: audiencesData, isLoading } = useQuery({
     queryKey: ['audiences'],
     queryFn: async () => {
       console.log("Buscando audiências...");
       
-      // Primeiro, buscar as audiências
       const { data: audiences, error: audiencesError } = await supabase
         .from('audiences')
-        .select('*')
+        .select(`
+          *,
+          prison_units_extended!inner (
+            id,
+            name,
+            short_name
+          ),
+          serventias (
+            id,
+            name,
+            type
+          ),
+          magistrates (
+            id,
+            name,
+            phone,
+            judicial_assistant_id,
+            judicial_assistant:judicial_assistant_id (
+              id,
+              name,
+              phone
+            )
+          ),
+          prosecutors (
+            id,
+            name,
+            phone
+          ),
+          defenders (
+            id,
+            name,
+            phone,
+            type
+          )
+        `)
         .order('scheduled_date', { ascending: true });
       
       if (audiencesError) {
@@ -77,48 +111,39 @@ const Audiencias = () => {
         throw audiencesError;
       }
       
-      if (!audiences || audiences.length === 0) {
-        console.log("Nenhuma audiência encontrada");
-        return [];
-      }
-      
-      // Buscar as unidades prisionais
-      const prisonUnitIds = [...new Set(audiences.map(a => a.prison_unit_id))];
-      const { data: prisonUnits, error: prisonUnitsError } = await supabase
-        .from('prison_units_extended')
-        .select('id, name, short_name')
-        .in('id', prisonUnitIds);
-      
-      if (prisonUnitsError) {
-        console.error("Erro ao buscar unidades prisionais:", prisonUnitsError);
-      }
-      
-      // Buscar as serventias
-      const serventiaIds = [...new Set(audiences.map(a => a.serventia_id).filter(Boolean))];
-      const { data: serventias, error: serventiasError } = await supabase
-        .from('serventias')
-        .select('id, name, type')
-        .in('id', serventiaIds);
-      
-      if (serventiasError) {
-        console.error("Erro ao buscar serventias:", serventiasError);
-      }
-      
-      // Combinar os dados
-      const audiencesWithRelations = audiences.map(audience => {
-        const prisonUnit = prisonUnits?.find(pu => pu.id === audience.prison_unit_id);
-        const serventia = serventias?.find(s => s.id === audience.serventia_id);
-        
-        return {
-          ...audience,
-          prison_units_extended: prisonUnit,
-          serventias: serventia
-        };
-      });
-      
-      console.log("Audiências encontradas:", audiencesWithRelations);
-      return audiencesWithRelations;
+      console.log("Audiências encontradas:", audiences);
+      return audiences || [];
     },
+  });
+
+  // Mutation para atualizar status da audiência
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ audienceId, newStatus }: { audienceId: string; newStatus: string }) => {
+      const { error } = await supabase
+        .from('audiences')
+        .update({ status: newStatus })
+        .eq('id', audienceId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['audiences'] });
+      toast({
+        title: "Status atualizado",
+        description: "O status da audiência foi atualizado com sucesso.",
+      });
+    },
+    onError: (error) => {
+      console.error("Erro ao atualizar status:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar status da audiência.",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      setUpdatingStatusId(null);
+    }
   });
 
   const getStatusBadge = (status: string) => {
@@ -188,6 +213,11 @@ const Audiencias = () => {
     setEditingAudienciaId(undefined);
   };
 
+  const handleStatusChange = (audienceId: string, newStatus: string) => {
+    setUpdatingStatusId(audienceId);
+    updateStatusMutation.mutate({ audienceId, newStatus });
+  };
+
   const handleDeleteAudience = async (audienceId: string) => {
     try {
       console.log("Deletando audiência com ID:", audienceId);
@@ -213,7 +243,6 @@ const Audiencias = () => {
         description: "A audiência foi removida com sucesso.",
       });
 
-      // Atualizar a lista de audiências
       queryClient.invalidateQueries({ queryKey: ['audiences'] });
     } catch (error) {
       console.error("Erro inesperado ao deletar audiência:", error);
@@ -224,6 +253,13 @@ const Audiencias = () => {
       });
     } finally {
       setDeletingAudienceId(null);
+    }
+  };
+
+  const handleWhatsApp = (phone: string, name: string) => {
+    if (phone) {
+      const message = encodeURIComponent(`Olá, entrando em contato com ${name} através do SisJud.`);
+      window.open(`https://wa.me/55${phone.replace(/\D/g, '')}?text=${message}`, '_blank');
     }
   };
 
@@ -351,13 +387,31 @@ const Audiencias = () => {
                           
                           <div className="space-y-1">
                             <p className="text-sm">
-                              <span className="font-medium">Magistrado:</span> {audience.magistrate_id ? 'Definido' : 'Não definido'}
+                              <span className="font-medium">Magistrado:</span> {audience.magistrates?.name || 'Não definido'}
+                            </p>
+                            {audience.magistrates?.judicial_assistant && (
+                              <div className="text-sm">
+                                <span className="font-medium">Assessor:</span> {audience.magistrates.judicial_assistant.name}
+                                {audience.magistrates.judicial_assistant.phone && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="ml-2 h-6 px-2 text-xs text-green-600"
+                                    onClick={() => handleWhatsApp(audience.magistrates.judicial_assistant.phone, audience.magistrates.judicial_assistant.name)}
+                                  >
+                                    WhatsApp
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                            <p className="text-sm">
+                              <span className="font-medium">Promotor:</span> {audience.prosecutors?.name || 'Não definido'}
                             </p>
                             <p className="text-sm">
-                              <span className="font-medium">Promotor:</span> {audience.prosecutor_id ? 'Definido' : 'Não definido'}
-                            </p>
-                            <p className="text-sm">
-                              <span className="font-medium">Defensor:</span> {audience.defender_id ? 'Definido' : 'Não definido'}
+                              <span className="font-medium">Defensor:</span> {audience.defenders?.name || 'Não definido'}
+                              {audience.defenders?.type && (
+                                <span className="text-xs text-gray-500 ml-1">({audience.defenders.type})</span>
+                              )}
                             </p>
                           </div>
                         </div>
@@ -372,6 +426,19 @@ const Audiencias = () => {
                       </div>
                       
                       <div className="flex flex-col space-y-2 lg:ml-6">
+                        {/* Botão para marcar como realizada */}
+                        {audience.status === "agendada" && (
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => handleStatusChange(audience.id, "realizada")}
+                            disabled={updatingStatusId === audience.id}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            {updatingStatusId === audience.id ? "Atualizando..." : "Marcar Realizada"}
+                          </Button>
+                        )}
+                        
                         {audience.virtual_room_url && (
                           <Button
                             variant="outline"

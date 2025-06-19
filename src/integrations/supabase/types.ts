@@ -201,7 +201,6 @@ export type Database = {
           judicial_assistant_id: string | null
           name: string
           phone: string | null
-          registration: string | null
           updated_at: string
           virtual_room_url: string | null
         }
@@ -213,7 +212,6 @@ export type Database = {
           judicial_assistant_id?: string | null
           name: string
           phone?: string | null
-          registration?: string | null
           updated_at?: string
           virtual_room_url?: string | null
         }
@@ -225,7 +223,6 @@ export type Database = {
           judicial_assistant_id?: string | null
           name?: string
           phone?: string | null
-          registration?: string | null
           updated_at?: string
           virtual_room_url?: string | null
         }
@@ -290,10 +287,8 @@ export type Database = {
       prison_units_extended: {
         Row: {
           address: string
-          capacity: number
           comarca: string
           created_at: string
-          current_population: number
           director: string
           email: string
           functional: string
@@ -302,7 +297,6 @@ export type Database = {
           municipalities: string
           name: string
           responsible: string
-          serventia_id: string | null
           short_name: string
           type: string
           updated_at: string
@@ -310,10 +304,8 @@ export type Database = {
         }
         Insert: {
           address: string
-          capacity: number
           comarca: string
           created_at?: string
-          current_population?: number
           director: string
           email: string
           functional: string
@@ -322,7 +314,6 @@ export type Database = {
           municipalities: string
           name: string
           responsible: string
-          serventia_id?: string | null
           short_name: string
           type: string
           updated_at?: string
@@ -330,10 +321,8 @@ export type Database = {
         }
         Update: {
           address?: string
-          capacity?: number
           comarca?: string
           created_at?: string
-          current_population?: number
           director?: string
           email?: string
           functional?: string
@@ -342,21 +331,12 @@ export type Database = {
           municipalities?: string
           name?: string
           responsible?: string
-          serventia_id?: string | null
           short_name?: string
           type?: string
           updated_at?: string
           whatsapp?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "prison_units_extended_serventia_id_fkey"
-            columns: ["serventia_id"]
-            isOneToOne: false
-            referencedRelation: "serventias"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       prosecutors: {
         Row: {
@@ -366,7 +346,6 @@ export type Database = {
           id: string
           name: string
           phone: string | null
-          registration: string | null
           updated_at: string
         }
         Insert: {
@@ -376,7 +355,6 @@ export type Database = {
           id?: string
           name: string
           phone?: string | null
-          registration?: string | null
           updated_at?: string
         }
         Update: {
@@ -386,7 +364,6 @@ export type Database = {
           id?: string
           name?: string
           phone?: string | null
-          registration?: string | null
           updated_at?: string
         }
         Relationships: []

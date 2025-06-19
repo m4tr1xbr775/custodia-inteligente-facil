@@ -1,14 +1,23 @@
-import { Calendar, Clock, Users, Building, CheckCircle, AlertCircle, MapPin, Phone, MessageCircle } from "lucide-react";
+import { Calendar, Clock, Users, Building, CheckCircle, AlertCircle, MapPin, Phone, MessageCircle, Filter } from "lucide-react";
 import StatsCard from "@/components/Dashboard/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [scheduleFilter, setScheduleFilter] = useState("todos");
   
   const todayDate = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',
@@ -101,11 +110,11 @@ const Dashboard = () => {
     },
   });
 
-  // Buscar escalas ativas com suas serventias
+  // Buscar escalas ativas com suas serventias - com filtro
   const { data: schedules = [] } = useQuery({
-    queryKey: ["schedules-with-serventias"],
+    queryKey: ["schedules-with-serventias", scheduleFilter],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("schedules")
         .select(`
           id,
@@ -151,6 +160,13 @@ const Dashboard = () => {
           )
         `)
         .eq("status", "ativa");
+      
+      // Aplicar filtro se não for "todos"
+      if (scheduleFilter !== "todos") {
+        query = query.eq("schedule_assignments.serventias.type", scheduleFilter);
+      }
+      
+      const { data, error } = await query;
       
       if (error) {
         console.error("Erro ao buscar escalas:", error);
@@ -303,162 +319,161 @@ const Dashboard = () => {
         {/* Escalas e Plantões */}
         <Card className="w-full">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-lg">
-              <Building className="h-5 w-5 text-blue-600" />
-              <span>Escalas e Plantões</span>
+            <CardTitle className="flex items-center justify-between text-lg">
+              <div className="flex items-center space-x-2">
+                <Building className="h-5 w-5 text-blue-600" />
+                <span>Escalas e Plantões</span>
+              </div>
+              {/* Filtro para Escalas */}
+              <Select value={scheduleFilter} onValueChange={setScheduleFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Filtrar por região" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas as Regiões</SelectItem>
+                  <SelectItem value="central_custodia">Centrais de Custódia</SelectItem>
+                  <SelectItem value="macrorregiao">Macrorregiões</SelectItem>
+                </SelectContent>
+              </Select>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4 max-h-96 overflow-y-auto">
               {schedules.length > 0 ? (
                 schedules.map((schedule) => (
-                  <div key={schedule.id} className="p-3 bg-green-50 rounded-lg border border-green-200">
-                    <div className="flex items-center justify-between mb-2">
+                  <div key={schedule.id} className="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                    <div className="flex items-center justify-between mb-3">
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm text-green-800 truncate">{schedule.title}</span>
+                          <span className="font-medium text-lg text-black truncate">{schedule.title}</span>
                           <Badge className="bg-green-100 text-green-800 flex-shrink-0">Ativa</Badge>
                         </div>
                         {schedule.description && (
-                          <p className="text-xs text-green-600 truncate mt-1">{schedule.description}</p>
+                          <p className="text-sm text-blue-600 truncate mt-1">{schedule.description}</p>
                         )}
                       </div>
                     </div>
                     
                     {/* Informações dos profissionais */}
                     {schedule.schedule_assignments.map((assignment) => (
-                      <div key={assignment.id} className="mt-3 space-y-2">
-                        <div className="text-xs font-medium text-green-700">
+                      <div key={assignment.id} className="mt-4 space-y-3">
+                        <div className="text-sm font-medium text-blue-700 border-b border-blue-200 pb-2">
                           {assignment.serventias.name}
+                          {assignment.serventias.phone && (
+                            <div className="flex items-center mt-1">
+                              <span className="text-xs text-blue-600 mr-2">Tel: {assignment.serventias.phone}</span>
+                              <Button
+                                size="sm"
+                                className="h-6 px-3 text-xs bg-green-600 hover:bg-green-700 text-white"
+                                onClick={() => handleWhatsApp(assignment.serventias.phone, assignment.serventias.name)}
+                              >
+                                <MessageCircle className="h-3 w-3 mr-1" />
+                                WhatsApp
+                              </Button>
+                            </div>
+                          )}
                         </div>
                         
                         {assignment.magistrates && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-green-600">
-                              Magistrado: {assignment.magistrates.name}
-                            </span>
-                            <div className="flex space-x-1">
+                          <div className="flex items-center justify-between py-1">
+                            <div className="flex-1">
+                              <span className="text-sm text-blue-800 font-medium">
+                                Magistrado: {assignment.magistrates.name}
+                              </span>
                               {assignment.magistrates.phone && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 px-2 text-xs"
-                                  onClick={() => handleCall(assignment.magistrates.phone)}
-                                >
-                                  <Phone className="h-3 w-3" />
-                                </Button>
-                              )}
-                              {assignment.magistrates.phone && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 px-2 text-xs"
-                                  onClick={() => handleWhatsApp(assignment.magistrates.phone, assignment.magistrates.name)}
-                                >
-                                  <MessageCircle className="h-3 w-3" />
-                                </Button>
+                                <div className="text-xs text-blue-600">Tel: {assignment.magistrates.phone}</div>
                               )}
                             </div>
+                            {assignment.magistrates.phone && (
+                              <Button
+                                size="sm"
+                                className="h-6 px-3 text-xs bg-green-600 hover:bg-green-700 text-white ml-2"
+                                onClick={() => handleWhatsApp(assignment.magistrates.phone, assignment.magistrates.name)}
+                              >
+                                <MessageCircle className="h-3 w-3 mr-1" />
+                                WhatsApp
+                              </Button>
+                            )}
                           </div>
                         )}
                         
                         {assignment.prosecutors && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-green-600">
-                              Promotor: {assignment.prosecutors.name}
-                            </span>
-                            <div className="flex space-x-1">
+                          <div className="flex items-center justify-between py-1">
+                            <div className="flex-1">
+                              <span className="text-sm text-blue-800 font-medium">
+                                Promotor: {assignment.prosecutors.name}
+                              </span>
                               {assignment.prosecutors.phone && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 px-2 text-xs"
-                                  onClick={() => handleCall(assignment.prosecutors.phone)}
-                                >
-                                  <Phone className="h-3 w-3" />
-                                </Button>
-                              )}
-                              {assignment.prosecutors.phone && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 px-2 text-xs"
-                                  onClick={() => handleWhatsApp(assignment.prosecutors.phone, assignment.prosecutors.name)}
-                                >
-                                  <MessageCircle className="h-3 w-3" />
-                                </Button>
+                                <div className="text-xs text-blue-600">Tel: {assignment.prosecutors.phone}</div>
                               )}
                             </div>
+                            {assignment.prosecutors.phone && (
+                              <Button
+                                size="sm"
+                                className="h-6 px-3 text-xs bg-green-600 hover:bg-green-700 text-white ml-2"
+                                onClick={() => handleWhatsApp(assignment.prosecutors.phone, assignment.prosecutors.name)}
+                              >
+                                <MessageCircle className="h-3 w-3 mr-1" />
+                                WhatsApp
+                              </Button>
+                            )}
                           </div>
                         )}
                         
                         {assignment.defenders && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-green-600">
-                              Defensor: {assignment.defenders.name}
-                            </span>
-                            <div className="flex space-x-1">
+                          <div className="flex items-center justify-between py-1">
+                            <div className="flex-1">
+                              <span className="text-sm text-blue-800 font-medium">
+                                Defensor: {assignment.defenders.name}
+                              </span>
                               {assignment.defenders.phone && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 px-2 text-xs"
-                                  onClick={() => handleCall(assignment.defenders.phone)}
-                                >
-                                  <Phone className="h-3 w-3" />
-                                </Button>
-                              )}
-                              {assignment.defenders.phone && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 px-2 text-xs"
-                                  onClick={() => handleWhatsApp(assignment.defenders.phone, assignment.defenders.name)}
-                                >
-                                  <MessageCircle className="h-3 w-3" />
-                                </Button>
+                                <div className="text-xs text-blue-600">Tel: {assignment.defenders.phone}</div>
                               )}
                             </div>
+                            {assignment.defenders.phone && (
+                              <Button
+                                size="sm"
+                                className="h-6 px-3 text-xs bg-green-600 hover:bg-green-700 text-white ml-2"
+                                onClick={() => handleWhatsApp(assignment.defenders.phone, assignment.defenders.name)}
+                              >
+                                <MessageCircle className="h-3 w-3 mr-1" />
+                                WhatsApp
+                              </Button>
+                            )}
                           </div>
                         )}
                         
                         {assignment.magistrates?.judicial_assistant && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-green-600">
-                              Assessor: {assignment.magistrates.judicial_assistant.name}
-                            </span>
-                            <div className="flex space-x-1">
+                          <div className="flex items-center justify-between py-1">
+                            <div className="flex-1">
+                              <span className="text-sm text-blue-800 font-medium">
+                                Assessor: {assignment.magistrates.judicial_assistant.name}
+                              </span>
                               {assignment.magistrates.judicial_assistant.phone && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 px-2 text-xs"
-                                  onClick={() => handleCall(assignment.magistrates.judicial_assistant.phone)}
-                                >
-                                  <Phone className="h-3 w-3" />
-                                </Button>
-                              )}
-                              {assignment.magistrates.judicial_assistant.phone && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 px-2 text-xs"
-                                  onClick={() => handleWhatsApp(assignment.magistrates.judicial_assistant.phone, assignment.magistrates.judicial_assistant.name)}
-                                >
-                                  <MessageCircle className="h-3 w-3" />
-                                </Button>
+                                <div className="text-xs text-blue-600">Tel: {assignment.magistrates.judicial_assistant.phone}</div>
                               )}
                             </div>
+                            {assignment.magistrates.judicial_assistant.phone && (
+                              <Button
+                                size="sm"
+                                className="h-6 px-3 text-xs bg-green-600 hover:bg-green-700 text-white ml-2"
+                                onClick={() => handleWhatsApp(assignment.magistrates.judicial_assistant.phone, assignment.magistrates.judicial_assistant.name)}
+                              >
+                                <MessageCircle className="h-3 w-3 mr-1" />
+                                WhatsApp
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
                     ))}
                     
-                    <div className="mt-2 flex justify-end">
+                    <div className="mt-4 pt-3 border-t border-blue-200 flex justify-end">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-xs h-7 px-2 border-green-300 text-green-700 hover:bg-green-100"
+                        className="text-sm h-8 px-4 border-blue-300 text-blue-700 hover:bg-blue-100"
                         onClick={() => handleViewScheduleAudiences(schedule.id, schedule.title)}
                       >
                         Ver Audiências
@@ -467,7 +482,7 @@ const Dashboard = () => {
                   </div>
                 ))
               ) : (
-                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <p className="text-sm text-gray-500">Nenhuma escala ativa encontrada</p>
                 </div>
               )}
