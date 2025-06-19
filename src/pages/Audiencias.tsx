@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { Calendar, Plus, Search, Filter, ExternalLink, MapPin } from "lucide-react";
+import { Calendar, Plus, Search, Filter, ExternalLink, MapPin, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,8 +11,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useQuery } from "@tanstack/react-query";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import AudienciaModal from "@/components/Audiencias/AudienciaModal";
 
 const Audiencias = () => {
@@ -22,6 +33,10 @@ const Audiencias = () => {
   const [custodyCenterFilter, setCustodyCenterFilter] = useState("todos");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAudienciaId, setEditingAudienciaId] = useState<string | undefined>();
+  const [deletingAudienceId, setDeletingAudienceId] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Fetch custody centers for the filter
   const { data: custodyCenters = [] } = useQuery({
@@ -171,6 +186,45 @@ const Audiencias = () => {
     console.log("Fechando modal");
     setIsFormOpen(false);
     setEditingAudienciaId(undefined);
+  };
+
+  const handleDeleteAudience = async (audienceId: string) => {
+    try {
+      console.log("Deletando audiência com ID:", audienceId);
+      setDeletingAudienceId(audienceId);
+
+      const { error } = await supabase
+        .from('audiences')
+        .delete()
+        .eq('id', audienceId);
+
+      if (error) {
+        console.error("Erro ao deletar audiência:", error);
+        toast({
+          title: "Erro ao deletar audiência",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Audiência deletada",
+        description: "A audiência foi removida com sucesso.",
+      });
+
+      // Atualizar a lista de audiências
+      queryClient.invalidateQueries({ queryKey: ['audiences'] });
+    } catch (error) {
+      console.error("Erro inesperado ao deletar audiência:", error);
+      toast({
+        title: "Erro inesperado",
+        description: "Ocorreu um erro ao tentar deletar a audiência.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingAudienceId(null);
+    }
   };
 
   if (isLoading) {
@@ -336,6 +390,37 @@ const Audiencias = () => {
                         >
                           Editar
                         </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              disabled={deletingAudienceId === audience.id}
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              {deletingAudienceId === audience.id ? "Deletando..." : "Excluir"}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja excluir a audiência de {audience.defendant_name}? 
+                                Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteAudience(audience.id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   </CardContent>
