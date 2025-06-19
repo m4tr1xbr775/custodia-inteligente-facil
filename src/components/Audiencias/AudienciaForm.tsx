@@ -189,38 +189,29 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="space-y-6">
-          {/* Data da Audiência - PRIMEIRO */}
+          {/* Plantão e Horários */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Data da Audiência</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <AudienciaDateTime form={form} />
-            </div>
-            {!selectedDate && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                <p className="text-sm text-blue-700">
-                  📅 Selecione primeiro a data da audiência para carregar os plantões disponíveis.
-                </p>
-              </div>
-            )}
+            <h3 className="text-lg font-medium">Plantão e Horários</h3>
+            <ServentiaBasedAssignments 
+              form={form} 
+              selectedScheduleId="" // Não mais usado
+              selectedDate={selectedDate} 
+            />
           </div>
           
-          {/* Plantão e Horários - SEGUNDO */}
-          {selectedDate && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Plantão e Horários</h3>
-              <ServentiaBasedAssignments 
-                form={form} 
-                selectedScheduleId="" // Não mais usado
-                selectedDate={selectedDate} 
-              />
-            </div>
-          )}
-          
-          {/* Informações do Processo - TERCEIRO */}
+          {/* Informações do Processo */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Informações do Processo</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <AudienciaBasicInfo form={form} />
+            </div>
+          </div>
+          
+          {/* Data da Audiência */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Data da Audiência</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <AudienciaDateTime form={form} />
             </div>
           </div>
         </div>
