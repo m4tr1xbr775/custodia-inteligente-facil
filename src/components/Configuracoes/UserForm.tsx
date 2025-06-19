@@ -78,10 +78,15 @@ const UserForm = ({ type, initialData, onSubmit, onCancel, isLoading }: UserForm
   const selectedJudicialAssistant = watch("judicial_assistant_id");
 
   const handleFormSubmit = (data: UserFormData) => {
-    // Limpar campos vazios
+    // Limpar campos vazios e converter "none" para string vazia
     const cleanData = Object.entries(data).reduce((acc, [key, value]) => {
       if (value !== "" && value !== null && value !== undefined) {
-        acc[key] = value;
+        // Convert "none" back to empty string for judicial_assistant_id
+        if (key === "judicial_assistant_id" && value === "none") {
+          acc[key] = "";
+        } else {
+          acc[key] = value;
+        }
       }
       return acc;
     }, {} as any);
@@ -158,14 +163,14 @@ const UserForm = ({ type, initialData, onSubmit, onCancel, isLoading }: UserForm
           <div>
             <Label htmlFor="judicial_assistant_id">Assistente Judicial</Label>
             <Select
-              value={selectedJudicialAssistant || ""}
+              value={selectedJudicialAssistant || "none"}
               onValueChange={(value) => setValue("judicial_assistant_id", value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione um assistente judicial" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Nenhum</SelectItem>
+                <SelectItem value="none">Nenhum</SelectItem>
                 {judicialAssistants?.map((assistant) => (
                   <SelectItem key={assistant.id} value={assistant.id}>
                     {assistant.name}
