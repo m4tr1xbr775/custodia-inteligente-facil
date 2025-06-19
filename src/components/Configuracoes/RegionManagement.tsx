@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -45,6 +56,8 @@ interface Region {
 const RegionManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRegion, setEditingRegion] = useState<Region | null>(null);
+  const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
+  const [regionToDelete, setRegionToDelete] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     code: "",
@@ -95,6 +108,7 @@ const RegionManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['regions'] });
+      queryClient.invalidateQueries({ queryKey: ['custody-centers'] });
       toast({
         title: "Sucesso",
         description: "Região criada com sucesso!",
@@ -131,6 +145,7 @@ const RegionManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['regions'] });
+      queryClient.invalidateQueries({ queryKey: ['custody-centers'] });
       toast({
         title: "Sucesso",
         description: "Região atualizada com sucesso!",
@@ -144,6 +159,89 @@ const RegionManagement = () => {
         description: `Erro ao atualizar região: ${error.message}`,
         variant: "destructive",
       });
+    },
+  });
+
+  // Check if region can be deleted
+  const checkRegionUsage = useMutation({
+    mutationFn: async (regionId: string) => {
+      console.log('Checking if region can be deleted:', regionId);
+      
+      // Check audiences
+      const { data: audiences, error: audiencesError } = await supabase
+        .from('audiences')
+        .select('id')
+        .eq('region_id', regionId)
+        .limit(1);
+      
+      if (audiencesError) {
+        console.error('Error checking audiences:', audiencesError);
+        throw audiencesError;
+      }
+      
+      // Check contacts
+      const { data: contacts, error: contactsError } = await supabase
+        .from('contacts')
+        .select('id')
+        .eq('region_id', regionId)
+        .limit(1);
+      
+      if (contactsError) {
+        console.error('Error checking contacts:', contactsError);
+        throw contactsError;
+      }
+      
+      // Check schedule assignments
+      const { data: assignments, error: assignmentsError } = await supabase
+        .from('schedule_assignments')
+        .select('id')
+        .eq('region_id', regionId)
+        .limit(1);
+      
+      if (assignmentsError) {
+        console.error('Error checking schedule assignments:', assignmentsError);
+        throw assignmentsError;
+      }
+      
+      const hasUsages = {
+        audiences: audiences && audiences.length > 0,
+        contacts: contacts && contacts.length > 0,
+        assignments: assignments && assignments.length > 0
+      };
+      
+      console.log('Region usage check result:', hasUsages);
+      return hasUsages;
+    },
+    onSuccess: (usages) => {
+      if (usages.audiences || usages.contacts || usages.assignments) {
+        const usageMessages = [];
+        if (usages.audiences) usageMessages.push('audiências');
+        if (usages.contacts) usageMessages.push('contatos');
+        if (usages.assignments) usageMessages.push('escalas');
+        
+        toast({
+          title: "Não é possível excluir",
+          description: `Esta região não pode ser removida pois está sendo utilizada em: ${usageMessages.join(', ')}.`,
+          variant: "destructive",
+        });
+      } else {
+        // Proceed with deletion
+        if (regionToDelete) {
+          deleteMutation.mutate(regionToDelete);
+        }
+      }
+      setDeleteAlertOpen(false);
+      setRegionToDelete(null);
+    },
+    onError: (error: any) => {
+      console.error('Error checking region usage:', error);
+      toast({
+        title: "Erro",
+        description: `Erro ao verificar uso da região: ${error.message}`,
+        variant: "destructive",
+      });
+      setDeleteAlertOpen(false);
+      setRegionToDelete(null);
     },
   });
 
@@ -163,6 +261,7 @@ const RegionManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['regions'] });
+      queryClient.invalidateQueries({ queryKey: ['custody-centers'] });
       toast({
         title: "Sucesso",
         description: "Região removida com sucesso!",
@@ -207,6 +306,7 @@ const RegionManagement = () => {
   };
 
   const handleEdit = (region: Region) => {
+    console.log('Editing region:', region);
     setEditingRegion(region);
     setFormData({
       name: region.name,
@@ -230,9 +330,15 @@ const RegionManagement = () => {
     });
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Tem certeza que deseja remover esta região?")) {
-      deleteMutation.mutate(id);
+  const handleDeleteClick = (id: string) => {
+    console.log('Delete clicked for region:', id);
+    setRegionToDelete(id);
+    setDeleteAlertOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (regionToDelete) {
+      checkRegionUsage.mutate(regionToDelete);
     }
   };
 
@@ -399,8 +505,8 @@ const RegionManagement = () => {
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={() => handleDelete(region.id)}
-                          disabled={deleteMutation.isPending}
+                          onClick={() => handleDeleteClick(region.id)}
+                          disabled={deleteMutation.isPending || checkRegionUsage.isPending}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -413,6 +519,32 @@ const RegionManagement = () => {
           </Table>
         </CardContent>
       </Card>
+
+      <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover esta região? Esta ação não pode ser desfeita.
+              Verificaremos se a região está sendo utilizada antes de removê-la.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setDeleteAlertOpen(false);
+              setRegionToDelete(null);
+            }}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete}
+              disabled={checkRegionUsage.isPending}
+            >
+              {checkRegionUsage.isPending ? "Verificando..." : "Confirmar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
