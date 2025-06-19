@@ -40,7 +40,7 @@ const UnidadesPrisionais = () => {
     },
   });
 
-  // Fetch audiences for selected unit using manual joins
+  // Fetch audiences for selected unit with complete data joins
   const { data: audiences, isLoading } = useQuery({
     queryKey: ['unit_audiences', selectedUnit],
     queryFn: async () => {
@@ -48,10 +48,55 @@ const UnidadesPrisionais = () => {
       
       console.log("Buscando audiências para unidade:", selectedUnit);
       
-      // Primeiro, buscar as audiências da unidade
+      // Buscar as audiências da unidade com todos os joins necessários
       const { data: audiences, error: audiencesError } = await supabase
         .from('audiences')
-        .select('*')
+        .select(`
+          *,
+          serventias:serventia_id (
+            id,
+            name,
+            type,
+            code
+          ),
+          prison_units_extended:prison_unit_id (
+            id,
+            name,
+            short_name
+          ),
+          magistrates:magistrate_id (
+            id,
+            name,
+            email,
+            phone,
+            virtual_room_url,
+            judicial_assistant:judicial_assistant_id (
+              id,
+              name,
+              email,
+              phone
+            )
+          ),
+          prosecutors:prosecutor_id (
+            id,
+            name,
+            email,
+            phone
+          ),
+          defenders:defender_id (
+            id,
+            name,
+            email,
+            phone,
+            type
+          ),
+          judicial_assistant:judicial_assistant_id (
+            id,
+            name,
+            email,
+            phone
+          )
+        `)
         .eq('prison_unit_id', selectedUnit)
         .order('scheduled_date', { ascending: true });
       
@@ -60,51 +105,8 @@ const UnidadesPrisionais = () => {
         throw audiencesError;
       }
       
-      if (!audiences || audiences.length === 0) {
-        console.log("Nenhuma audiência encontrada para esta unidade");
-        return [];
-      }
-      
-      // Buscar as serventias relacionadas
-      const serventiaIds = [...new Set(audiences.map(a => a.serventia_id).filter(Boolean))];
-      let serventias = [];
-      if (serventiaIds.length > 0) {
-        const { data: serventiasData, error: serventiasError } = await supabase
-          .from('serventias')
-          .select('id, name, type')
-          .in('id', serventiaIds);
-        
-        if (serventiasError) {
-          console.error("Erro ao buscar serventias:", serventiasError);
-        } else {
-          serventias = serventiasData || [];
-        }
-      }
-      
-      // Buscar a unidade prisional
-      const { data: prisonUnit, error: prisonUnitError } = await supabase
-        .from('prison_units_extended')
-        .select('id, name, short_name')
-        .eq('id', selectedUnit)
-        .single();
-      
-      if (prisonUnitError) {
-        console.error("Erro ao buscar unidade prisional:", prisonUnitError);
-      }
-      
-      // Combinar os dados
-      const audiencesWithRelations = audiences.map(audience => {
-        const serventia = serventias.find(s => s.id === audience.serventia_id);
-        
-        return {
-          ...audience,
-          serventias: serventia,
-          prison_units_extended: prisonUnit
-        };
-      });
-      
-      console.log("Audiências com relações encontradas:", audiencesWithRelations);
-      return audiencesWithRelations;
+      console.log("Audiências com relações encontradas:", audiences);
+      return audiences || [];
     },
     enabled: !!selectedUnit,
   });
@@ -306,27 +308,36 @@ const UnidadesPrisionais = () => {
                             <p className="text-sm text-gray-600">
                               <span className="font-medium">Central:</span> {audience.serventias?.name || 'Não informado'}
                             </p>
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Unidade:</span> {audience.prison_units_extended?.name || 'Não informado'}
+                            </p>
                           </div>
 
                           <div className="space-y-2">
                             <p className="text-sm">
-                              <span className="font-medium">Magistrado:</span> {audience.magistrate_id || 'Não definido'}
+                              <span className="font-medium">Magistrado:</span> {audience.magistrates?.name || 'Não definido'}
                             </p>
                             <p className="text-sm">
-                              <span className="font-medium">Promotor:</span> {audience.prosecutor_id || 'Não definido'}
+                              <span className="font-medium">Promotor:</span> {audience.prosecutors?.name || 'Não definido'}
                             </p>
                             <p className="text-sm">
-                              <span className="font-medium">Defensor:</span> {audience.defender_id || 'Não definido'}
+                              <span className="font-medium">Defensor:</span> {audience.defenders?.name || 'Não definido'}
+                              {audience.defenders?.type && (
+                                <span className="text-xs text-gray-500 ml-1">({audience.defenders.type})</span>
+                              )}
+                            </p>
+                            <p className="text-sm">
+                              <span className="font-medium">Assistente Judicial:</span> {audience.judicial_assistant?.name || audience.magistrates?.judicial_assistant?.name || 'Não definido'}
                             </p>
                           </div>
                         </div>
 
-                        {audience.virtual_room_url && (
+                        {(audience.virtual_room_url || audience.magistrates?.virtual_room_url) && (
                           <div className="mt-4">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => window.open(audience.virtual_room_url, '_blank')}
+                              onClick={() => window.open(audience.virtual_room_url || audience.magistrates?.virtual_room_url, '_blank')}
                               className="flex items-center space-x-2"
                             >
                               <ExternalLink className="h-4 w-4" />

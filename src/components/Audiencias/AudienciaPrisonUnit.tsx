@@ -59,7 +59,14 @@ const AudienciaPrisonUnit = ({ form }: AudienciaPrisonUnitProps) => {
             <SelectContent>
               {prisonUnits.map((unit) => (
                 <SelectItem key={unit.id} value={unit.id}>
-                  {unit.name}
+                  <div className="flex flex-col">
+                    <span>{unit.name}</span>
+                    {unit.short_name && (
+                      <span className="text-xs text-muted-foreground">
+                        {unit.short_name}
+                      </span>
+                    )}
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>

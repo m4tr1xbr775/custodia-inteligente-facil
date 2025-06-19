@@ -25,7 +25,7 @@ const DailySchedule = ({ unitId, unitName }: DailyScheduleProps) => {
     queryFn: async () => {
       const dateStr = format(selectedDate, "yyyy-MM-dd");
       
-      // Buscar slots da unidade para a data selecionada
+      // Buscar slots da unidade para a data selecionada com dados completos das audiências
       const { data: slots, error: slotsError } = await supabase
         .from("prison_unit_slots")
         .select(`
@@ -34,7 +34,21 @@ const DailySchedule = ({ unitId, unitName }: DailyScheduleProps) => {
             id,
             defendant_name,
             process_number,
-            status
+            status,
+            serventias:serventia_id (
+              name,
+              code
+            ),
+            magistrates:magistrate_id (
+              name
+            ),
+            prosecutors:prosecutor_id (
+              name
+            ),
+            defenders:defender_id (
+              name,
+              type
+            )
           )
         `)
         .eq("prison_unit_id", unitId)
@@ -162,13 +176,23 @@ const DailySchedule = ({ unitId, unitName }: DailyScheduleProps) => {
                       {slotInfo.label}
                     </Badge>
                     {slotInfo.audience && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        <div className="truncate" title={slotInfo.audience.defendant_name}>
+                      <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                        <div className="truncate font-medium" title={slotInfo.audience.defendant_name}>
                           {slotInfo.audience.defendant_name}
                         </div>
                         <div className="truncate text-xs opacity-75" title={slotInfo.audience.process_number}>
                           {slotInfo.audience.process_number}
                         </div>
+                        {slotInfo.audience.serventias && (
+                          <div className="truncate text-xs opacity-75" title={slotInfo.audience.serventias.name}>
+                            {slotInfo.audience.serventias.name}
+                          </div>
+                        )}
+                        {slotInfo.audience.magistrates && (
+                          <div className="truncate text-xs opacity-75" title={`Magistrado: ${slotInfo.audience.magistrates.name}`}>
+                            {slotInfo.audience.magistrates.name}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
