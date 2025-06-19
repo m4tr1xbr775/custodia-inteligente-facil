@@ -64,8 +64,7 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
           *,
           magistrates!magistrate_id(id, name, virtual_room_url),
           prosecutors!prosecutor_id(id, name),
-          defenders!defender_id(id, name),
-          judicial_assistants:contacts!judicial_assistant_id(id, name)
+          defenders!defender_id(id, name)
         `)
         .eq('schedule_id', selectedScheduleId)
         .eq('date', selectedDate);
@@ -174,9 +173,8 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
       if (assignments.defender_id) {
         form.setValue("defender_id", assignments.defender_id);
       }
-      if (assignments.judicial_assistant_id) {
-        form.setValue("judicial_assistant_id", assignments.judicial_assistant_id);
-      }
+      // Note: judicial_assistant_id não existe na tabela schedule_assignments
+      // então não podemos auto-preencher este campo baseado nas atribuições
     }
   }, [assignments, form]);
 
