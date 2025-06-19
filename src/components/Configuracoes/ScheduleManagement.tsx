@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,19 +45,114 @@ interface Schedule {
   updated_at: string;
 }
 
+interface Assignment {
+  id: string;
+  schedule_id: string;
+  region_id: string;
+  magistrate_id?: string;
+  prosecutor_id?: string;
+  defender_id?: string;
+  date: string;
+  shift: string;
+  created_at: string;
+  updated_at: string;
+  region?: {
+    name: string;
+    code: string;
+  };
+  magistrate?: {
+    name: string;
+  };
+  prosecutor?: {
+    name: string;
+  };
+  defender?: {
+    name: string;
+  };
+}
+
 const ScheduleManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAssignmentDialogOpen, setIsAssignmentDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [selectedScheduleForAssignment, setSelectedScheduleForAssignment] = useState<Schedule | null>(null);
   const [formData, setFormData] = useState({
-    title: "",
+    serventia_id: "",
     description: "",
     start_date: "",
     end_date: "",
     status: "rascunho",
   });
+  const [assignmentFormData, setAssignmentFormData] = useState({
+    region_id: "",
+    magistrate_id: "none",
+    prosecutor_id: "none",
+    defender_id: "none",
+    date: "",
+    shift: "diurno",
+  });
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch regions (Serventias)
+  const { data: regions = [] } = useQuery({
+    queryKey: ['regions'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('regions')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch magistrates
+  const { data: magistrates = [] } = useQuery({
+    queryKey: ['magistrates'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('magistrates')
+        .select('*')
+        .eq('active', true)
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch prosecutors
+  const { data: prosecutors = [] } = useQuery({
+    queryKey: ['prosecutors'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('prosecutors')
+        .select('*')
+        .eq('active', true)
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch defenders
+  const { data: defenders = [] } = useQuery({
+    queryKey: ['defenders'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('defenders')
+        .select('*')
+        .eq('active', true)
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 
   // Fetch schedules from Supabase
   const { data: schedules = [], isLoading } = useQuery({
@@ -82,9 +178,22 @@ const ScheduleManagement = () => {
   const createMutation = useMutation({
     mutationFn: async (scheduleData: any) => {
       console.log('Creating new schedule:', scheduleData);
+      
+      // Get selected region name for title
+      const selectedRegion = regions.find(r => r.id === scheduleData.serventia_id);
+      const title = selectedRegion ? `${selectedRegion.name} - ${selectedRegion.code}` : 'Nova Escala';
+      
+      const dataToInsert = {
+        title,
+        description: scheduleData.description,
+        start_date: scheduleData.start_date,
+        end_date: scheduleData.end_date,
+        status: scheduleData.status
+      };
+      
       const { data, error } = await supabase
         .from('schedules')
-        .insert([scheduleData])
+        .insert([dataToInsert])
         .select()
         .single();
       
@@ -117,9 +226,22 @@ const ScheduleManagement = () => {
   const updateMutation = useMutation({
     mutationFn: async ({ id, scheduleData }: { id: string; scheduleData: any }) => {
       console.log('Updating schedule with id:', id, scheduleData);
+      
+      // Get selected region name for title
+      const selectedRegion = regions.find(r => r.id === scheduleData.serventia_id);
+      const title = selectedRegion ? `${selectedRegion.name} - ${selectedRegion.code}` : scheduleData.title || 'Escala Atualizada';
+      
+      const dataToUpdate = {
+        title,
+        description: scheduleData.description,
+        start_date: scheduleData.start_date,
+        end_date: scheduleData.end_date,
+        status: scheduleData.status
+      };
+      
       const { data, error } = await supabase
         .from('schedules')
-        .update(scheduleData)
+        .update(dataToUpdate)
         .eq('id', id)
         .select()
         .single();
@@ -180,13 +302,47 @@ const ScheduleManagement = () => {
     },
   });
 
+  // Create assignment mutation
+  const createAssignmentMutation = useMutation({
+    mutationFn: async (assignmentData: any) => {
+      const cleanData = { ...assignmentData, schedule_id: selectedScheduleForAssignment?.id };
+      if (cleanData.magistrate_id === "none") delete cleanData.magistrate_id;
+      if (cleanData.prosecutor_id === "none") delete cleanData.prosecutor_id;
+      if (cleanData.defender_id === "none") delete cleanData.defender_id;
+
+      const { data, error } = await supabase
+        .from('schedule_assignments')
+        .insert([cleanData])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedule_assignments'] });
+      toast({
+        title: "Sucesso",
+        description: "Atribuição criada com sucesso!",
+      });
+      handleCloseAssignmentDialog();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: `Erro ao criar atribuição: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title.trim() || !formData.start_date || !formData.end_date) {
+    if (!formData.serventia_id || !formData.start_date || !formData.end_date) {
       toast({
         title: "Erro",
-        description: "Título, data de início e fim são obrigatórios",
+        description: "Serventia, data de início e fim são obrigatórios",
         variant: "destructive",
       });
       return;
@@ -210,6 +366,21 @@ const ScheduleManagement = () => {
     }
   };
 
+  const handleAssignmentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!assignmentFormData.region_id || !assignmentFormData.date) {
+      toast({
+        title: "Erro",
+        description: "Região e data são obrigatórios",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createAssignmentMutation.mutate(assignmentFormData);
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -217,10 +388,19 @@ const ScheduleManagement = () => {
     }));
   };
 
+  const handleAssignmentInputChange = (field: string, value: string) => {
+    setAssignmentFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   const handleEdit = (schedule: Schedule) => {
     setEditingSchedule(schedule);
+    // Try to find the region that matches the title
+    const matchedRegion = regions.find(r => schedule.title.includes(r.name));
     setFormData({
-      title: schedule.title,
+      serventia_id: matchedRegion?.id || "",
       description: schedule.description || "",
       start_date: schedule.start_date,
       end_date: schedule.end_date,
@@ -233,11 +413,37 @@ const ScheduleManagement = () => {
     setIsDialogOpen(false);
     setEditingSchedule(null);
     setFormData({
-      title: "",
+      serventia_id: "",
       description: "",
       start_date: "",
       end_date: "",
       status: "rascunho",
+    });
+  };
+
+  const handleManageAssignments = (schedule: Schedule) => {
+    setSelectedScheduleForAssignment(schedule);
+    setAssignmentFormData({
+      region_id: "",
+      magistrate_id: "none",
+      prosecutor_id: "none",
+      defender_id: "none",
+      date: schedule.start_date, // Use start_date from schedule
+      shift: "diurno",
+    });
+    setIsAssignmentDialogOpen(true);
+  };
+
+  const handleCloseAssignmentDialog = () => {
+    setIsAssignmentDialogOpen(false);
+    setSelectedScheduleForAssignment(null);
+    setAssignmentFormData({
+      region_id: "",
+      magistrate_id: "none",
+      prosecutor_id: "none",
+      defender_id: "none",
+      date: "",
+      shift: "diurno",
     });
   };
 
@@ -287,14 +493,19 @@ const ScheduleManagement = () => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="title">Título *</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => handleInputChange("title", e.target.value)}
-                  placeholder="Ex: Escala Semanal - Janeiro 2024"
-                  required
-                />
+                <Label htmlFor="serventia_id">Serventia *</Label>
+                <Select value={formData.serventia_id} onValueChange={(value) => handleInputChange("serventia_id", value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma serventia" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {regions.map((region) => (
+                      <SelectItem key={region.id} value={region.id}>
+                        {region.name} ({region.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="description">Descrição</Label>
@@ -354,6 +565,122 @@ const ScheduleManagement = () => {
         </Dialog>
       </div>
 
+      {/* Assignment Dialog */}
+      <Dialog open={isAssignmentDialogOpen} onOpenChange={setIsAssignmentDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Adicionar Nova Atribuição</DialogTitle>
+            {selectedScheduleForAssignment && (
+              <p className="text-sm text-gray-600">
+                Escala: {selectedScheduleForAssignment.title}
+              </p>
+            )}
+          </DialogHeader>
+          <form onSubmit={handleAssignmentSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="region_id">Região *</Label>
+              <Select value={assignmentFormData.region_id} onValueChange={(value) => handleAssignmentInputChange("region_id", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma região" />
+                </SelectTrigger>
+                <SelectContent>
+                  {regions.map((region) => (
+                    <SelectItem key={region.id} value={region.id}>
+                      {region.name} ({region.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="date">Data *</Label>
+              <Input
+                id="date"
+                type="date"
+                value={assignmentFormData.date}
+                onChange={(e) => handleAssignmentInputChange("date", e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="shift">Turno</Label>
+              <Select value={assignmentFormData.shift} onValueChange={(value) => handleAssignmentInputChange("shift", value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="diurno">Diurno</SelectItem>
+                  <SelectItem value="noturno">Noturno</SelectItem>
+                  <SelectItem value="integral">Integral</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="magistrate_id">Magistrado</Label>
+              <Select value={assignmentFormData.magistrate_id} onValueChange={(value) => handleAssignmentInputChange("magistrate_id", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um magistrado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {magistrates.map((magistrate) => (
+                    <SelectItem key={magistrate.id} value={magistrate.id}>
+                      {magistrate.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="prosecutor_id">Promotor</Label>
+              <Select value={assignmentFormData.prosecutor_id} onValueChange={(value) => handleAssignmentInputChange("prosecutor_id", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um promotor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {prosecutors.map((prosecutor) => (
+                    <SelectItem key={prosecutor.id} value={prosecutor.id}>
+                      {prosecutor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="defender_id">Advogado</Label>
+              <Select value={assignmentFormData.defender_id} onValueChange={(value) => handleAssignmentInputChange("defender_id", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um advogado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {defenders.map((defender) => (
+                    <SelectItem key={defender.id} value={defender.id}>
+                      {defender.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={handleCloseAssignmentDialog}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={createAssignmentMutation.isPending}>
+                {createAssignmentMutation.isPending ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <Card>
         <CardHeader>
           <CardTitle>Escalas Cadastradas</CardTitle>
@@ -401,7 +728,12 @@ const ScheduleManagement = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        <Button size="sm" variant="outline" title="Gerenciar Atribuições">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          title="Gerenciar Atribuições"
+                          onClick={() => handleManageAssignments(schedule)}
+                        >
                           <Users className="h-4 w-4" />
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => handleEdit(schedule)}>
