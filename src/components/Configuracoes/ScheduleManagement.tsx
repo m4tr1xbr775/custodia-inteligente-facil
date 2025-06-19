@@ -862,22 +862,6 @@ const ScheduleManagement = () => {
                     <Card key={assignment.id} className="p-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
-                          <Label className="text-sm font-medium text-gray-700">Data</Label>
-                          {editingAssignment?.id === assignment.id ? (
-                            <Input
-                              type="date"
-                              value={assignmentFormData.date}
-                              onChange={(e) => setAssignmentFormData(prev => ({ ...prev, date: e.target.value }))}
-                              className="mt-1"
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {assignment.date ? new Date(assignment.date).toLocaleDateString() : "-"}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
                           <Label className="text-sm font-medium text-gray-700">Serventia</Label>
                           {editingAssignment?.id === assignment.id ? (
                             <Select value={assignmentFormData.serventia_id} onValueChange={(value) => setAssignmentFormData(prev => ({ ...prev, serventia_id: value }))}>
