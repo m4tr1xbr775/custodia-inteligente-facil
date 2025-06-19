@@ -741,6 +741,11 @@ const ScheduleManagement = () => {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Adicionar Nova Atribuição</DialogTitle>
+            {selectedScheduleForAssignment && (
+              <p className="text-sm text-gray-600">
+                Escala: {selectedScheduleForAssignment.title}
+              </p>
+            )}
           </DialogHeader>
           <form onSubmit={handleAssignmentSubmit} className="space-y-4">
             <div>

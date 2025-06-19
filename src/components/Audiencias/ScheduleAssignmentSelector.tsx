@@ -35,21 +35,27 @@ const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: 
         .from('schedule_assignments')
         .select(`
           *,
-          schedules!schedule_id(id, title, description),
+          schedules!schedule_id(
+            id, 
+            title, 
+            description, 
+            status, 
+            start_date, 
+            end_date
+          ),
           serventias!serventia_id(id, name, type),
           magistrates!magistrate_id(
             id, 
             name, 
             virtual_room_url, 
-            judicial_assistant_id,
-            judicial_assistant:contacts!judicial_assistant_id(id, name, phone)
+            judicial_assistant_id
           ),
           prosecutors!prosecutor_id(id, name),
           defenders!defender_id(id, name),
           judicial_assistant:contacts!judicial_assistant_id(id, name, phone)
         `)
-        .order('date', { ascending: false })
-        .limit(50);
+        .order('created_at', { ascending: false })
+        .limit(100);
       
       if (error) {
         console.error("Erro ao buscar schedule_assignments:", error);
@@ -57,7 +63,25 @@ const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: 
       }
       
       console.log("Schedule assignments encontrados:", data);
-      return data || [];
+      
+      // Filtrar apenas escalas ativas e dentro do período válido
+      const now = new Date();
+      const filteredAssignments = data?.filter(assignment => {
+        const schedule = assignment.schedules;
+        if (!schedule) return false;
+        
+        // Verificar se a escala está ativa
+        if (schedule.status !== 'ativa') return false;
+        
+        // Verificar se estamos dentro do período da escala
+        const startDate = new Date(schedule.start_date);
+        const endDate = new Date(schedule.end_date);
+        
+        return now >= startDate && now <= endDate;
+      }) || [];
+      
+      console.log("Schedule assignments filtrados (ativos):", filteredAssignments);
+      return filteredAssignments;
     },
   });
 
@@ -96,9 +120,8 @@ const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: 
     const schedule = assignment.schedules;
     const serventia = assignment.serventias;
     const magistrate = assignment.magistrates;
-    const date = new Date(assignment.date).toLocaleDateString('pt-BR');
     
-    return `${date} - ${schedule?.title} - ${serventia?.name} - ${assignment.shift} | 
+    return `${schedule?.title} - ${assignment.shift} | 
             Juiz: ${magistrate?.name || 'N/A'}`;
   };
 
@@ -124,7 +147,7 @@ const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: 
                 ))
               ) : (
                 <SelectItem value="no-assignments" disabled>
-                  Nenhum plantão encontrado
+                  Nenhum plantão ativo encontrado
                 </SelectItem>
               )}
             </SelectContent>
