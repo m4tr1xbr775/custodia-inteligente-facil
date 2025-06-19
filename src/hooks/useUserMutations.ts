@@ -3,7 +3,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-export const useUserMutations = (type: string, title: string) => {
+type TableName = "magistrates" | "prosecutors" | "defenders";
+
+export const useUserMutations = (type: TableName, title: string) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 

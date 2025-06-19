@@ -83,7 +83,7 @@ const UserForm = ({
                 <SelectValue placeholder="Selecione um assessor" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Nenhum</SelectItem>
+                <SelectItem value="none">Nenhum</SelectItem>
                 {potentialAssessors.map((assessor) => (
                   <SelectItem key={assessor.id} value={assessor.id}>
                     {assessor.name}
