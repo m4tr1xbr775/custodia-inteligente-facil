@@ -198,6 +198,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          judicial_assistant_id: string | null
           name: string
           phone: string | null
           registration: string | null
@@ -209,6 +210,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          judicial_assistant_id?: string | null
           name: string
           phone?: string | null
           registration?: string | null
@@ -220,13 +222,22 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          judicial_assistant_id?: string | null
           name?: string
           phone?: string | null
           registration?: string | null
           updated_at?: string
           virtual_room_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "magistrates_judicial_assistant_id_fkey"
+            columns: ["judicial_assistant_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       prison_unit_slots: {
         Row: {
