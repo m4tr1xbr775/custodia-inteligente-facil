@@ -251,39 +251,49 @@ const Dashboard = () => {
                   <p className="text-gray-600">Nenhuma audiência agendada para hoje</p>
                 </div>
               ) : (
-                todayAudiences.map((audience) => (
-                  <div 
-                    key={audience.id} 
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleViewAudienceDetails(audience.id)}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <span className="font-medium text-sm">{audience.scheduled_time}</span>
-                        {getStatusBadge(audience.status)}
+                todayAudiences.map((audience) => {
+                  // Safely extract prison unit name
+                  const prisonUnitName = (() => {
+                    if (Array.isArray(audience.prison_units_extended)) {
+                      return audience.prison_units_extended[0]?.name || 'Unidade não definida';
+                    } else if (audience.prison_units_extended && typeof audience.prison_units_extended === 'object') {
+                      return audience.prison_units_extended.name || 'Unidade não definida';
+                    }
+                    return 'Unidade não definida';
+                  })();
+
+                  return (
+                    <div 
+                      key={audience.id} 
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleViewAudienceDetails(audience.id)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <span className="font-medium text-sm">{audience.scheduled_time}</span>
+                          {getStatusBadge(audience.status)}
+                        </div>
+                        <p className="text-sm font-medium text-gray-900 truncate">{audience.defendant_name}</p>
+                        <p className="text-xs text-gray-500 truncate">{audience.process_number}</p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {prisonUnitName}
+                        </p>
+                        <div className="text-xs text-gray-500 mt-1">
+                          <span>Mag: {audience.magistrates?.name || 'Não definido'}</span>
+                          {audience.prosecutors?.name && <span className="ml-2">Prom: {audience.prosecutors.name}</span>}
+                          {audience.defenders?.name && <span className="ml-2">Def: {audience.defenders.name}</span>}
+                        </div>
                       </div>
-                      <p className="text-sm font-medium text-gray-900 truncate">{audience.defendant_name}</p>
-                      <p className="text-xs text-gray-500 truncate">{audience.process_number}</p>
-                      <p className="text-xs text-gray-500 truncate">
-                        {Array.isArray(audience.prison_units_extended) 
-                          ? audience.prison_units_extended[0]?.name || 'Unidade não definida'
-                          : audience.prison_units_extended?.name || 'Unidade não definida'}
-                      </p>
-                      <div className="text-xs text-gray-500 mt-1">
-                        <span>Mag: {audience.magistrates?.name || 'Não definido'}</span>
-                        {audience.prosecutors?.name && <span className="ml-2">Prom: {audience.prosecutors.name}</span>}
-                        {audience.defenders?.name && <span className="ml-2">Def: {audience.defenders.name}</span>}
+                      <div className="flex items-center ml-4">
+                        {audience.status === "realizada" ? (
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <AlertCircle className="h-5 w-5 text-yellow-500" />
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center ml-4">
-                      {audience.status === "realizada" ? (
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                      ) : (
-                        <AlertCircle className="h-5 w-5 text-yellow-500" />
-                      )}
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </CardContent>
