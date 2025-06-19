@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import ProcessNumberField from "./ProcessNumberField";
 
 interface AudienciaBasicInfoProps {
   form: UseFormReturn<any>;
@@ -18,19 +19,7 @@ interface AudienciaBasicInfoProps {
 const AudienciaBasicInfo = ({ form }: AudienciaBasicInfoProps) => {
   return (
     <>
-      <FormField
-        control={form.control}
-        name="process_number"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Número do Processo *</FormLabel>
-            <FormControl>
-              <Input placeholder="Digite o número do processo" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <ProcessNumberField form={form} />
 
       <FormField
         control={form.control}

@@ -26,6 +26,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AudienciaModal from "@/components/Audiencias/AudienciaModal";
+import { ProjudiIcon } from "@/components/ui/projudi-icon";
 import { Database } from "@/integrations/supabase/types";
 
 type AudienceStatus = Database["public"]["Enums"]["audience_status"];
@@ -384,7 +385,14 @@ const Audiencias = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <h3 className="font-semibold text-gray-900">{audience.defendant_name}</h3>
-                            <p className="text-sm text-gray-600">Processo: {audience.process_number}</p>
+                            <div className="flex items-center space-x-2">
+                              <p className="text-sm text-gray-600">Processo: {audience.process_number}</p>
+                              <ProjudiIcon 
+                                processNumber={audience.process_number} 
+                                size="sm" 
+                                variant="ghost"
+                              />
+                            </div>
                             <p className="text-sm text-gray-600">Unidade: {audience.prison_units_extended?.name}</p>
                           </div>
                           

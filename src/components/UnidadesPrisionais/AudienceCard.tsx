@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ProjudiIcon } from "@/components/ui/projudi-icon";
 
 interface AudienceCardProps {
   audience: any;
@@ -80,9 +81,16 @@ const AudienceCard = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <h3 className="font-semibold text-xl text-gray-900">{audience.defendant_name}</h3>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Processo:</span> {audience.process_number}
-                </p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Processo:</span> {audience.process_number}
+                  </p>
+                  <ProjudiIcon 
+                    processNumber={audience.process_number} 
+                    size="sm" 
+                    variant="ghost"
+                  />
+                </div>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Central:</span> {audience.serventias?.name || 'Não informado'}
                 </p>
