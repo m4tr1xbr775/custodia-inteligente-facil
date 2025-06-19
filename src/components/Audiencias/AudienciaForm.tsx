@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -189,6 +188,14 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="space-y-6">
+          {/* Data da Audiência */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Data da Audiência</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <AudienciaDateTime form={form} />
+            </div>
+          </div>
+          
           {/* Plantão e Horários */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Plantão e Horários</h3>
@@ -204,14 +211,6 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
             <h3 className="text-lg font-medium">Informações do Processo</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <AudienciaBasicInfo form={form} />
-            </div>
-          </div>
-          
-          {/* Data da Audiência */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Data da Audiência</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <AudienciaDateTime form={form} />
             </div>
           </div>
         </div>
