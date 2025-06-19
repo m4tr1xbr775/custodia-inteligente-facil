@@ -496,6 +496,12 @@ const ScheduleManagement = () => {
     setIsDialogOpen(true);
   };
 
+  const handleDelete = (id: string) => {
+    if (confirm("Tem certeza que deseja remover esta escala?")) {
+      deleteMutation.mutate(id);
+    }
+  };
+
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingSchedule(null);
@@ -505,6 +511,19 @@ const ScheduleManagement = () => {
       start_date: "",
       end_date: "",
       status: "rascunho",
+    });
+  };
+
+  const handleCloseAssignmentDialog = () => {
+    setIsAssignmentDialogOpen(false);
+    setSelectedScheduleForAssignment(null);
+    setAssignmentFormData({
+      serventia_id: "",
+      magistrate_id: "none",
+      prosecutor_id: "none",
+      defender_id: "none",
+      date: "",
+      shift: "diurno",
     });
   };
 
