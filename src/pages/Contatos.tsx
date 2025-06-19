@@ -53,18 +53,18 @@ const Contatos = () => {
     },
   });
 
-  const getRoleBadge = (position: string) => {
-    if (!position) return <Badge variant="secondary">Sem Cargo</Badge>;
+  const getRoleBadge = (profile: string) => {
+    if (!profile) return <Badge variant="secondary">Sem Perfil</Badge>;
     
-    switch (position.toLowerCase()) {
+    switch (profile.toLowerCase()) {
       case "juiz":
         return <Badge className="bg-blue-100 text-blue-800">Juiz</Badge>;
       case "promotor":
         return <Badge className="bg-green-100 text-green-800">Promotor</Badge>;
       case "defensor público":
         return <Badge className="bg-purple-100 text-purple-800">Defensor Público</Badge>;
-      case "assistente de juiz":
-        return <Badge className="bg-orange-100 text-orange-800">Assistente de Juiz</Badge>;
+      case "assessor de juiz":
+        return <Badge className="bg-orange-100 text-orange-800">Assessor de Juiz</Badge>;
       case "analista":
         return <Badge className="bg-gray-100 text-gray-800">Analista</Badge>;
       case "gestor":
@@ -72,7 +72,7 @@ const Contatos = () => {
       case "administrador":
         return <Badge className="bg-red-100 text-red-800">Administrador</Badge>;
       default:
-        return <Badge variant="secondary">{position}</Badge>;
+        return <Badge variant="secondary">{profile}</Badge>;
     }
   };
 
@@ -138,9 +138,9 @@ const Contatos = () => {
     const matchesSearch = 
       contact.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contact.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.position?.toLowerCase().includes(searchTerm.toLowerCase());
+      contact.profile?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesRole = roleFilter === "todos" || contact.position === roleFilter;
+    const matchesRole = roleFilter === "todos" || contact.profile === roleFilter;
     
     return matchesSearch && matchesRole;
   });
@@ -177,7 +177,7 @@ const Contatos = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Buscar por nome, serventia de origem ou cargo..."
+                  placeholder="Buscar por nome, serventia de origem ou perfil..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -186,14 +186,14 @@ const Contatos = () => {
             </div>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Cargo" />
+                <SelectValue placeholder="Perfil" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todos os Cargos</SelectItem>
+                <SelectItem value="todos">Todos os Perfis</SelectItem>
                 <SelectItem value="Juiz">Juiz</SelectItem>
                 <SelectItem value="Promotor">Promotor</SelectItem>
                 <SelectItem value="Defensor Público">Defensor Público</SelectItem>
-                <SelectItem value="Assistente de Juiz">Assistente de Juiz</SelectItem>
+                <SelectItem value="Assessor de Juiz">Assessor de Juiz</SelectItem>
                 <SelectItem value="Analista">Analista</SelectItem>
                 <SelectItem value="Gestor">Gestor</SelectItem>
                 <SelectItem value="Administrador">Administrador</SelectItem>
@@ -213,7 +213,7 @@ const Contatos = () => {
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg text-gray-900">{contact.name}</h3>
                     <div className="flex items-center space-x-2 mt-2">
-                      {getRoleBadge(contact.position)}
+                      {getRoleBadge(contact.profile)}
                     </div>
                   </div>
                   <div className="flex space-x-2">
@@ -258,9 +258,9 @@ const Contatos = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  {contact.position && (
+                  {contact.profile && (
                     <p className="text-sm text-gray-600">
-                      <span className="font-medium">Cargo:</span> {contact.position}
+                      <span className="font-medium">Perfil:</span> {contact.profile}
                     </p>
                   )}
                   {contact.department && (

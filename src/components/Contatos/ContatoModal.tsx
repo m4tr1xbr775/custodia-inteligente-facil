@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,18 +30,18 @@ interface ContatoModalProps {
 
 interface ContatoForm {
   name: string;
-  position: string;
+  profile: string;
   department: string;
   phone: string;
   mobile: string;
   email: string;
 }
 
-const positions = [
+const profiles = [
   "Juiz",
   "Promotor", 
   "Defensor Público",
-  "Assistente de Juiz",
+  "Assessor de Juiz",
   "Analista",
   "Gestor",
   "Administrador"
@@ -49,7 +50,7 @@ const positions = [
 const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) => {
   const [formData, setFormData] = useState<ContatoForm>({
     name: "",
-    position: "",
+    profile: "",
     department: "",
     phone: "",
     mobile: "",
@@ -83,7 +84,7 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
         if (data) {
           setFormData({
             name: data.name || "",
-            position: data.position || "",
+            profile: data.profile || "",
             department: data.department || "",
             phone: data.phone || "",
             mobile: data.mobile || "",
@@ -97,7 +98,7 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
       // Reset form for new contact
       setFormData({
         name: "",
-        position: "",
+        profile: "",
         department: "",
         phone: "",
         mobile: "",
@@ -117,7 +118,7 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
           .from('contacts')
           .update({
             name: formData.name,
-            position: formData.position,
+            profile: formData.profile,
             department: formData.department,
             phone: formData.phone,
             mobile: formData.mobile,
@@ -137,7 +138,7 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
           .from('contacts')
           .insert({
             name: formData.name,
-            position: formData.position,
+            profile: formData.profile,
             department: formData.department,
             phone: formData.phone,
             mobile: formData.mobile,
@@ -200,18 +201,18 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="position">Cargo</Label>
+            <Label htmlFor="profile">Perfil</Label>
             <Select
-              value={formData.position}
-              onValueChange={(value) => handleInputChange('position', value)}
+              value={formData.profile}
+              onValueChange={(value) => handleInputChange('profile', value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Selecione um cargo" />
+                <SelectValue placeholder="Selecione um perfil" />
               </SelectTrigger>
               <SelectContent>
-                {positions.map((position) => (
-                  <SelectItem key={position} value={position}>
-                    {position}
+                {profiles.map((profile) => (
+                  <SelectItem key={profile} value={profile}>
+                    {profile}
                   </SelectItem>
                 ))}
               </SelectContent>

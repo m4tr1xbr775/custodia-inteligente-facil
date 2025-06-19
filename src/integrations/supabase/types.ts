@@ -127,7 +127,7 @@ export type Database = {
           mobile: string | null
           name: string
           phone: string | null
-          position: string | null
+          profile: string | null
           updated_at: string
         }
         Insert: {
@@ -139,7 +139,7 @@ export type Database = {
           mobile?: string | null
           name: string
           phone?: string | null
-          position?: string | null
+          profile?: string | null
           updated_at?: string
         }
         Update: {
@@ -151,7 +151,7 @@ export type Database = {
           mobile?: string | null
           name?: string
           phone?: string | null
-          position?: string | null
+          profile?: string | null
           updated_at?: string
         }
         Relationships: []

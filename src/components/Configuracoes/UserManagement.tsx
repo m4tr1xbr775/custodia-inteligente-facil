@@ -51,16 +51,17 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
   const { toast } = useToast();
   const { createMutation, updateMutation, deleteMutation } = useUserMutations(type, title);
 
-  // Fetch potential assessors (other magistrates) when managing magistrates
+  // Fetch potential assessors (contacts with "Assessor de Juiz" profile) when managing magistrates
   const { data: potentialAssessors = [] } = useQuery({
     queryKey: ['potential-assessors'],
     queryFn: async () => {
       if (type !== "magistrates") return [];
       
       const { data, error } = await supabase
-        .from('magistrates')
+        .from('contacts')
         .select('id, name')
         .eq('active', true)
+        .eq('profile', 'Assessor de Juiz')
         .order('name');
       
       if (error) throw error;
