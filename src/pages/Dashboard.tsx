@@ -292,14 +292,16 @@ const Dashboard = () => {
                 </div>
               ) : (
                 todayAudiences.map((audience) => {
-                  // Safely extract prison unit name - Fixed TypeScript error
+                  // Safely extract prison unit name - Fixed TypeScript error with explicit type handling
                   let prisonUnitName = 'Unidade não definida';
                   
                   if (audience.prison_units_extended) {
-                    if (Array.isArray(audience.prison_units_extended)) {
-                      prisonUnitName = audience.prison_units_extended[0]?.name || 'Unidade não definida';
-                    } else {
-                      prisonUnitName = audience.prison_units_extended.name || 'Unidade não definida';
+                    // Use type assertion to handle the ambiguous type
+                    const prisonUnit = audience.prison_units_extended as any;
+                    if (Array.isArray(prisonUnit)) {
+                      prisonUnitName = prisonUnit[0]?.name || 'Unidade não definida';
+                    } else if (prisonUnit?.name) {
+                      prisonUnitName = prisonUnit.name;
                     }
                   }
 
