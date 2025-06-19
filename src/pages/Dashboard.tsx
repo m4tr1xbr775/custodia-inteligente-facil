@@ -1,5 +1,5 @@
 
-import { Calendar, Clock, Users, Building, CheckCircle, AlertCircle, MapPin } from "lucide-react";
+import { Calendar, Clock, Users, Building, CheckCircle, AlertCircle, MapPin, Phone, MessageCircle } from "lucide-react";
 import StatsCard from "@/components/Dashboard/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,9 +18,93 @@ const Dashboard = () => {
     day: 'numeric'
   });
 
-  // Buscar escalas ativas com suas centrais de custódia
+  // Buscar estatísticas gerais
+  const { data: stats } = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Audiências de hoje
+      const { data: todayAudiences } = await supabase
+        .from('audiences')
+        .select('*')
+        .eq('scheduled_date', today);
+      
+      // Total de unidades prisionais
+      const { data: prisonUnits } = await supabase
+        .from('prison_units_extended')
+        .select('id');
+      
+      // Total de magistrados ativos
+      const { data: magistrates } = await supabase
+        .from('magistrates')
+        .select('id')
+        .eq('active', true);
+      
+      // Total de promotores ativos
+      const { data: prosecutors } = await supabase
+        .from('prosecutors')
+        .select('id')
+        .eq('active', true);
+      
+      // Total de defensores ativos
+      const { data: defenders } = await supabase
+        .from('defenders')
+        .select('id')
+        .eq('active', true);
+
+      return {
+        todayAudiences: todayAudiences?.length || 0,
+        prisonUnits: prisonUnits?.length || 0,
+        totalOperators: (magistrates?.length || 0) + (prosecutors?.length || 0) + (defenders?.length || 0),
+        todayAudiencesData: todayAudiences || []
+      };
+    },
+  });
+
+  // Buscar audiências de hoje com detalhes
+  const { data: todayAudiences = [] } = useQuery({
+    queryKey: ["today-audiences"],
+    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
+      
+      const { data, error } = await supabase
+        .from('audiences')
+        .select(`
+          *,
+          prison_units_extended!inner (
+            id,
+            name,
+            short_name
+          ),
+          magistrates (
+            id,
+            name
+          ),
+          prosecutors (
+            id,
+            name
+          ),
+          defenders (
+            id,
+            name
+          )
+        `)
+        .eq('scheduled_date', today)
+        .order('scheduled_time');
+      
+      if (error) {
+        console.error("Erro ao buscar audiências de hoje:", error);
+        return [];
+      }
+      
+      return data || [];
+    },
+  });
+
+  // Buscar escalas ativas com suas serventias
   const { data: schedules = [] } = useQuery({
-    queryKey: ["schedules-with-custody-centers"],
+    queryKey: ["schedules-with-serventias"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("schedules")
@@ -32,16 +116,42 @@ const Dashboard = () => {
           start_date,
           end_date,
           schedule_assignments!inner(
+            id,
             serventia_id,
+            magistrate_id,
+            prosecutor_id,
+            defender_id,
+            judicial_assistant_id,
             serventias!inner(
               id,
               name,
-              type
+              type,
+              phone,
+              responsible
+            ),
+            magistrates (
+              id,
+              name,
+              phone,
+              judicial_assistant:judicial_assistant_id (
+                id,
+                name,
+                phone
+              )
+            ),
+            prosecutors (
+              id,
+              name,
+              phone
+            ),
+            defenders (
+              id,
+              name,
+              phone
             )
           )
         `)
-        .eq("status", "ativo")
-        .eq("schedule_assignments.serventias.type", "central_custodia");
+        .eq("status", "ativa");
       
       if (error) {
         console.error("Erro ao buscar escalas:", error);
@@ -51,68 +161,6 @@ const Dashboard = () => {
       return data || [];
     },
   });
-
-  const recentAudiences = [
-    {
-      id: 1,
-      time: "09:00",
-      process: "0001234-56.2024.8.09.0000",
-      defendant: "João Silva Santos",
-      unit: "CDP Aparecida de Goiânia",
-      status: "agendada"
-    },
-    {
-      id: 2,
-      time: "10:30",
-      process: "0001235-56.2024.8.09.0000",
-      defendant: "Maria Oliveira Costa",
-      unit: "Presídio Feminino",
-      status: "realizada"
-    },
-    {
-      id: 3,
-      time: "14:00",
-      process: "0001236-56.2024.8.09.0000",
-      defendant: "Carlos Eduardo Lima",
-      unit: "CPP Goiânia",
-      status: "cancelada"
-    }
-  ];
-
-  const macrorregioes = [
-    {
-      id: 1,
-      nome: "Macrorregião 02",
-      responsavel: "Fernanda Braz",
-      telefone: "556299953335",
-      whatsapp: "556299953335",
-      status: "ativa"
-    },
-    {
-      id: 2,
-      nome: "Macrorregião 03",
-      responsavel: "Lana Nunes",
-      telefone: "556296039999",
-      whatsapp: "556296039999",
-      status: "ativa"
-    },
-    {
-      id: 3,
-      nome: "Macrorregião 04",
-      responsavel: "Alessandro",
-      telefone: "556284153627",
-      whatsapp: "556284153627",
-      status: "ativa"
-    },
-    {
-      id: 4,
-      nome: "Macrorregião 05",
-      responsavel: "Suelem Mendonça",
-      telefone: "556285376555",
-      whatsapp: "556285376555",
-      status: "ativa"
-    }
-  ];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -128,9 +176,28 @@ const Dashboard = () => {
   };
 
   const handleViewScheduleAudiences = (scheduleId: string, scheduleTitle: string) => {
-    // Navegar para a página de audiências com filtro da escala
     navigate(`/audiencias?schedule=${scheduleId}&title=${encodeURIComponent(scheduleTitle)}`);
   };
+
+  const handleViewAudienceDetails = (audienceId: string) => {
+    navigate(`/audiencias?id=${audienceId}`);
+  };
+
+  const handleCall = (phone: string) => {
+    if (phone) {
+      window.open(`tel:${phone}`, '_self');
+    }
+  };
+
+  const handleWhatsApp = (phone: string, name: string) => {
+    if (phone) {
+      const message = encodeURIComponent(`Olá, entrando em contato com ${name} através do SisJud.`);
+      window.open(`https://wa.me/55${phone.replace(/\D/g, '')}?text=${message}`, '_blank');
+    }
+  };
+
+  const pendingAudiences = todayAudiences.filter(a => a.status === 'agendada').length;
+  const completedAudiences = todayAudiences.filter(a => a.status === 'realizada').length;
 
   return (
     <div className="space-y-6 w-full max-w-full">
@@ -143,28 +210,28 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <StatsCard
           title="Audiências Hoje"
-          value={12}
+          value={stats?.todayAudiences || 0}
           icon={Calendar}
-          description="3 pendentes, 9 realizadas"
+          description={`${pendingAudiences} pendentes, ${completedAudiences} realizadas`}
           trend={{ value: 15, isPositive: true }}
         />
         <StatsCard
-          title="Macrorregiões Ativas"
-          value={20}
-          icon={MapPin}
-          description="Todas as regiões operacionais"
-        />
-        <StatsCard
-          title="Centrais de Custódia"
-          value={20}
+          title="Unidades Prisionais"
+          value={stats?.prisonUnits || 0}
           icon={Building}
-          description="Unidades em funcionamento"
+          description="Unidades cadastradas"
         />
         <StatsCard
           title="Operadores Ativos"
-          value={156}
+          value={stats?.totalOperators || 0}
           icon={Users}
           description="Judiciário, MP e Defensoria"
+        />
+        <StatsCard
+          title="Escalas Ativas"
+          value={schedules.length}
+          icon={MapPin}
+          description="Plantões em funcionamento"
         />
       </div>
 
@@ -179,110 +246,217 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentAudiences.map((audience) => (
-                <div key={audience.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <span className="font-medium text-sm">{audience.time}</span>
-                      {getStatusBadge(audience.status)}
-                    </div>
-                    <p className="text-sm font-medium text-gray-900 truncate">{audience.defendant}</p>
-                    <p className="text-xs text-gray-500 truncate">{audience.process}</p>
-                    <p className="text-xs text-gray-500 truncate">{audience.unit}</p>
-                  </div>
-                  <div className="flex items-center ml-4">
-                    {audience.status === "realizada" ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <AlertCircle className="h-5 w-5 text-yellow-500" />
-                    )}
-                  </div>
+              {todayAudiences.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">Nenhuma audiência agendada para hoje</p>
                 </div>
-              ))}
+              ) : (
+                todayAudiences.map((audience) => (
+                  <div 
+                    key={audience.id} 
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleViewAudienceDetails(audience.id)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <span className="font-medium text-sm">{audience.scheduled_time}</span>
+                        {getStatusBadge(audience.status)}
+                      </div>
+                      <p className="text-sm font-medium text-gray-900 truncate">{audience.defendant_name}</p>
+                      <p className="text-xs text-gray-500 truncate">{audience.process_number}</p>
+                      <p className="text-xs text-gray-500 truncate">{audience.prison_units_extended?.name}</p>
+                      <div className="text-xs text-gray-500 mt-1">
+                        <span>Mag: {audience.magistrates?.name || 'Não definido'}</span>
+                        {audience.prosecutors?.name && <span className="ml-2">Prom: {audience.prosecutors.name}</span>}
+                        {audience.defenders?.name && <span className="ml-2">Def: {audience.defenders.name}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center ml-4">
+                      {audience.status === "realizada" ? (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <AlertCircle className="h-5 w-5 text-yellow-500" />
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Centrais de Custódia por Escala */}
+        {/* Escalas e Plantões */}
         <Card className="w-full">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2 text-lg">
               <Building className="h-5 w-5 text-blue-600" />
-              <span>Centrais de Custódia - Escalas</span>
+              <span>Escalas e Plantões</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4 max-h-96 overflow-y-auto">
-              {/* Macrorregiões */}
-              <div>
-                <h4 className="text-sm font-semibold text-gray-700 mb-2">Macrorregiões</h4>
-                {macrorregioes.map((macro) => (
-                  <div key={macro.id} className="p-3 bg-blue-50 rounded-lg border border-blue-200 mb-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-sm text-blue-800 truncate">{macro.nome}</span>
-                      <Badge className="bg-blue-100 text-blue-800 flex-shrink-0">Ativa</Badge>
+              {schedules.length > 0 ? (
+                schedules.map((schedule) => (
+                  <div key={schedule.id} className="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-sm text-green-800 truncate">{schedule.title}</span>
+                          <Badge className="bg-green-100 text-green-800 flex-shrink-0">Ativa</Badge>
+                        </div>
+                        {schedule.description && (
+                          <p className="text-xs text-green-600 truncate mt-1">{schedule.description}</p>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm font-medium truncate">{macro.responsavel}</p>
-                    <p className="text-xs text-blue-600 truncate">Tel: {macro.telefone}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Centrais de Custódia por Escala */}
-              <div>
-                <h4 className="text-sm font-semibold text-gray-700 mb-2">Centrais de Custódia por Escala</h4>
-                {schedules.length > 0 ? (
-                  schedules.map((schedule) => {
-                    // Agrupar centrais de custódia por escala
-                    const custodyCenters = schedule.schedule_assignments
-                      ?.filter(assignment => assignment.serventias?.type === "central_custodia")
-                      ?.map(assignment => assignment.serventias) || [];
-
-                    return (
-                      <div key={schedule.id} className="p-3 bg-green-50 rounded-lg border border-green-200 mb-2">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium text-sm text-green-800 truncate">{schedule.title}</span>
-                              <Badge className="bg-green-100 text-green-800 flex-shrink-0">Ativa</Badge>
-                            </div>
-                            {schedule.description && (
-                              <p className="text-xs text-green-600 truncate mt-1">{schedule.description}</p>
-                            )}
-                          </div>
+                    
+                    {/* Informações dos profissionais */}
+                    {schedule.schedule_assignments.map((assignment) => (
+                      <div key={assignment.id} className="mt-3 space-y-2">
+                        <div className="text-xs font-medium text-green-700">
+                          {assignment.serventias.name}
                         </div>
                         
-                        {/* Centrais associadas */}
-                        {custodyCenters.length > 0 && (
-                          <div className="mt-2 space-y-1">
-                            <p className="text-xs font-medium text-green-700">Centrais:</p>
-                            {custodyCenters.map((center) => (
-                              <div key={center.id} className="text-xs text-green-600 pl-2">
-                                • {center.name}
-                              </div>
-                            ))}
+                        {assignment.magistrates && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-green-600">
+                              Magistrado: {assignment.magistrates.name}
+                            </span>
+                            <div className="flex space-x-1">
+                              {assignment.magistrates.phone && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => handleCall(assignment.magistrates.phone)}
+                                >
+                                  <Phone className="h-3 w-3" />
+                                </Button>
+                              )}
+                              {assignment.magistrates.phone && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => handleWhatsApp(assignment.magistrates.phone, assignment.magistrates.name)}
+                                >
+                                  <MessageCircle className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         )}
                         
-                        <div className="mt-2 flex justify-end">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-xs h-7 px-2 border-green-300 text-green-700 hover:bg-green-100"
-                            onClick={() => handleViewScheduleAudiences(schedule.id, schedule.title)}
-                          >
-                            Ver Audiências
-                          </Button>
-                        </div>
+                        {assignment.prosecutors && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-green-600">
+                              Promotor: {assignment.prosecutors.name}
+                            </span>
+                            <div className="flex space-x-1">
+                              {assignment.prosecutors.phone && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => handleCall(assignment.prosecutors.phone)}
+                                >
+                                  <Phone className="h-3 w-3" />
+                                </Button>
+                              )}
+                              {assignment.prosecutors.phone && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => handleWhatsApp(assignment.prosecutors.phone, assignment.prosecutors.name)}
+                                >
+                                  <MessageCircle className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {assignment.defenders && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-green-600">
+                              Defensor: {assignment.defenders.name}
+                            </span>
+                            <div className="flex space-x-1">
+                              {assignment.defenders.phone && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => handleCall(assignment.defenders.phone)}
+                                >
+                                  <Phone className="h-3 w-3" />
+                                </Button>
+                              )}
+                              {assignment.defenders.phone && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => handleWhatsApp(assignment.defenders.phone, assignment.defenders.name)}
+                                >
+                                  <MessageCircle className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {assignment.magistrates?.judicial_assistant && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-green-600">
+                              Assessor: {assignment.magistrates.judicial_assistant.name}
+                            </span>
+                            <div className="flex space-x-1">
+                              {assignment.magistrates.judicial_assistant.phone && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => handleCall(assignment.magistrates.judicial_assistant.phone)}
+                                >
+                                  <Phone className="h-3 w-3" />
+                                </Button>
+                              )}
+                              {assignment.magistrates.judicial_assistant.phone && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => handleWhatsApp(assignment.magistrates.judicial_assistant.phone, assignment.magistrates.judicial_assistant.name)}
+                                >
+                                  <MessageCircle className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    );
-                  })
-                ) : (
-                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-sm text-gray-500">Nenhuma escala ativa encontrada</p>
+                    ))}
+                    
+                    <div className="mt-2 flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-7 px-2 border-green-300 text-green-700 hover:bg-green-100"
+                        onClick={() => handleViewScheduleAudiences(schedule.id, schedule.title)}
+                      >
+                        Ver Audiências
+                      </Button>
+                    </div>
                   </div>
-                )}
-              </div>
+                ))
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-sm text-gray-500">Nenhuma escala ativa encontrada</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -298,15 +472,25 @@ const Dashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <div className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-yellow-800">
-                  3 audiências pendentes de confirmação pela unidade prisional
-                </p>
-                <p className="text-xs text-yellow-600 truncate">CDP Aparecida, Presídio Feminino, CPP Goiânia</p>
+            {pendingAudiences > 0 && (
+              <div className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-yellow-800">
+                    {pendingAudiences} audiências pendentes para hoje
+                  </p>
+                  <p className="text-xs text-yellow-600 truncate">Verifique o status das audiências agendadas</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+                  onClick={() => navigate('/audiencias')}
+                >
+                  Ver Todas
+                </Button>
               </div>
-            </div>
+            )}
             
             <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
               <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
