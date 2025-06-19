@@ -1,4 +1,3 @@
-
 import React from "react";
 import { UseFormReturn } from "react-hook-form";
 import {
@@ -25,24 +24,54 @@ interface ServentiaBasedAssignmentsProps {
 }
 
 const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: ServentiaBasedAssignmentsProps) => {
-  // Buscar todas as escalas ativas
+  // Buscar apenas escalas que têm atribuições completas (magistrado, promotor, defensor)
   const { data: schedules = [] } = useQuery({
-    queryKey: ['schedules'],
+    queryKey: ['schedules-with-assignments'],
     queryFn: async () => {
-      console.log("Buscando escalas/serventias...");
-      const { data, error } = await supabase
+      console.log("Buscando escalas com atribuições...");
+      
+      // Primeiro buscar todas as escalas ativas
+      const { data: allSchedules, error: schedulesError } = await supabase
         .from('schedules')
-        .select('*')
+        .select('id, title, description')
         .eq('status', 'ativa')
         .order('title');
       
-      if (error) {
-        console.error("Erro ao buscar escalas:", error);
+      if (schedulesError) {
+        console.error("Erro ao buscar escalas:", schedulesError);
         return [];
       }
       
-      console.log("Escalas encontradas:", data);
-      return data || [];
+      if (!allSchedules || allSchedules.length === 0) {
+        console.log("Nenhuma escala ativa encontrada");
+        return [];
+      }
+      
+      // Para cada escala, verificar se tem assignments com atribuições
+      const schedulesWithAssignments = [];
+      
+      for (const schedule of allSchedules) {
+        const { data: assignments, error: assignmentsError } = await supabase
+          .from('schedule_assignments')
+          .select('magistrate_id, prosecutor_id, defender_id, judicial_assistant_id')
+          .eq('schedule_id', schedule.id)
+          .not('magistrate_id', 'is', null)
+          .not('prosecutor_id', 'is', null)
+          .not('defender_id', 'is', null);
+        
+        if (assignmentsError) {
+          console.error("Erro ao buscar assignments para escala:", schedule.id, assignmentsError);
+          continue;
+        }
+        
+        // Se encontrou pelo menos um assignment com magistrado, promotor e defensor
+        if (assignments && assignments.length > 0) {
+          schedulesWithAssignments.push(schedule);
+        }
+      }
+      
+      console.log("Escalas com atribuições encontradas:", schedulesWithAssignments);
+      return schedulesWithAssignments;
     },
   });
 
@@ -180,11 +209,18 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {schedules.map((schedule) => (
-                  <SelectItem key={schedule.id} value={schedule.id}>
-                    {schedule.title}
+                {schedules.length > 0 ? (
+                  schedules.map((schedule) => (
+                    <SelectItem key={schedule.id} value={schedule.id}>
+                      {schedule.title}
+                      {schedule.description && ` - ${schedule.description}`}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="no-schedules" disabled>
+                    Nenhuma escala com atribuições encontrada
                   </SelectItem>
-                ))}
+                )}
               </SelectContent>
             </Select>
             <FormMessage />
