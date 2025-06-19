@@ -95,7 +95,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
         process_number: data.process_number,
         scheduled_date: data.scheduled_date,
         scheduled_time: data.scheduled_time,
-        serventia_id: data.serventia_id,
+        serventia_id: data.serventia_id || null,
         prison_unit_id: data.prison_unit_id,
         magistrate_id: data.magistrate_id || null,
         prosecutor_id: data.prosecutor_id || null,
