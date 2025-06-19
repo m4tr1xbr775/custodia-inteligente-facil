@@ -397,6 +397,7 @@ export type Database = {
           date: string
           defender_id: string | null
           id: string
+          judicial_assistant_id: string | null
           magistrate_id: string | null
           prosecutor_id: string | null
           schedule_id: string
@@ -409,6 +410,7 @@ export type Database = {
           date: string
           defender_id?: string | null
           id?: string
+          judicial_assistant_id?: string | null
           magistrate_id?: string | null
           prosecutor_id?: string | null
           schedule_id: string
@@ -421,6 +423,7 @@ export type Database = {
           date?: string
           defender_id?: string | null
           id?: string
+          judicial_assistant_id?: string | null
           magistrate_id?: string | null
           prosecutor_id?: string | null
           schedule_id?: string
@@ -434,6 +437,13 @@ export type Database = {
             columns: ["defender_id"]
             isOneToOne: false
             referencedRelation: "defenders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_assignments_judicial_assistant_id_fkey"
+            columns: ["judicial_assistant_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
           {
