@@ -89,8 +89,7 @@ const ScheduleManagement = () => {
     magistrate_id: "none",
     prosecutor_id: "none",
     defender_id: "none",
-    date: "",
-    shift: "diurno",
+    shift: "integral",
   });
   
   const { toast } = useToast();
@@ -455,10 +454,10 @@ const ScheduleManagement = () => {
   const handleAssignmentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!assignmentFormData.serventia_id || !assignmentFormData.date) {
+    if (!assignmentFormData.serventia_id) {
       toast({
         title: "Erro",
-        description: "Serventia e data são obrigatórios",
+        description: "Serventia é obrigatória",
         variant: "destructive",
       });
       return;
@@ -513,6 +512,23 @@ const ScheduleManagement = () => {
     });
   };
 
+  const handleAddAssignment = (schedule: Schedule) => {
+    setSelectedScheduleForAssignment(schedule);
+    
+    // Encontrar a serventia baseada no título da escala
+    const matchedServentia = serventias.find(s => schedule.title.includes(s.name));
+    
+    setAssignmentFormData({
+      serventia_id: matchedServentia?.id || "",
+      magistrate_id: "none",
+      prosecutor_id: "none",
+      defender_id: "none",
+      shift: "integral",
+    });
+    
+    setIsAssignmentDialogOpen(true);
+  };
+
   const handleCloseAssignmentDialog = () => {
     setIsAssignmentDialogOpen(false);
     setSelectedScheduleForAssignment(null);
@@ -521,8 +537,7 @@ const ScheduleManagement = () => {
       magistrate_id: "none",
       prosecutor_id: "none",
       defender_id: "none",
-      date: "",
-      shift: "diurno",
+      shift: "integral",
     });
   };
 
@@ -544,7 +559,6 @@ const ScheduleManagement = () => {
       magistrate_id: assignment.magistrate_id || "none",
       prosecutor_id: assignment.prosecutor_id || "none",
       defender_id: assignment.defender_id || "none",
-      date: assignment.date || "",
       shift: assignment.shift,
     });
   };
@@ -556,18 +570,17 @@ const ScheduleManagement = () => {
       magistrate_id: "none",
       prosecutor_id: "none",
       defender_id: "none",
-      date: "",
-      shift: "diurno",
+      shift: "integral",
     });
   };
 
   const handleSaveAssignmentEdit = () => {
     if (!editingAssignment) return;
     
-    if (!assignmentFormData.serventia_id || !assignmentFormData.date) {
+    if (!assignmentFormData.serventia_id) {
       toast({
         title: "Erro",
-        description: "Serventia e data são obrigatórios",
+        description: "Serventia é obrigatória",
         variant: "destructive",
       });
       return;
@@ -728,11 +741,6 @@ const ScheduleManagement = () => {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Adicionar Nova Atribuição</DialogTitle>
-            {selectedScheduleForAssignment && (
-              <p className="text-sm text-gray-600">
-                Escala: {selectedScheduleForAssignment.title}
-              </p>
-            )}
           </DialogHeader>
           <form onSubmit={handleAssignmentSubmit} className="space-y-4">
             <div>
@@ -749,17 +757,6 @@ const ScheduleManagement = () => {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="date">Data *</Label>
-              <Input
-                id="date"
-                type="date"
-                value={assignmentFormData.date}
-                onChange={(e) => handleAssignmentInputChange("date", e.target.value)}
-                required
-              />
             </div>
 
             <div>
@@ -1092,6 +1089,14 @@ const ScheduleManagement = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          title="Adicionar Atribuição"
+                          onClick={() => handleAddAssignment(schedule)}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
                         <Button 
                           size="sm" 
                           variant="outline" 
