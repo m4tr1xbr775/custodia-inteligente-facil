@@ -14,7 +14,7 @@ const Configuracoes = () => {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Configurações</h1>
         <p className="text-gray-600">
-          Gerencie magistrados, promotores, advogados, centrais de plantão e escalas semanais
+          Gerencie magistrados, promotores, defensores públicos/advogados, serventias de plantão e escalas semanais
         </p>
       </div>
 
@@ -22,8 +22,8 @@ const Configuracoes = () => {
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="magistrates">Magistrados</TabsTrigger>
           <TabsTrigger value="prosecutors">Promotores</TabsTrigger>
-          <TabsTrigger value="defenders">Advogados</TabsTrigger>
-          <TabsTrigger value="regions">Centrais</TabsTrigger>
+          <TabsTrigger value="defenders">Defensores Públicos/Advogados</TabsTrigger>
+          <TabsTrigger value="regions">Serventias</TabsTrigger>
           <TabsTrigger value="schedules">Escalas</TabsTrigger>
           <TabsTrigger value="assignments">Atribuições</TabsTrigger>
         </TabsList>
@@ -37,7 +37,7 @@ const Configuracoes = () => {
         </TabsContent>
 
         <TabsContent value="defenders">
-          <UserManagement type="defenders" title="Advogados Dativos" />
+          <UserManagement type="defenders" title="Defensores Públicos/Advogados" />
         </TabsContent>
 
         <TabsContent value="regions">
