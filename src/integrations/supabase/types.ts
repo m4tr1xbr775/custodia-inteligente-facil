@@ -102,6 +102,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "audiences_prison_unit_id_fkey"
+            columns: ["prison_unit_id"]
+            isOneToOne: false
+            referencedRelation: "prison_units_extended"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "audiences_prosecutor_id_fkey"
             columns: ["prosecutor_id"]
             isOneToOne: false

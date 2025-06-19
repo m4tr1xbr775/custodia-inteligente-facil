@@ -73,7 +73,7 @@ const Dashboard = () => {
     },
   });
 
-  // Buscar audiências de hoje com detalhes - Fixed query
+  // Buscar audiências de hoje com detalhes - Corrigido para usar left joins
   const { data: todayAudiences = [] } = useQuery({
     queryKey: ["today-audiences"],
     queryFn: async () => {
@@ -98,13 +98,7 @@ const Dashboard = () => {
           magistrates (
             id,
             name,
-            phone,
-            judicial_assistant_id,
-            judicial_assistant:judicial_assistant_id (
-              id,
-              name,
-              phone
-            )
+            phone
           ),
           prosecutors (
             id,
@@ -292,18 +286,8 @@ const Dashboard = () => {
                 </div>
               ) : (
                 todayAudiences.map((audience) => {
-                  // Safely extract prison unit name - Fixed TypeScript error with explicit type handling
-                  let prisonUnitName = 'Unidade não definida';
-                  
-                  if (audience.prison_units_extended) {
-                    // Use type assertion to handle the ambiguous type
-                    const prisonUnit = audience.prison_units_extended as any;
-                    if (Array.isArray(prisonUnit)) {
-                      prisonUnitName = prisonUnit[0]?.name || 'Unidade não definida';
-                    } else if (prisonUnit?.name) {
-                      prisonUnitName = prisonUnit.name;
-                    }
-                  }
+                  // Safely extract prison unit name
+                  const prisonUnitName = audience.prison_units_extended?.name || 'Unidade não definida';
 
                   return (
                     <div 

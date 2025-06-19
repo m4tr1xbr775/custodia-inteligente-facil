@@ -27,7 +27,7 @@ const AudienceList = ({
   isUpdatingAcknowledgment,
   isUpdatingObservations,
 }: AudienceListProps) => {
-  // Fetch audiences for selected unit with complete data joins
+  // Fetch audiences for selected unit with complete data joins - Corrigido
   const { data: audiences, isLoading } = useQuery({
     queryKey: ['unit_audiences', selectedUnit],
     queryFn: async () => {
@@ -40,13 +40,13 @@ const AudienceList = ({
         .from('audiences')
         .select(`
           *,
-          serventias!inner (
+          serventias (
             id,
             name,
             type,
             code
           ),
-          prison_units_extended!inner (
+          prison_units_extended (
             id,
             name,
             short_name
@@ -56,13 +56,7 @@ const AudienceList = ({
             name,
             email,
             phone,
-            virtual_room_url,
-            judicial_assistant:judicial_assistant_id (
-              id,
-              name,
-              email,
-              phone
-            )
+            virtual_room_url
           ),
           prosecutors (
             id,
@@ -76,12 +70,6 @@ const AudienceList = ({
             email,
             phone,
             type
-          ),
-          judicial_assistant:judicial_assistant_id (
-            id,
-            name,
-            email,
-            phone
           )
         `)
         .eq('prison_unit_id', selectedUnit)
