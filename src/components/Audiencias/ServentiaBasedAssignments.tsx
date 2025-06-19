@@ -80,59 +80,79 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
     enabled: !!selectedScheduleId && !!selectedDate,
   });
 
-  // Buscar todos os magistrados, promotores e defensores para fallback
-  const { data: magistrates = [] } = useQuery({
-    queryKey: ['magistrates'],
+  // Buscar magistrados atribuídos à central selecionada
+  const { data: assignedMagistrates = [] } = useQuery({
+    queryKey: ['assigned-magistrates', selectedScheduleId, selectedDate],
     queryFn: async () => {
+      if (!selectedScheduleId || !selectedDate) return [];
+      
       const { data, error } = await supabase
-        .from('magistrates')
-        .select('id, name, virtual_room_url')
-        .eq('active', true)
-        .order('name');
+        .from('schedule_assignments')
+        .select(`
+          magistrates!magistrate_id(id, name, virtual_room_url)
+        `)
+        .eq('schedule_id', selectedScheduleId)
+        .eq('date', selectedDate)
+        .not('magistrate_id', 'is', null);
       
       if (error) {
-        console.error("Erro ao buscar magistrados:", error);
+        console.error("Erro ao buscar magistrados atribuídos:", error);
         return [];
       }
       
-      return data || [];
+      return data?.map(item => item.magistrates).filter(Boolean) || [];
     },
+    enabled: !!selectedScheduleId && !!selectedDate,
   });
 
-  const { data: prosecutors = [] } = useQuery({
-    queryKey: ['prosecutors'],
+  // Buscar promotores atribuídos à central selecionada
+  const { data: assignedProsecutors = [] } = useQuery({
+    queryKey: ['assigned-prosecutors', selectedScheduleId, selectedDate],
     queryFn: async () => {
+      if (!selectedScheduleId || !selectedDate) return [];
+      
       const { data, error } = await supabase
-        .from('prosecutors')
-        .select('id, name')
-        .eq('active', true)
-        .order('name');
+        .from('schedule_assignments')
+        .select(`
+          prosecutors!prosecutor_id(id, name)
+        `)
+        .eq('schedule_id', selectedScheduleId)
+        .eq('date', selectedDate)
+        .not('prosecutor_id', 'is', null);
       
       if (error) {
-        console.error("Erro ao buscar promotores:", error);
+        console.error("Erro ao buscar promotores atribuídos:", error);
         return [];
       }
       
-      return data || [];
+      return data?.map(item => item.prosecutors).filter(Boolean) || [];
     },
+    enabled: !!selectedScheduleId && !!selectedDate,
   });
 
-  const { data: defenders = [] } = useQuery({
-    queryKey: ['defenders'],
+  // Buscar defensores atribuídos à central selecionada
+  const { data: assignedDefenders = [] } = useQuery({
+    queryKey: ['assigned-defenders', selectedScheduleId, selectedDate],
     queryFn: async () => {
+      if (!selectedScheduleId || !selectedDate) return [];
+      
       const { data, error } = await supabase
-        .from('defenders')
-        .select('id, name')
-        .eq('active', true)
-        .order('name');
+        .from('schedule_assignments')
+        .select(`
+          defenders!defender_id(id, name)
+        `)
+        .eq('schedule_id', selectedScheduleId)
+        .eq('date', selectedDate)
+        .not('defender_id', 'is', null);
       
       if (error) {
-        console.error("Erro ao buscar defensores:", error);
+        console.error("Erro ao buscar defensores atribuídos:", error);
         return [];
       }
       
-      return data || [];
+      return data?.map(item => item.defenders).filter(Boolean) || [];
     },
+    enabled: !!selectedScheduleId && !!selectedDate,
   });
 
   // Buscar assistentes judiciais (contatos com perfil "Assessor de Juiz")
@@ -182,7 +202,7 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
   const handleMagistrateChange = (magistrateId: string) => {
     form.setValue("magistrate_id", magistrateId);
     
-    const selectedMagistrate = magistrates.find(m => m.id === magistrateId);
+    const selectedMagistrate = assignedMagistrates.find(m => m.id === magistrateId);
     if (selectedMagistrate?.virtual_room_url) {
       form.setValue("virtual_room_url", selectedMagistrate.virtual_room_url);
     }
@@ -237,7 +257,7 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="none">Nenhum</SelectItem>
-                  {magistrates.map((magistrate) => (
+                  {assignedMagistrates.map((magistrate) => (
                     <SelectItem key={magistrate.id} value={magistrate.id}>
                       {magistrate.name}
                     </SelectItem>
@@ -291,7 +311,7 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="none">Nenhum</SelectItem>
-                  {prosecutors.map((prosecutor) => (
+                  {assignedProsecutors.map((prosecutor) => (
                     <SelectItem key={prosecutor.id} value={prosecutor.id}>
                       {prosecutor.name}
                     </SelectItem>
@@ -317,7 +337,7 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="none">Nenhum</SelectItem>
-                  {defenders.map((defender) => (
+                  {assignedDefenders.map((defender) => (
                     <SelectItem key={defender.id} value={defender.id}>
                       {defender.name}
                     </SelectItem>
