@@ -34,7 +34,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 interface Assignment {
   id: string;
   schedule_id: string;
-  region_id: string;
+  serventia_id: string;
   magistrate_id?: string;
   prosecutor_id?: string;
   defender_id?: string;
@@ -42,7 +42,7 @@ interface Assignment {
   shift: string;
   created_at: string;
   updated_at: string;
-  region?: {
+  serventia?: {
     name: string;
     code: string;
   };
@@ -62,7 +62,7 @@ const AssignmentManagement = () => {
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string>("");
   const [formData, setFormData] = useState({
-    region_id: "",
+    serventia_id: "",
     magistrate_id: "none",
     prosecutor_id: "none",
     defender_id: "none",
@@ -88,12 +88,12 @@ const AssignmentManagement = () => {
     },
   });
 
-  // Fetch regions
-  const { data: regions = [] } = useQuery({
-    queryKey: ['regions'],
+  // Fetch serventias
+  const { data: serventias = [] } = useQuery({
+    queryKey: ['serventias'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('regions')
+        .from('serventias')
         .select('*')
         .order('name');
       
@@ -157,7 +157,7 @@ const AssignmentManagement = () => {
         .from('schedule_assignments')
         .select(`
           *,
-          region:regions(name, code),
+          serventia:serventias(name, code),
           magistrate:magistrates(name),
           prosecutor:prosecutors(name),
           defender:defenders(name)
@@ -271,10 +271,10 @@ const AssignmentManagement = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.region_id || !formData.date) {
+    if (!formData.serventia_id || !formData.date) {
       toast({
         title: "Erro",
-        description: "Região e data são obrigatórios",
+        description: "Serventia e data são obrigatórios",
         variant: "destructive",
       });
       return;
@@ -297,7 +297,7 @@ const AssignmentManagement = () => {
   const handleEdit = (assignment: Assignment) => {
     setEditingAssignment(assignment);
     setFormData({
-      region_id: assignment.region_id,
+      serventia_id: assignment.serventia_id,
       magistrate_id: assignment.magistrate_id || "none",
       prosecutor_id: assignment.prosecutor_id || "none",
       defender_id: assignment.defender_id || "none",
@@ -311,7 +311,7 @@ const AssignmentManagement = () => {
     setIsDialogOpen(false);
     setEditingAssignment(null);
     setFormData({
-      region_id: "",
+      serventia_id: "",
       magistrate_id: "none",
       prosecutor_id: "none",
       defender_id: "none",
@@ -404,15 +404,15 @@ const AssignmentManagement = () => {
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <Label htmlFor="region_id">Região *</Label>
-                    <Select value={formData.region_id} onValueChange={(value) => handleInputChange("region_id", value)}>
+                    <Label htmlFor="serventia_id">Serventia *</Label>
+                    <Select value={formData.serventia_id} onValueChange={(value) => handleInputChange("serventia_id", value)}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma região" />
+                        <SelectValue placeholder="Selecione uma serventia" />
                       </SelectTrigger>
                       <SelectContent>
-                        {regions.map((region) => (
-                          <SelectItem key={region.id} value={region.id}>
-                            {region.name} ({region.code})
+                        {serventias.map((serventia) => (
+                          <SelectItem key={serventia.id} value={serventia.id}>
+                            {serventia.name} ({serventia.code})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -523,7 +523,7 @@ const AssignmentManagement = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Data</TableHead>
-                      <TableHead>Região</TableHead>
+                      <TableHead>Serventia</TableHead>
                       <TableHead>Turno</TableHead>
                       <TableHead>Magistrado</TableHead>
                       <TableHead>Promotor</TableHead>
@@ -547,7 +547,7 @@ const AssignmentManagement = () => {
                           <TableCell>
                             <div className="flex items-center space-x-1">
                               <MapPin className="h-3 w-3" />
-                              <span>{assignment.region?.name} ({assignment.region?.code})</span>
+                              <span>{assignment.serventia?.name} ({assignment.serventia?.code})</span>
                             </div>
                           </TableCell>
                           <TableCell>

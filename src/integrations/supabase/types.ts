@@ -25,9 +25,9 @@ export type Database = {
           prison_unit_id: string
           process_number: string
           prosecutor_id: string | null
-          region_id: string
           scheduled_date: string
           scheduled_time: string
+          serventia_id: string
           status: Database["public"]["Enums"]["audience_status"]
           unit_acknowledgment: string | null
           updated_at: string
@@ -48,9 +48,9 @@ export type Database = {
           prison_unit_id: string
           process_number: string
           prosecutor_id?: string | null
-          region_id: string
           scheduled_date: string
           scheduled_time: string
+          serventia_id: string
           status?: Database["public"]["Enums"]["audience_status"]
           unit_acknowledgment?: string | null
           updated_at?: string
@@ -71,9 +71,9 @@ export type Database = {
           prison_unit_id?: string
           process_number?: string
           prosecutor_id?: string | null
-          region_id?: string
           scheduled_date?: string
           scheduled_time?: string
+          serventia_id?: string
           status?: Database["public"]["Enums"]["audience_status"]
           unit_acknowledgment?: string | null
           updated_at?: string
@@ -109,10 +109,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "audiences_region_id_fkey"
-            columns: ["region_id"]
+            foreignKeyName: "audiences_serventia_id_fkey"
+            columns: ["serventia_id"]
             isOneToOne: false
-            referencedRelation: "regions"
+            referencedRelation: "serventias"
             referencedColumns: ["id"]
           },
         ]
@@ -128,7 +128,6 @@ export type Database = {
           name: string
           phone: string | null
           position: string | null
-          region_id: string | null
           updated_at: string
         }
         Insert: {
@@ -141,7 +140,6 @@ export type Database = {
           name: string
           phone?: string | null
           position?: string | null
-          region_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -154,18 +152,9 @@ export type Database = {
           name?: string
           phone?: string | null
           position?: string | null
-          region_id?: string | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "contacts_region_id_fkey"
-            columns: ["region_id"]
-            isOneToOne: false
-            referencedRelation: "regions"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       defenders: {
         Row: {
@@ -301,8 +290,8 @@ export type Database = {
           landline: string
           municipalities: string
           name: string
-          region_id: string | null
           responsible: string
+          serventia_id: string | null
           short_name: string
           type: string
           updated_at: string
@@ -321,8 +310,8 @@ export type Database = {
           landline: string
           municipalities: string
           name: string
-          region_id?: string | null
           responsible: string
+          serventia_id?: string | null
           short_name: string
           type: string
           updated_at?: string
@@ -341,8 +330,8 @@ export type Database = {
           landline?: string
           municipalities?: string
           name?: string
-          region_id?: string | null
           responsible?: string
+          serventia_id?: string | null
           short_name?: string
           type?: string
           updated_at?: string
@@ -350,10 +339,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "prison_units_extended_region_id_fkey"
-            columns: ["region_id"]
+            foreignKeyName: "prison_units_extended_serventia_id_fkey"
+            columns: ["serventia_id"]
             isOneToOne: false
-            referencedRelation: "regions"
+            referencedRelation: "serventias"
             referencedColumns: ["id"]
           },
         ]
@@ -391,39 +380,6 @@ export type Database = {
         }
         Relationships: []
       }
-      regions: {
-        Row: {
-          code: string
-          created_at: string
-          id: string
-          name: string
-          phone: string | null
-          responsible: string | null
-          type: Database["public"]["Enums"]["region_type"]
-          updated_at: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          id?: string
-          name: string
-          phone?: string | null
-          responsible?: string | null
-          type: Database["public"]["Enums"]["region_type"]
-          updated_at?: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          id?: string
-          name?: string
-          phone?: string | null
-          responsible?: string | null
-          type?: Database["public"]["Enums"]["region_type"]
-          updated_at?: string
-        }
-        Relationships: []
-      }
       schedule_assignments: {
         Row: {
           created_at: string
@@ -432,8 +388,8 @@ export type Database = {
           id: string
           magistrate_id: string | null
           prosecutor_id: string | null
-          region_id: string
           schedule_id: string
+          serventia_id: string
           shift: string
           updated_at: string
         }
@@ -444,8 +400,8 @@ export type Database = {
           id?: string
           magistrate_id?: string | null
           prosecutor_id?: string | null
-          region_id: string
           schedule_id: string
+          serventia_id: string
           shift: string
           updated_at?: string
         }
@@ -456,8 +412,8 @@ export type Database = {
           id?: string
           magistrate_id?: string | null
           prosecutor_id?: string | null
-          region_id?: string
           schedule_id?: string
+          serventia_id?: string
           shift?: string
           updated_at?: string
         }
@@ -484,17 +440,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "schedule_assignments_region_id_fkey"
-            columns: ["region_id"]
-            isOneToOne: false
-            referencedRelation: "regions"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "schedule_assignments_schedule_id_fkey"
             columns: ["schedule_id"]
             isOneToOne: false
             referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_assignments_serventia_id_fkey"
+            columns: ["serventia_id"]
+            isOneToOne: false
+            referencedRelation: "serventias"
             referencedColumns: ["id"]
           },
         ]
@@ -535,6 +491,39 @@ export type Database = {
         }
         Relationships: []
       }
+      serventias: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          name: string
+          phone: string | null
+          responsible: string | null
+          type: Database["public"]["Enums"]["serventia_type"]
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+          phone?: string | null
+          responsible?: string | null
+          type: Database["public"]["Enums"]["serventia_type"]
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          responsible?: string | null
+          type?: Database["public"]["Enums"]["serventia_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -555,7 +544,7 @@ export type Database = {
     }
     Enums: {
       audience_status: "agendada" | "realizada" | "cancelada" | "nao_compareceu"
-      region_type: "macrorregiao" | "central_custodia"
+      serventia_type: "macrorregiao" | "central_custodia"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -672,7 +661,7 @@ export const Constants = {
   public: {
     Enums: {
       audience_status: ["agendada", "realizada", "cancelada", "nao_compareceu"],
-      region_type: ["macrorregiao", "central_custodia"],
+      serventia_type: ["macrorregiao", "central_custodia"],
     },
   },
 } as const

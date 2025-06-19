@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserManagement from "@/components/Configuracoes/UserManagement";
-import RegionManagement from "@/components/Configuracoes/RegionManagement";
+import ServentiaManagement from "@/components/Configuracoes/ServentiaManagement";
 import ScheduleManagement from "@/components/Configuracoes/ScheduleManagement";
 import AssignmentManagement from "@/components/Configuracoes/AssignmentManagement";
 
@@ -23,7 +23,7 @@ const Configuracoes = () => {
           <TabsTrigger value="magistrates">Magistrados</TabsTrigger>
           <TabsTrigger value="prosecutors">Promotores</TabsTrigger>
           <TabsTrigger value="defenders">Defensores Públicos/Advogados</TabsTrigger>
-          <TabsTrigger value="regions">Serventias</TabsTrigger>
+          <TabsTrigger value="serventias">Serventias</TabsTrigger>
           <TabsTrigger value="schedules">Escalas</TabsTrigger>
           <TabsTrigger value="assignments">Atribuições</TabsTrigger>
         </TabsList>
@@ -40,8 +40,8 @@ const Configuracoes = () => {
           <UserManagement type="defenders" title="Defensores Públicos/Advogados" />
         </TabsContent>
 
-        <TabsContent value="regions">
-          <RegionManagement />
+        <TabsContent value="serventias">
+          <ServentiaManagement />
         </TabsContent>
 
         <TabsContent value="schedules">

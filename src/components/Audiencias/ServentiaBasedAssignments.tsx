@@ -25,7 +25,7 @@ interface ServentiaBasedAssignmentsProps {
 }
 
 const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: ServentiaBasedAssignmentsProps) => {
-  // Buscar todas as escalas/serventias
+  // Buscar todas as escalas ativas
   const { data: schedules = [] } = useQuery({
     queryKey: ['schedules'],
     queryFn: async () => {
@@ -33,7 +33,7 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
       const { data, error } = await supabase
         .from('schedules')
         .select('*')
-        .eq('status', 'ativo')
+        .eq('status', 'ativa')
         .order('title');
       
       if (error) {

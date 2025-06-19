@@ -86,14 +86,14 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
         }
       }
       
-      // Buscar a região baseada na escala selecionada e data
-      let regionId = null;
+      // Buscar a serventia baseada na escala selecionada e data
+      let serventiaId = null;
       if (data.schedule_id && data.scheduled_date) {
-        console.log("Buscando region_id para schedule_id:", data.schedule_id, "e data:", data.scheduled_date);
+        console.log("Buscando serventia_id para schedule_id:", data.schedule_id, "e data:", data.scheduled_date);
         
         const { data: assignments, error: assignmentError } = await supabase
           .from('schedule_assignments')
-          .select('region_id')
+          .select('serventia_id')
           .eq('schedule_id', data.schedule_id)
           .eq('date', data.scheduled_date)
           .limit(1);
@@ -103,40 +103,40 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
         } else {
           console.log("Assignments encontrados:", assignments);
           if (assignments && assignments.length > 0) {
-            regionId = assignments[0].region_id;
-            console.log("Region ID encontrado:", regionId);
+            serventiaId = assignments[0].serventia_id;
+            console.log("Serventia ID encontrado:", serventiaId);
           }
         }
       }
       
-      // Se não encontrou region_id através dos assignments, tentar uma abordagem alternativa
-      if (!regionId && data.schedule_id) {
-        console.log("Tentando buscar region através de qualquer assignment da escala");
+      // Se não encontrou serventia_id através dos assignments, tentar uma abordagem alternativa
+      if (!serventiaId && data.schedule_id) {
+        console.log("Tentando buscar serventia através de qualquer assignment da escala");
         const { data: fallbackAssignments, error: fallbackError } = await supabase
           .from('schedule_assignments')
-          .select('region_id')
+          .select('serventia_id')
           .eq('schedule_id', data.schedule_id)
           .limit(1);
         
         if (!fallbackError && fallbackAssignments && fallbackAssignments.length > 0) {
-          regionId = fallbackAssignments[0].region_id;
-          console.log("Region ID encontrado via fallback:", regionId);
+          serventiaId = fallbackAssignments[0].serventia_id;
+          console.log("Serventia ID encontrado via fallback:", serventiaId);
         }
       }
       
-      // Se ainda não encontrou region_id, usar uma região padrão ou criar erro
-      if (!regionId) {
-        console.log("Buscando uma região padrão");
-        const { data: defaultRegion, error: regionError } = await supabase
-          .from('regions')
+      // Se ainda não encontrou serventia_id, usar uma serventia padrão ou criar erro
+      if (!serventiaId) {
+        console.log("Buscando uma serventia padrão");
+        const { data: defaultServentia, error: serventiaError } = await supabase
+          .from('serventias')
           .select('id')
           .limit(1);
         
-        if (!regionError && defaultRegion && defaultRegion.length > 0) {
-          regionId = defaultRegion[0].id;
-          console.log("Usando região padrão:", regionId);
+        if (!serventiaError && defaultServentia && defaultServentia.length > 0) {
+          serventiaId = defaultServentia[0].id;
+          console.log("Usando serventia padrão:", serventiaId);
         } else {
-          throw new Error("Não foi possível determinar a região para esta audiência. Verifique se a serventia tem assignments configurados.");
+          throw new Error("Não foi possível determinar a serventia para esta audiência. Verifique se a escala tem assignments configurados.");
         }
       }
       
@@ -151,7 +151,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
         process_number: data.process_number,
         scheduled_date: data.scheduled_date,
         scheduled_time: data.scheduled_time,
-        region_id: regionId,
+        serventia_id: serventiaId,
         prison_unit_id: data.prison_unit_id,
         magistrate_id: handleNoneValue(data.magistrate_id),
         prosecutor_id: handleNoneValue(data.prosecutor_id),
