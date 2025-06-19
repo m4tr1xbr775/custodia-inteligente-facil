@@ -19,8 +19,31 @@ import AudienciaModal from "@/components/Audiencias/AudienciaModal";
 const Audiencias = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
+  const [custodyCenterFilter, setCustodyCenterFilter] = useState("todos");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAudienciaId, setEditingAudienciaId] = useState<string | undefined>();
+
+  // Fetch custody centers for the filter
+  const { data: custodyCenters = [] } = useQuery({
+    queryKey: ['custody-centers'],
+    queryFn: async () => {
+      console.log("Buscando centrais de custódia...");
+      
+      const { data, error } = await supabase
+        .from('regions')
+        .select('id, name')
+        .eq('type', 'central_custodia')
+        .order('name');
+      
+      if (error) {
+        console.error("Erro ao buscar centrais de custódia:", error);
+        return [];
+      }
+      
+      console.log("Centrais de custódia encontradas:", data);
+      return data || [];
+    },
+  });
 
   // Fetch audiences with related data using manual joins
   const { data: audiencesData, isLoading } = useQuery({
@@ -118,7 +141,9 @@ const Audiencias = () => {
       
       const matchesStatus = statusFilter === "todos" || audience.status === statusFilter;
       
-      return matchesSearch && matchesStatus;
+      const matchesCustodyCenter = custodyCenterFilter === "todos" || audience.region_id === custodyCenterFilter;
+      
+      return matchesSearch && matchesStatus && matchesCustodyCenter;
     });
   };
 
@@ -199,6 +224,20 @@ const Audiencias = () => {
                 />
               </div>
             </div>
+            <Select value={custodyCenterFilter} onValueChange={setCustodyCenterFilter}>
+              <SelectTrigger className="w-full sm:w-[220px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Central de Custódia" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todas as Centrais</SelectItem>
+                {custodyCenters.map((center) => (
+                  <SelectItem key={center.id} value={center.id}>
+                    {center.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full sm:w-[200px]">
                 <Filter className="h-4 w-4 mr-2" />
