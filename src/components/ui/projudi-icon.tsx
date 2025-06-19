@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 interface ProjudiIconProps {
   processNumber: string;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "lg" | "default" | "icon";
   variant?: "ghost" | "outline" | "default";
   className?: string;
 }
