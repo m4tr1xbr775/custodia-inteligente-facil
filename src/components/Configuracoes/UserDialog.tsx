@@ -16,7 +16,7 @@ interface UserDialogProps {
   onOpenChange: (open: boolean) => void;
   editingUser: any;
   title: string;
-  formData: {
+  initialData: {
     name: string;
     email: string;
     phone: string;
@@ -26,10 +26,8 @@ interface UserDialogProps {
     virtual_room_url: string;
   };
   type: "magistrates" | "prosecutors" | "defenders";
-  potentialAssessors: Array<{ id: string; name: string }>;
   isSubmitting: boolean;
-  onInputChange: (field: string, value: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (data: any) => void;
   onCancel: () => void;
   onNewUser: () => void;
 }
@@ -39,11 +37,9 @@ const UserDialog = ({
   onOpenChange,
   editingUser,
   title,
-  formData,
+  initialData,
   type,
-  potentialAssessors,
   isSubmitting,
-  onInputChange,
   onSubmit,
   onCancel,
   onNewUser,
@@ -63,15 +59,11 @@ const UserDialog = ({
           </DialogTitle>
         </DialogHeader>
         <UserForm
-          formData={formData}
-          editingUser={editingUser}
           type={type}
-          title={title}
-          potentialAssessors={potentialAssessors}
-          isSubmitting={isSubmitting}
-          onInputChange={onInputChange}
+          initialData={initialData}
           onSubmit={onSubmit}
           onCancel={onCancel}
+          isLoading={isSubmitting}
         />
       </DialogContent>
     </Dialog>

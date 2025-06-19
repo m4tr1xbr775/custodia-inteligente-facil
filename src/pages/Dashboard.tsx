@@ -265,7 +265,9 @@ const Dashboard = () => {
                       </div>
                       <p className="text-sm font-medium text-gray-900 truncate">{audience.defendant_name}</p>
                       <p className="text-xs text-gray-500 truncate">{audience.process_number}</p>
-                      <p className="text-xs text-gray-500 truncate">{audience.prison_units_extended?.name}</p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {audience.prison_units_extended?.name || 'Unidade não definida'}
+                      </p>
                       <div className="text-xs text-gray-500 mt-1">
                         <span>Mag: {audience.magistrates?.name || 'Não definido'}</span>
                         {audience.prosecutors?.name && <span className="ml-2">Prom: {audience.prosecutors.name}</span>}
