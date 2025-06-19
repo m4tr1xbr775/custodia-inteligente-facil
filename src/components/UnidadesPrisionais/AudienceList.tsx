@@ -40,18 +40,18 @@ const AudienceList = ({
         .from('audiences')
         .select(`
           *,
-          serventias:serventia_id (
+          serventias!inner (
             id,
             name,
             type,
             code
           ),
-          prison_units_extended:prison_unit_id (
+          prison_units_extended!inner (
             id,
             name,
             short_name
           ),
-          magistrates:magistrate_id (
+          magistrates (
             id,
             name,
             email,
@@ -64,13 +64,13 @@ const AudienceList = ({
               phone
             )
           ),
-          prosecutors:prosecutor_id (
+          prosecutors (
             id,
             name,
             email,
             phone
           ),
-          defenders:defender_id (
+          defenders (
             id,
             name,
             email,
