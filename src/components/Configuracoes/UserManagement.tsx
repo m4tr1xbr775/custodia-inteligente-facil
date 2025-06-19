@@ -47,11 +47,16 @@ interface BaseUser {
   updated_at: string;
 }
 
+interface Magistrate extends BaseUser {
+  judicial_assistant_id?: string;
+  virtual_room_url?: string;
+}
+
 interface Defender extends BaseUser {
   type?: string;
 }
 
-type User = BaseUser | Defender;
+type User = BaseUser | Magistrate | Defender;
 
 const UserManagement = ({ type, title }: UserManagementProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -62,10 +67,30 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
     phone: "",
     registration: "",
     type: "",
+    judicial_assistant_id: "",
+    virtual_room_url: "",
   });
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch potential assessors (other magistrates) when managing magistrates
+  const { data: potentialAssessors = [] } = useQuery({
+    queryKey: ['potential-assessors'],
+    queryFn: async () => {
+      if (type !== "magistrates") return [];
+      
+      const { data, error } = await supabase
+        .from('magistrates')
+        .select('id, name')
+        .eq('active', true)
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: type === "magistrates",
+  });
 
   // Fetch data from Supabase
   const { data: users = [], isLoading } = useQuery({
@@ -96,6 +121,17 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
       const cleanUserData = { ...userData };
       if (type === "magistrates" || type === "prosecutors") {
         delete cleanUserData.type;
+      }
+      
+      // For magistrates, handle judicial_assistant_id
+      if (type === "magistrates") {
+        if (cleanUserData.judicial_assistant_id === "") {
+          delete cleanUserData.judicial_assistant_id;
+        }
+      } else {
+        // Remove magistrate-specific fields for other types
+        delete cleanUserData.judicial_assistant_id;
+        delete cleanUserData.virtual_room_url;
       }
       
       // Remove empty strings to avoid inserting empty values
@@ -145,6 +181,17 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
       const cleanUserData = { ...userData };
       if (type === "magistrates" || type === "prosecutors") {
         delete cleanUserData.type;
+      }
+      
+      // For magistrates, handle judicial_assistant_id
+      if (type === "magistrates") {
+        if (cleanUserData.judicial_assistant_id === "") {
+          cleanUserData.judicial_assistant_id = null;
+        }
+      } else {
+        // Remove magistrate-specific fields for other types
+        delete cleanUserData.judicial_assistant_id;
+        delete cleanUserData.virtual_room_url;
       }
       
       // Remove empty strings to avoid inserting empty values
@@ -248,12 +295,15 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
 
   const handleEdit = (user: User) => {
     setEditingUser(user);
+    const magistrate = user as Magistrate;
     setFormData({
       name: user.name,
       email: user.email || "",
       phone: user.phone || "",
       registration: user.registration || "",
       type: (user as Defender).type || "",
+      judicial_assistant_id: magistrate.judicial_assistant_id || "",
+      virtual_room_url: magistrate.virtual_room_url || "",
     });
     setIsDialogOpen(true);
   };
@@ -267,6 +317,8 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
       phone: "",
       registration: "",
       type: "",
+      judicial_assistant_id: "",
+      virtual_room_url: "",
     });
   };
 
@@ -274,6 +326,11 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
     if (confirm("Tem certeza que deseja remover este item?")) {
       deleteMutation.mutate(id);
     }
+  };
+
+  const getAssessorName = (judicial_assistant_id: string) => {
+    const assessor = potentialAssessors.find(a => a.id === judicial_assistant_id);
+    return assessor ? assessor.name : "-";
   };
 
   if (isLoading) {
@@ -333,17 +390,49 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
                   placeholder="(62) 99999-9999"
                 />
               </div>
-              <div>
-                <Label htmlFor="registration">
-                  {type === "defenders" ? "OAB" : "Registro/Matrícula"}
-                </Label>
-                <Input
-                  id="registration"
-                  value={formData.registration}
-                  onChange={(e) => handleInputChange("registration", e.target.value)}
-                  placeholder={type === "defenders" ? "Número da OAB" : "Número do registro"}
-                />
-              </div>
+
+              {type === "magistrates" ? (
+                <>
+                  <div>
+                    <Label htmlFor="judicial_assistant_id">Assessor de Juiz</Label>
+                    <Select value={formData.judicial_assistant_id} onValueChange={(value) => handleInputChange("judicial_assistant_id", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um assessor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Nenhum</SelectItem>
+                        {potentialAssessors.map((assessor) => (
+                          <SelectItem key={assessor.id} value={assessor.id}>
+                            {assessor.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="virtual_room_url">Link da Sala Virtual</Label>
+                    <Input
+                      id="virtual_room_url"
+                      value={formData.virtual_room_url}
+                      onChange={(e) => handleInputChange("virtual_room_url", e.target.value)}
+                      placeholder="https://exemplo.com/sala-virtual"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <Label htmlFor="registration">
+                    {type === "defenders" ? "OAB" : "Registro/Matrícula"}
+                  </Label>
+                  <Input
+                    id="registration"
+                    value={formData.registration}
+                    onChange={(e) => handleInputChange("registration", e.target.value)}
+                    placeholder={type === "defenders" ? "Número da OAB" : "Número do registro"}
+                  />
+                </div>
+              )}
+
               {type === "defenders" && (
                 <div>
                   <Label htmlFor="type">Tipo</Label>
@@ -381,7 +470,11 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Contato</TableHead>
-                <TableHead>{type === "defenders" ? "OAB" : "Registro"}</TableHead>
+                {type === "magistrates" ? (
+                  <TableHead>Assessor</TableHead>
+                ) : (
+                  <TableHead>{type === "defenders" ? "OAB" : "Registro"}</TableHead>
+                )}
                 {type === "defenders" && <TableHead>Tipo</TableHead>}
                 <TableHead>Status</TableHead>
                 <TableHead>Ações</TableHead>
@@ -395,54 +488,61 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
                   </TableCell>
                 </TableRow>
               ) : (
-                users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        {user.email && (
-                          <div className="flex items-center space-x-1 text-sm">
-                            <Mail className="h-3 w-3" />
-                            <span>{user.email}</span>
-                          </div>
-                        )}
-                        {user.phone && (
-                          <div className="flex items-center space-x-1 text-sm">
-                            <Phone className="h-3 w-3" />
-                            <span>{user.phone}</span>
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{user.registration || "-"}</TableCell>
-                    {type === "defenders" && (
+                users.map((user) => {
+                  const magistrate = user as Magistrate;
+                  return (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">{user.name}</TableCell>
                       <TableCell>
-                        {(user as Defender).type === "defensoria_publica" ? "Defensoria Pública" : 
-                         (user as Defender).type === "dativo" ? "Advogado Dativo" : "-"}
+                        <div className="space-y-1">
+                          {user.email && (
+                            <div className="flex items-center space-x-1 text-sm">
+                              <Mail className="h-3 w-3" />
+                              <span>{user.email}</span>
+                            </div>
+                          )}
+                          {user.phone && (
+                            <div className="flex items-center space-x-1 text-sm">
+                              <Phone className="h-3 w-3" />
+                              <span>{user.phone}</span>
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
-                    )}
-                    <TableCell>
-                      <Badge className={user.active !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                        {user.active !== false ? "Ativo" : "Inativo"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button size="sm" variant="outline" onClick={() => handleEdit(user)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleDelete(user.id)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      {type === "magistrates" ? (
+                        <TableCell>{getAssessorName(magistrate.judicial_assistant_id || "")}</TableCell>
+                      ) : (
+                        <TableCell>{user.registration || "-"}</TableCell>
+                      )}
+                      {type === "defenders" && (
+                        <TableCell>
+                          {(user as Defender).type === "defensoria_publica" ? "Defensoria Pública" : 
+                           (user as Defender).type === "dativo" ? "Advogado Dativo" : "-"}
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        <Badge className={user.active !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                          {user.active !== false ? "Ativo" : "Inativo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button size="sm" variant="outline" onClick={() => handleEdit(user)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleDelete(user.id)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
