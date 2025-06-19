@@ -73,8 +73,11 @@ interface Assignment {
 const ScheduleManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAssignmentDialogOpen, setIsAssignmentDialogOpen] = useState(false);
+  const [isManageAssignmentsDialogOpen, setIsManageAssignmentsDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [selectedScheduleForAssignment, setSelectedScheduleForAssignment] = useState<Schedule | null>(null);
+  const [selectedScheduleForManagement, setSelectedScheduleForManagement] = useState<Schedule | null>(null);
+  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [formData, setFormData] = useState({
     serventia_id: "",
     description: "",
@@ -171,6 +174,30 @@ const ScheduleManagement = () => {
       console.log('Fetched schedules:', data);
       return data as Schedule[];
     },
+  });
+
+  // Fetch assignments for selected schedule in management dialog
+  const { data: managementAssignments = [], isLoading: isLoadingManagementAssignments } = useQuery({
+    queryKey: ['management_assignments', selectedScheduleForManagement?.id],
+    queryFn: async () => {
+      if (!selectedScheduleForManagement?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('schedule_assignments')
+        .select(`
+          *,
+          serventia:serventias(name, code),
+          magistrate:magistrates(name),
+          prosecutor:prosecutors(name),
+          defender:defenders(name)
+        `)
+        .eq('schedule_id', selectedScheduleForManagement.id)
+        .order('date');
+      
+      if (error) throw error;
+      return data as Assignment[];
+    },
+    enabled: !!selectedScheduleForManagement?.id,
   });
 
   // Create mutation
@@ -335,6 +362,67 @@ const ScheduleManagement = () => {
     },
   });
 
+  // Update assignment mutation
+  const updateAssignmentMutation = useMutation({
+    mutationFn: async ({ id, assignmentData }: { id: string; assignmentData: any }) => {
+      const cleanData = { ...assignmentData };
+      if (cleanData.magistrate_id === "none") cleanData.magistrate_id = null;
+      if (cleanData.prosecutor_id === "none") cleanData.prosecutor_id = null;
+      if (cleanData.defender_id === "none") cleanData.defender_id = null;
+
+      const { data, error } = await supabase
+        .from('schedule_assignments')
+        .update(cleanData)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['management_assignments', selectedScheduleForManagement?.id] });
+      toast({
+        title: "Sucesso",
+        description: "Atribuição atualizada com sucesso!",
+      });
+      handleCloseAssignmentEditDialog();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: `Erro ao atualizar atribuição: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete assignment mutation
+  const deleteAssignmentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('schedule_assignments')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['management_assignments', selectedScheduleForManagement?.id] });
+      toast({
+        title: "Sucesso",
+        description: "Atribuição removida com sucesso!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: `Erro ao remover atribuição: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -421,23 +509,30 @@ const ScheduleManagement = () => {
   };
 
   const handleManageAssignments = (schedule: Schedule) => {
-    setSelectedScheduleForAssignment(schedule);
-    // Find the serventia that matches the schedule title to pre-fill serventia
-    const matchedServentia = serventias.find(s => schedule.title.includes(s.name));
-    setAssignmentFormData({
-      serventia_id: matchedServentia?.id || "",
-      magistrate_id: "none",
-      prosecutor_id: "none",
-      defender_id: "none",
-      date: schedule.start_date, // Use start_date from schedule
-      shift: "diurno",
-    });
-    setIsAssignmentDialogOpen(true);
+    setSelectedScheduleForManagement(schedule);
+    setIsManageAssignmentsDialogOpen(true);
   };
 
-  const handleCloseAssignmentDialog = () => {
-    setIsAssignmentDialogOpen(false);
-    setSelectedScheduleForAssignment(null);
+  const handleCloseManageAssignmentsDialog = () => {
+    setIsManageAssignmentsDialogOpen(false);
+    setSelectedScheduleForManagement(null);
+    setEditingAssignment(null);
+  };
+
+  const handleEditAssignment = (assignment: Assignment) => {
+    setEditingAssignment(assignment);
+    setAssignmentFormData({
+      serventia_id: assignment.serventia_id,
+      magistrate_id: assignment.magistrate_id || "none",
+      prosecutor_id: assignment.prosecutor_id || "none",
+      defender_id: assignment.defender_id || "none",
+      date: assignment.date,
+      shift: assignment.shift,
+    });
+  };
+
+  const handleCloseAssignmentEditDialog = () => {
+    setEditingAssignment(null);
     setAssignmentFormData({
       serventia_id: "",
       magistrate_id: "none",
@@ -448,9 +543,27 @@ const ScheduleManagement = () => {
     });
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Tem certeza que deseja remover esta escala?")) {
-      deleteMutation.mutate(id);
+  const handleSaveAssignmentEdit = () => {
+    if (!editingAssignment) return;
+    
+    if (!assignmentFormData.serventia_id || !assignmentFormData.date) {
+      toast({
+        title: "Erro",
+        description: "Serventia e data são obrigatórios",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateAssignmentMutation.mutate({ 
+      id: editingAssignment.id, 
+      assignmentData: assignmentFormData 
+    });
+  };
+
+  const handleDeleteAssignment = (id: string) => {
+    if (confirm("Tem certeza que deseja remover esta atribuição?")) {
+      deleteAssignmentMutation.mutate(id);
     }
   };
 
@@ -462,6 +575,32 @@ const ScheduleManagement = () => {
         return <Badge className="bg-red-100 text-red-800">Inativa</Badge>;
       default:
         return <Badge className="bg-yellow-100 text-yellow-800">Rascunho</Badge>;
+    }
+  };
+
+  const getShiftBadgeColor = (shift: string) => {
+    switch (shift) {
+      case "diurno":
+        return "bg-yellow-100 text-yellow-800";
+      case "noturno":
+        return "bg-blue-100 text-blue-800";
+      case "integral":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getShiftLabel = (shift: string) => {
+    switch (shift) {
+      case "diurno":
+        return "Diurno";
+      case "noturno":
+        return "Noturno";
+      case "integral":
+        return "Integral";
+      default:
+        return shift;
     }
   };
 
@@ -679,6 +818,212 @@ const ScheduleManagement = () => {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Assignments Dialog */}
+      <Dialog open={isManageAssignmentsDialogOpen} onOpenChange={setIsManageAssignmentsDialogOpen}>
+        <DialogContent className="sm:max-w-[800px]">
+          <DialogHeader>
+            <DialogTitle>Gerenciar Atribuições</DialogTitle>
+            {selectedScheduleForManagement && (
+              <p className="text-sm text-gray-600">
+                Escala: {selectedScheduleForManagement.title}
+              </p>
+            )}
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {isLoadingManagementAssignments ? (
+              <div className="text-center py-8">Carregando atribuições...</div>
+            ) : (
+              <div className="space-y-4">
+                {managementAssignments.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    Nenhuma atribuição encontrada para esta escala
+                  </div>
+                ) : (
+                  managementAssignments.map((assignment) => (
+                    <Card key={assignment.id} className="p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">Data</Label>
+                          {editingAssignment?.id === assignment.id ? (
+                            <Input
+                              type="date"
+                              value={assignmentFormData.date}
+                              onChange={(e) => setAssignmentFormData(prev => ({ ...prev, date: e.target.value }))}
+                              className="mt-1"
+                            />
+                          ) : (
+                            <p className="text-sm text-gray-900 mt-1">
+                              {new Date(assignment.date).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">Serventia</Label>
+                          {editingAssignment?.id === assignment.id ? (
+                            <Select value={assignmentFormData.serventia_id} onValueChange={(value) => setAssignmentFormData(prev => ({ ...prev, serventia_id: value }))}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {serventias.map((serventia) => (
+                                  <SelectItem key={serventia.id} value={serventia.id}>
+                                    {serventia.name} ({serventia.code})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <p className="text-sm text-gray-900 mt-1">
+                              {assignment.serventia?.name} ({assignment.serventia?.code})
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">Turno</Label>
+                          {editingAssignment?.id === assignment.id ? (
+                            <Select value={assignmentFormData.shift} onValueChange={(value) => setAssignmentFormData(prev => ({ ...prev, shift: value }))}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="diurno">Diurno</SelectItem>
+                                <SelectItem value="noturno">Noturno</SelectItem>
+                                <SelectItem value="integral">Integral</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Badge className={`${getShiftBadgeColor(assignment.shift)} mt-1`}>
+                              {getShiftLabel(assignment.shift)}
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">Magistrado</Label>
+                          {editingAssignment?.id === assignment.id ? (
+                            <Select value={assignmentFormData.magistrate_id} onValueChange={(value) => setAssignmentFormData(prev => ({ ...prev, magistrate_id: value }))}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nenhum</SelectItem>
+                                {magistrates.map((magistrate) => (
+                                  <SelectItem key={magistrate.id} value={magistrate.id}>
+                                    {magistrate.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <p className="text-sm text-gray-900 mt-1">
+                              {assignment.magistrate?.name || "-"}
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">Promotor</Label>
+                          {editingAssignment?.id === assignment.id ? (
+                            <Select value={assignmentFormData.prosecutor_id} onValueChange={(value) => setAssignmentFormData(prev => ({ ...prev, prosecutor_id: value }))}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nenhum</SelectItem>
+                                {prosecutors.map((prosecutor) => (
+                                  <SelectItem key={prosecutor.id} value={prosecutor.id}>
+                                    {prosecutor.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <p className="text-sm text-gray-900 mt-1">
+                              {assignment.prosecutor?.name || "-"}
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">Advogado</Label>
+                          {editingAssignment?.id === assignment.id ? (
+                            <Select value={assignmentFormData.defender_id} onValueChange={(value) => setAssignmentFormData(prev => ({ ...prev, defender_id: value }))}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nenhum</SelectItem>
+                                {defenders.map((defender) => (
+                                  <SelectItem key={defender.id} value={defender.id}>
+                                    {defender.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <p className="text-sm text-gray-900 mt-1">
+                              {assignment.defender?.name || "-"}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end space-x-2 mt-4">
+                        {editingAssignment?.id === assignment.id ? (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={handleCloseAssignmentEditDialog}
+                            >
+                              Cancelar
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              onClick={handleSaveAssignmentEdit}
+                              disabled={updateAssignmentMutation.isPending}
+                            >
+                              {updateAssignmentMutation.isPending ? "Salvando..." : "Salvar"}
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => handleEditAssignment(assignment)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleDeleteAssignment(assignment.id)}
+                              disabled={deleteAssignmentMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </Card>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={handleCloseManageAssignmentsDialog}>
+              Fechar
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
