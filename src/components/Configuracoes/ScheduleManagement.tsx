@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -423,8 +422,10 @@ const ScheduleManagement = () => {
 
   const handleManageAssignments = (schedule: Schedule) => {
     setSelectedScheduleForAssignment(schedule);
+    // Find the region that matches the schedule title to pre-fill serventia
+    const matchedRegion = regions.find(r => schedule.title.includes(r.name));
     setAssignmentFormData({
-      region_id: "",
+      region_id: matchedRegion?.id || "",
       magistrate_id: "none",
       prosecutor_id: "none",
       defender_id: "none",
@@ -578,10 +579,10 @@ const ScheduleManagement = () => {
           </DialogHeader>
           <form onSubmit={handleAssignmentSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="region_id">Região *</Label>
+              <Label htmlFor="region_id">Serventia *</Label>
               <Select value={assignmentFormData.region_id} onValueChange={(value) => handleAssignmentInputChange("region_id", value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma região" />
+                  <SelectValue placeholder="Selecione uma serventia" />
                 </SelectTrigger>
                 <SelectContent>
                   {regions.map((region) => (
@@ -689,7 +690,7 @@ const ScheduleManagement = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Título</TableHead>
+                <TableHead>Serventia</TableHead>
                 <TableHead>Período</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Criado em</TableHead>
