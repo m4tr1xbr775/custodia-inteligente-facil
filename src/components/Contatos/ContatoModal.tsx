@@ -120,6 +120,8 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
     setIsLoading(true);
 
     try {
+      const regionIdToSave = formData.region_id === 'none' ? null : formData.region_id;
+
       if (editingContactId) {
         // Update existing contact
         const { error } = await supabase
@@ -131,7 +133,7 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
             phone: formData.phone,
             mobile: formData.mobile,
             email: formData.email,
-            region_id: formData.region_id,
+            region_id: regionIdToSave,
           })
           .eq('id', editingContactId);
 
@@ -152,7 +154,7 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
             phone: formData.phone,
             mobile: formData.mobile,
             email: formData.email,
-            region_id: formData.region_id,
+            region_id: regionIdToSave,
           });
 
         if (error) throw error;
@@ -181,6 +183,14 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  const handleRegionChange = (value: string) => {
+    const regionId = value === 'none' ? null : value;
+    setFormData(prev => ({
+      ...prev,
+      region_id: regionId
     }));
   };
 
@@ -231,14 +241,14 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
           <div className="space-y-2">
             <Label htmlFor="region">Região</Label>
             <Select
-              value={formData.region_id || ""}
-              onValueChange={(value) => handleInputChange('region_id', value || null)}
+              value={formData.region_id || "none"}
+              onValueChange={handleRegionChange}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione uma região" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Nenhuma região</SelectItem>
+                <SelectItem value="none">Nenhuma região</SelectItem>
                 {regions.map((region) => (
                   <SelectItem key={region.id} value={region.id}>
                     {region.name}
