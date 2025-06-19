@@ -1,4 +1,3 @@
-
 import { Calendar, Clock, Users, Building, CheckCircle, AlertCircle, MapPin, Phone, MessageCircle } from "lucide-react";
 import StatsCard from "@/components/Dashboard/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -266,7 +265,9 @@ const Dashboard = () => {
                       <p className="text-sm font-medium text-gray-900 truncate">{audience.defendant_name}</p>
                       <p className="text-xs text-gray-500 truncate">{audience.process_number}</p>
                       <p className="text-xs text-gray-500 truncate">
-                        {audience.prison_units_extended?.name || 'Unidade não definida'}
+                        {Array.isArray(audience.prison_units_extended) 
+                          ? audience.prison_units_extended[0]?.name || 'Unidade não definida'
+                          : audience.prison_units_extended?.name || 'Unidade não definida'}
                       </p>
                       <div className="text-xs text-gray-500 mt-1">
                         <span>Mag: {audience.magistrates?.name || 'Não definido'}</span>

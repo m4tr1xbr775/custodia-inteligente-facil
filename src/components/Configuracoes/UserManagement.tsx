@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -181,11 +180,9 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
           onOpenChange={setIsDialogOpen}
           editingUser={editingUser}
           title={title}
-          formData={formData}
+          initialData={formData}
           type={type}
-          potentialAssessors={potentialAssessors}
           isSubmitting={createMutation.isPending || updateMutation.isPending}
-          onInputChange={handleInputChange}
           onSubmit={handleSubmit}
           onCancel={handleCloseDialog}
           onNewUser={handleNewUser}
