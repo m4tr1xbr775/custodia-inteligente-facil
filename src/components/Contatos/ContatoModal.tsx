@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ContatoModalProps {
   isOpen: boolean;
@@ -35,8 +35,17 @@ interface ContatoForm {
   phone: string;
   mobile: string;
   email: string;
-  region_id: string | null;
 }
+
+const positions = [
+  "Juiz",
+  "Promotor", 
+  "Defensor Público",
+  "Assistente de Juiz",
+  "Analista",
+  "Gestor",
+  "Administrador"
+];
 
 const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) => {
   const [formData, setFormData] = useState<ContatoForm>({
@@ -46,26 +55,11 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
     phone: "",
     mobile: "",
     email: "",
-    region_id: null,
   });
   const [isLoading, setIsLoading] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  // Fetch regions for the select
-  const { data: regions = [] } = useQuery({
-    queryKey: ['regions'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('regions')
-        .select('id, name')
-        .order('name');
-      
-      if (error) throw error;
-      return data || [];
-    },
-  });
 
   // Fetch contact data when editing
   useEffect(() => {
@@ -95,7 +89,6 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
             phone: data.phone || "",
             mobile: data.mobile || "",
             email: data.email || "",
-            region_id: data.region_id || null,
           });
         }
       };
@@ -110,7 +103,6 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
         phone: "",
         mobile: "",
         email: "",
-        region_id: null,
       });
     }
   }, [editingContactId, toast]);
@@ -120,8 +112,6 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
     setIsLoading(true);
 
     try {
-      const regionIdToSave = formData.region_id === 'none' ? null : formData.region_id;
-
       if (editingContactId) {
         // Update existing contact
         const { error } = await supabase
@@ -133,7 +123,6 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
             phone: formData.phone,
             mobile: formData.mobile,
             email: formData.email,
-            region_id: regionIdToSave,
           })
           .eq('id', editingContactId);
 
@@ -154,7 +143,6 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
             phone: formData.phone,
             mobile: formData.mobile,
             email: formData.email,
-            region_id: regionIdToSave,
           });
 
         if (error) throw error;
@@ -186,14 +174,6 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
     }));
   };
 
-  const handleRegionChange = (value: string) => {
-    const regionId = value === 'none' ? null : value;
-    setFormData(prev => ({
-      ...prev,
-      region_id: regionId
-    }));
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
@@ -222,40 +202,30 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
 
           <div className="space-y-2">
             <Label htmlFor="position">Cargo</Label>
-            <Input
-              id="position"
+            <Select
               value={formData.position}
-              onChange={(e) => handleInputChange('position', e.target.value)}
-            />
+              onValueChange={(value) => handleInputChange('position', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um cargo" />
+              </SelectTrigger>
+              <SelectContent>
+                {positions.map((position) => (
+                  <SelectItem key={position} value={position}>
+                    {position}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="department">Departamento</Label>
+            <Label htmlFor="department">Comarca de Origem</Label>
             <Input
               id="department"
               value={formData.department}
               onChange={(e) => handleInputChange('department', e.target.value)}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="region">Região</Label>
-            <Select
-              value={formData.region_id || "none"}
-              onValueChange={handleRegionChange}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma região" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Nenhuma região</SelectItem>
-                {regions.map((region) => (
-                  <SelectItem key={region.id} value={region.id}>
-                    {region.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="space-y-2">

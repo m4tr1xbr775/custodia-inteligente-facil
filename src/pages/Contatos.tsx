@@ -44,12 +44,7 @@ const Contatos = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contacts')
-        .select(`
-          *,
-          regions (
-            name
-          )
-        `)
+        .select('*')
         .eq('active', true)
         .order('name');
       
@@ -58,22 +53,26 @@ const Contatos = () => {
     },
   });
 
-  const getRoleBadge = (department: string) => {
-    if (!department) return <Badge variant="secondary">Sem Departamento</Badge>;
+  const getRoleBadge = (position: string) => {
+    if (!position) return <Badge variant="secondary">Sem Cargo</Badge>;
     
-    switch (department.toLowerCase()) {
-      case "magistrado":
-        return <Badge className="bg-blue-100 text-blue-800">Magistrado</Badge>;
+    switch (position.toLowerCase()) {
+      case "juiz":
+        return <Badge className="bg-blue-100 text-blue-800">Juiz</Badge>;
       case "promotor":
         return <Badge className="bg-green-100 text-green-800">Promotor</Badge>;
-      case "defensor":
-        return <Badge className="bg-purple-100 text-purple-800">Defensor</Badge>;
-      case "polícia penal":
-        return <Badge className="bg-orange-100 text-orange-800">Polícia Penal</Badge>;
-      case "assessor":
-        return <Badge className="bg-gray-100 text-gray-800">Assessor</Badge>;
+      case "defensor público":
+        return <Badge className="bg-purple-100 text-purple-800">Defensor Público</Badge>;
+      case "assistente de juiz":
+        return <Badge className="bg-orange-100 text-orange-800">Assistente de Juiz</Badge>;
+      case "analista":
+        return <Badge className="bg-gray-100 text-gray-800">Analista</Badge>;
+      case "gestor":
+        return <Badge className="bg-yellow-100 text-yellow-800">Gestor</Badge>;
+      case "administrador":
+        return <Badge className="bg-red-100 text-red-800">Administrador</Badge>;
       default:
-        return <Badge variant="secondary">{department}</Badge>;
+        return <Badge variant="secondary">{position}</Badge>;
     }
   };
 
@@ -139,10 +138,9 @@ const Contatos = () => {
     const matchesSearch = 
       contact.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contact.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.position?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.regions?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      contact.position?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesRole = roleFilter === "todos" || contact.department === roleFilter;
+    const matchesRole = roleFilter === "todos" || contact.position === roleFilter;
     
     return matchesSearch && matchesRole;
   });
@@ -179,7 +177,7 @@ const Contatos = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Buscar por nome, departamento, cargo ou região..."
+                  placeholder="Buscar por nome, comarca de origem ou cargo..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -188,15 +186,17 @@ const Contatos = () => {
             </div>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Departamento" />
+                <SelectValue placeholder="Cargo" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todos os Departamentos</SelectItem>
-                <SelectItem value="Magistrado">Magistrado</SelectItem>
+                <SelectItem value="todos">Todos os Cargos</SelectItem>
+                <SelectItem value="Juiz">Juiz</SelectItem>
                 <SelectItem value="Promotor">Promotor</SelectItem>
-                <SelectItem value="Defensor">Defensor</SelectItem>
-                <SelectItem value="Polícia Penal">Polícia Penal</SelectItem>
-                <SelectItem value="Assessor">Assessor</SelectItem>
+                <SelectItem value="Defensor Público">Defensor Público</SelectItem>
+                <SelectItem value="Assistente de Juiz">Assistente de Juiz</SelectItem>
+                <SelectItem value="Analista">Analista</SelectItem>
+                <SelectItem value="Gestor">Gestor</SelectItem>
+                <SelectItem value="Administrador">Administrador</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -212,14 +212,8 @@ const Contatos = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg text-gray-900">{contact.name}</h3>
-                    {contact.position && (
-                      <p className="text-sm text-gray-600">{contact.position}</p>
-                    )}
                     <div className="flex items-center space-x-2 mt-2">
-                      {getRoleBadge(contact.department)}
-                      {contact.regions?.name && (
-                        <Badge variant="outline">{contact.regions.name}</Badge>
-                      )}
+                      {getRoleBadge(contact.position)}
                     </div>
                   </div>
                   <div className="flex space-x-2">
@@ -264,14 +258,14 @@ const Contatos = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  {contact.department && (
+                  {contact.position && (
                     <p className="text-sm text-gray-600">
-                      <span className="font-medium">Departamento:</span> {contact.department}
+                      <span className="font-medium">Cargo:</span> {contact.position}
                     </p>
                   )}
-                  {contact.regions?.name && (
+                  {contact.department && (
                     <p className="text-sm text-gray-600">
-                      <span className="font-medium">Região:</span> {contact.regions.name}
+                      <span className="font-medium">Comarca de Origem:</span> {contact.department}
                     </p>
                   )}
                   {contact.phone && (
