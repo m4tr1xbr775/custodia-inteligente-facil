@@ -62,37 +62,105 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
     },
   });
 
+  // Resetar o formulário quando initialData mudar
+  React.useEffect(() => {
+    if (initialData) {
+      console.log("Populando formulário com dados:", initialData);
+      form.reset({
+        defendant_name: initialData.defendant_name || "",
+        process_number: initialData.process_number || "",
+        scheduled_date: initialData.scheduled_date || "",
+        scheduled_time: initialData.scheduled_time || "",
+        schedule_assignment_id: initialData.schedule_assignment_id || "",
+        prison_unit_id: initialData.prison_unit_id || "",
+        prison_unit_slot_id: initialData.prison_unit_slot_id || "",
+        serventia_id: initialData.serventia_id || "",
+        magistrate_id: initialData.magistrate_id || "",
+        prosecutor_id: initialData.prosecutor_id || "",
+        defender_id: initialData.defender_id || "",
+        judicial_assistant_id: initialData.judicial_assistant_id || "",
+        virtual_room_url: initialData.virtual_room_url || "",
+        observations: initialData.observations || "",
+      });
+    } else {
+      console.log("Resetando formulário para criação");
+      form.reset({
+        defendant_name: "",
+        process_number: "",
+        scheduled_date: "",
+        scheduled_time: "",
+        schedule_assignment_id: "",
+        prison_unit_id: "",
+        prison_unit_slot_id: "",
+        serventia_id: "",
+        magistrate_id: "",
+        prosecutor_id: "",
+        defender_id: "",
+        judicial_assistant_id: "",
+        virtual_room_url: "",
+        observations: "",
+      });
+    }
+  }, [initialData, form]);
+
   // Watch dos campos necessários para os componentes
   const selectedDate = form.watch("scheduled_date");
   const selectedPrisonUnitId = form.watch("prison_unit_id");
 
   const mutation = useMutation({
     mutationFn: async (data: AudienciaFormData) => {
-      console.log("Dados sendo enviados:", data);
+      console.log("=== INÍCIO DO PROCESSO DE SALVAMENTO ===");
+      console.log("Dados recebidos do formulário:", data);
+      console.log("Modo edição:", isEditing);
+      console.log("ID da audiência (se editando):", initialData?.id);
       
+      // Validar dados obrigatórios
+      if (!data.defendant_name?.trim()) {
+        throw new Error("Nome do réu é obrigatório");
+      }
+      if (!data.process_number?.trim()) {
+        throw new Error("Número do processo é obrigatório");
+      }
+      if (!data.scheduled_date) {
+        throw new Error("Data é obrigatória");
+      }
+      if (!data.scheduled_time) {
+        throw new Error("Horário é obrigatório");
+      }
+      if (!data.prison_unit_id) {
+        throw new Error("Unidade prisional é obrigatória");
+      }
+      if (!data.prison_unit_slot_id) {
+        throw new Error("Slot de horário é obrigatório");
+      }
+
       // Verificar se já existe uma audiência no mesmo slot (apenas para criação)
       if (!isEditing) {
-        console.log("Verificando conflitos de slot...");
-        const { data: existingSlot, error: conflictError } = await supabase
-          .from('prison_unit_slots')
-          .select('audience_id')
-          .eq('id', data.prison_unit_slot_id)
-          .eq('is_available', false);
+        console.log("Verificando conflitos de slot para slot ID:", data.prison_unit_slot_id);
+        const { data: existingAudiences, error: conflictError } = await supabase
+          .from('audiences')
+          .select('id')
+          .eq('prison_unit_id', data.prison_unit_id)
+          .eq('scheduled_date', data.scheduled_date)
+          .eq('scheduled_time', data.scheduled_time);
         
         if (conflictError) {
           console.error("Erro ao verificar conflitos:", conflictError);
           throw new Error("Erro ao verificar conflitos de horário");
         }
         
-        if (existingSlot && existingSlot.length > 0) {
-          throw new Error("Este horário já está ocupado. Por favor, escolha outro horário.");
+        if (existingAudiences && existingAudiences.length > 0) {
+          console.log("Conflito encontrado:", existingAudiences);
+          throw new Error("Já existe uma audiência agendada para este horário e unidade prisional. Por favor, escolha outro horário.");
         }
+        
+        console.log("Nenhum conflito encontrado, prosseguindo...");
       }
       
       // Preparar os dados para inserção/atualização
       const audienceData = {
-        defendant_name: data.defendant_name,
-        process_number: data.process_number,
+        defendant_name: data.defendant_name.trim(),
+        process_number: data.process_number.trim(),
         scheduled_date: data.scheduled_date,
         scheduled_time: data.scheduled_time,
         serventia_id: data.serventia_id || null,
@@ -101,16 +169,18 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
         prosecutor_id: data.prosecutor_id || null,
         defender_id: data.defender_id || null,
         judicial_assistant_id: data.judicial_assistant_id || null,
-        virtual_room_url: data.virtual_room_url || null,
-        observations: data.observations || null,
+        virtual_room_url: data.virtual_room_url?.trim() || null,
+        observations: data.observations?.trim() || null,
       };
       
-      console.log("Dados finais para inserção:", audienceData);
+      console.log("Dados preparados para salvamento:", audienceData);
       
       let result;
       
       if (isEditing && initialData?.id) {
+        console.log("=== EXECUTANDO ATUALIZAÇÃO ===");
         console.log("Atualizando audiência com ID:", initialData.id);
+        
         const { data: updateResult, error } = await supabase
           .from("audiences")
           .update(audienceData)
@@ -119,12 +189,16 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
           .single();
         
         if (error) {
-          console.error("Erro ao atualizar audiência:", error);
-          throw error;
+          console.error("Erro na atualização:", error);
+          throw new Error(`Erro ao atualizar audiência: ${error.message}`);
         }
+        
+        console.log("Atualização bem-sucedida:", updateResult);
         result = updateResult;
       } else {
+        console.log("=== EXECUTANDO CRIAÇÃO ===");
         console.log("Criando nova audiência");
+        
         const { data: insertResult, error } = await supabase
           .from("audiences")
           .insert([audienceData])
@@ -132,12 +206,14 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
           .single();
         
         if (error) {
-          console.error("Erro ao criar audiência:", error);
-          throw error;
+          console.error("Erro na inserção:", error);
+          throw new Error(`Erro ao criar audiência: ${error.message}`);
         }
+        
+        console.log("Inserção bem-sucedida:", insertResult);
         result = insertResult;
         
-        // Marcar o slot como ocupado
+        // Marcar o slot como ocupado apenas para criação
         console.log("Marcando slot como ocupado:", data.prison_unit_slot_id);
         const { error: slotError } = await supabase
           .from('prison_unit_slots')
@@ -150,17 +226,22 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
         if (slotError) {
           console.error("Erro ao marcar slot como ocupado:", slotError);
           // Não vamos falhar a criação da audiência por isso
+          console.log("Continuando apesar do erro no slot...");
+        } else {
+          console.log("Slot marcado como ocupado com sucesso");
         }
       }
       
-      console.log("Operação realizada com sucesso:", result);
+      console.log("=== PROCESSO CONCLUÍDO COM SUCESSO ===");
       return result;
     },
     onSuccess: () => {
-      console.log("Operação bem-sucedida, invalidando queries");
+      console.log("Mutation bem-sucedida, invalidando queries...");
       queryClient.invalidateQueries({ queryKey: ["audiences"] });
       queryClient.invalidateQueries({ queryKey: ["available-slots"] });
-      queryClient.invalidateQueries({ queryKey: ["audiencia", initialData?.id] });
+      if (initialData?.id) {
+        queryClient.invalidateQueries({ queryKey: ["audiencia", initialData.id] });
+      }
       toast({
         title: "Sucesso",
         description: isEditing ? "Audiência atualizada com sucesso!" : "Audiência criada com sucesso!",
@@ -168,7 +249,9 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
       onSuccess();
     },
     onError: (error: any) => {
-      console.error("Erro ao salvar audiência:", error);
+      console.error("=== ERRO NA MUTATION ===");
+      console.error("Erro completo:", error);
+      console.error("Mensagem:", error.message);
       toast({
         title: "Erro",
         description: error.message || "Erro ao salvar audiência",
@@ -178,18 +261,27 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
   });
 
   const onSubmit = (data: AudienciaFormData) => {
-    console.log("Formulário submetido com dados:", data);
+    console.log("=== FORMULÁRIO SUBMETIDO ===");
+    console.log("Dados do formulário:", data);
+    console.log("Validação passou, iniciando mutation...");
     mutation.mutate(data);
   };
 
   const handleCancel = () => {
-    console.log("Cancelando operação");
+    console.log("Cancelando operação e fechando modal");
     onSuccess();
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+        console.log("Erros de validação:", errors);
+        toast({
+          title: "Erro de validação",
+          description: "Por favor, verifique os campos obrigatórios.",
+          variant: "destructive",
+        });
+      })} className="space-y-6">
         <div className="space-y-6">
           {/* 1. Plantão e Profissionais */}
           <div className="space-y-4">
