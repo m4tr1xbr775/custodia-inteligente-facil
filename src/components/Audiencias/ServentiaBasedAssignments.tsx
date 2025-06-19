@@ -46,26 +46,6 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
     },
   });
 
-  // Buscar unidades prisionais
-  const { data: prisonUnits = [] } = useQuery({
-    queryKey: ['prison-units'],
-    queryFn: async () => {
-      console.log("Buscando unidades prisionais...");
-      const { data, error } = await supabase
-        .from('prison_units_extended')
-        .select('id, name, short_name')
-        .order('name');
-      
-      if (error) {
-        console.error("Erro ao buscar unidades prisionais:", error);
-        return [];
-      }
-      
-      console.log("Unidades prisionais encontradas:", data);
-      return data || [];
-    },
-  });
-
   // Buscar plantonistas baseado na serventia e data selecionados
   const { data: assignments } = useQuery({
     queryKey: ['schedule-assignments', selectedScheduleId, selectedDate],
@@ -192,11 +172,11 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
         name="schedule_id"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Serventia *</FormLabel>
+            <FormLabel>Central de Custódia *</FormLabel>
             <Select onValueChange={field.onChange} value={field.value}>
               <FormControl>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma serventia" />
+                  <SelectValue placeholder="Selecione uma escala" />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
@@ -212,134 +192,113 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
         )}
       />
 
-      <FormField
-        control={form.control}
-        name="prison_unit_id"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Unidade Prisional *</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma unidade prisional" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {prisonUnits.map((unit) => (
-                  <SelectItem key={unit.id} value={unit.id}>
-                    {unit.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormField
+          control={form.control}
+          name="magistrate_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Juiz/Magistrado</FormLabel>
+              <Select onValueChange={handleMagistrateChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um magistrado" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {magistrates.map((magistrate) => (
+                    <SelectItem key={magistrate.id} value={magistrate.id}>
+                      {magistrate.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <FormField
-        control={form.control}
-        name="magistrate_id"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Juiz/Magistrado</FormLabel>
-            <Select onValueChange={handleMagistrateChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um magistrado" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="none">Nenhum</SelectItem>
-                {magistrates.map((magistrate) => (
-                  <SelectItem key={magistrate.id} value={magistrate.id}>
-                    {magistrate.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        <FormField
+          control={form.control}
+          name="judicial_assistant_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Assistente de Juiz</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um assistente" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {magistrates.map((magistrate) => (
+                    <SelectItem key={magistrate.id} value={magistrate.id}>
+                      {magistrate.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
 
-      <FormField
-        control={form.control}
-        name="judicial_assistant_id"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Assistente de Juiz</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um assistente" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="none">Nenhum</SelectItem>
-                {magistrates.map((magistrate) => (
-                  <SelectItem key={magistrate.id} value={magistrate.id}>
-                    {magistrate.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormField
+          control={form.control}
+          name="prosecutor_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Promotor</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um promotor" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {prosecutors.map((prosecutor) => (
+                    <SelectItem key={prosecutor.id} value={prosecutor.id}>
+                      {prosecutor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <FormField
-        control={form.control}
-        name="prosecutor_id"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Promotor</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um promotor" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="none">Nenhum</SelectItem>
-                {prosecutors.map((prosecutor) => (
-                  <SelectItem key={prosecutor.id} value={prosecutor.id}>
-                    {prosecutor.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="defender_id"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Defensor</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um defensor" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="none">Nenhum</SelectItem>
-                {defenders.map((defender) => (
-                  <SelectItem key={defender.id} value={defender.id}>
-                    {defender.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        <FormField
+          control={form.control}
+          name="defender_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Defensor</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um defensor" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {defenders.map((defender) => (
+                    <SelectItem key={defender.id} value={defender.id}>
+                      {defender.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
     </div>
   );
 };

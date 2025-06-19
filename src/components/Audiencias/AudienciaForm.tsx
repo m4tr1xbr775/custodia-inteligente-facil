@@ -11,13 +11,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import AudienciaBasicInfo from "./AudienciaBasicInfo";
 import AudienciaDateTime from "./AudienciaDateTime";
 import ServentiaBasedAssignments from "./ServentiaBasedAssignments";
+import AudienciaPrisonUnit from "./AudienciaPrisonUnit";
 
 const audienciaSchema = z.object({
   defendant_name: z.string().min(1, "Nome do réu é obrigatório"),
   process_number: z.string().min(1, "Número do processo é obrigatório"),
   scheduled_date: z.string().min(1, "Data é obrigatória"),
   scheduled_time: z.string().min(1, "Horário é obrigatório"),
-  schedule_id: z.string().min(1, "Serventia é obrigatória"),
+  schedule_id: z.string().min(1, "Central de Custódia é obrigatória"),
   prison_unit_id: z.string().min(1, "Unidade prisional é obrigatória"),
   magistrate_id: z.string().optional(),
   prosecutor_id: z.string().optional(),
@@ -226,20 +227,32 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          {/* Central de Custódia e Plantonistas */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Serventia e Processo</h3>
+            <h3 className="text-lg font-medium">Central de Custódia e Plantonistas</h3>
             <ServentiaBasedAssignments 
               form={form} 
               selectedScheduleId={selectedScheduleId} 
               selectedDate={selectedDate} 
             />
-            <AudienciaBasicInfo form={form} />
           </div>
           
+          {/* Informações do Processo */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Agendamento</h3>
-            <AudienciaDateTime form={form} />
+            <h3 className="text-lg font-medium">Informações do Processo</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <AudienciaBasicInfo form={form} />
+            </div>
+          </div>
+          
+          {/* Unidade Prisional e Agendamento */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Unidade Prisional e Agendamento</h3>
+            <AudienciaPrisonUnit form={form} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <AudienciaDateTime form={form} />
+            </div>
           </div>
         </div>
 

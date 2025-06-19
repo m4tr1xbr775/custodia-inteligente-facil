@@ -17,7 +17,7 @@ interface AudienciaBasicInfoProps {
 
 const AudienciaBasicInfo = ({ form }: AudienciaBasicInfoProps) => {
   return (
-    <div className="space-y-4">
+    <>
       <FormField
         control={form.control}
         name="process_number"
@@ -46,38 +46,42 @@ const AudienciaBasicInfo = ({ form }: AudienciaBasicInfoProps) => {
         )}
       />
 
-      <FormField
-        control={form.control}
-        name="virtual_room_url"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Link da Sala Virtual</FormLabel>
-            <FormControl>
-              <Input placeholder="https://..." {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <div className="md:col-span-2">
+        <FormField
+          control={form.control}
+          name="virtual_room_url"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Link da Sala Virtual</FormLabel>
+              <FormControl>
+                <Input placeholder="https://..." {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
 
-      <FormField
-        control={form.control}
-        name="observations"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Observações</FormLabel>
-            <FormControl>
-              <Textarea 
-                placeholder="Observações adicionais..."
-                className="min-h-[80px]"
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    </div>
+      <div className="md:col-span-2">
+        <FormField
+          control={form.control}
+          name="observations"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Observações</FormLabel>
+              <FormControl>
+                <Textarea 
+                  placeholder="Observações adicionais..."
+                  className="min-h-[80px]"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+    </>
   );
 };
 
