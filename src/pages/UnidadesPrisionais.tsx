@@ -1,115 +1,16 @@
 
 import { useState } from "react";
-import { Calendar, CheckCircle, XCircle, Clock, ExternalLink, Save } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import UnitSelector from "@/components/UnidadesPrisionais/UnitSelector";
+import AudienceList from "@/components/UnidadesPrisionais/AudienceList";
 
 const UnidadesPrisionais = () => {
   const [selectedUnit, setSelectedUnit] = useState("");
   const [observationsChanges, setObservationsChanges] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  // Fetch prison units from the new table
-  const { data: prisonUnits } = useQuery({
-    queryKey: ['prison_units_extended'],
-    queryFn: async () => {
-      console.log("Buscando unidades prisionais...");
-      const { data, error } = await supabase
-        .from('prison_units_extended')
-        .select('*')
-        .order('name');
-      if (error) {
-        console.error("Erro ao buscar unidades prisionais:", error);
-        throw error;
-      }
-      console.log("Unidades prisionais encontradas:", data);
-      return data;
-    },
-  });
-
-  // Fetch audiences for selected unit with complete data joins
-  const { data: audiences, isLoading } = useQuery({
-    queryKey: ['unit_audiences', selectedUnit],
-    queryFn: async () => {
-      if (!selectedUnit) return [];
-      
-      console.log("Buscando audiências para unidade:", selectedUnit);
-      
-      // Buscar as audiências da unidade com todos os joins necessários
-      const { data: audiences, error: audiencesError } = await supabase
-        .from('audiences')
-        .select(`
-          *,
-          serventias:serventia_id (
-            id,
-            name,
-            type,
-            code
-          ),
-          prison_units_extended:prison_unit_id (
-            id,
-            name,
-            short_name
-          ),
-          magistrates:magistrate_id (
-            id,
-            name,
-            email,
-            phone,
-            virtual_room_url,
-            judicial_assistant:judicial_assistant_id (
-              id,
-              name,
-              email,
-              phone
-            )
-          ),
-          prosecutors:prosecutor_id (
-            id,
-            name,
-            email,
-            phone
-          ),
-          defenders:defender_id (
-            id,
-            name,
-            email,
-            phone,
-            type
-          ),
-          judicial_assistant:judicial_assistant_id (
-            id,
-            name,
-            email,
-            phone
-          )
-        `)
-        .eq('prison_unit_id', selectedUnit)
-        .order('scheduled_date', { ascending: true });
-      
-      if (audiencesError) {
-        console.error("Erro ao buscar audiências:", audiencesError);
-        throw audiencesError;
-      }
-      
-      console.log("Audiências com relações encontradas:", audiences);
-      return audiences || [];
-    },
-    enabled: !!selectedUnit,
-  });
 
   // Mutation to update acknowledgment status
   const updateAcknowledgmentMutation = useMutation({
@@ -172,32 +73,6 @@ const UnidadesPrisionais = () => {
     },
   });
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "agendada":
-        return <Badge className="bg-blue-100 text-blue-800">Agendada</Badge>;
-      case "realizada":
-        return <Badge className="bg-green-100 text-green-800">Realizada</Badge>;
-      case "cancelada":
-        return <Badge className="bg-red-100 text-red-800">Cancelada</Badge>;
-      case "nao_compareceu":
-        return <Badge className="bg-yellow-100 text-yellow-800">Não Compareceu</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
-  const getAcknowledgmentBadge = (acknowledgment: string) => {
-    switch (acknowledgment) {
-      case "confirmado":
-        return <Badge className="bg-green-500 text-white text-xs px-2 py-1 font-semibold">✓ CONFIRMADO</Badge>;
-      case "negado":
-        return <Badge className="bg-red-500 text-white text-xs px-2 py-1 font-semibold">✗ NEGADO</Badge>;
-      default:
-        return <Badge className="bg-yellow-500 text-white text-xs px-2 py-1 font-semibold">⏳ PENDENTE</Badge>;
-    }
-  };
-
   const handleAcknowledgmentChange = (audienceId: string, status: string) => {
     updateAcknowledgmentMutation.mutate({ audienceId, status });
   };
@@ -230,197 +105,21 @@ const UnidadesPrisionais = () => {
         </div>
       </div>
 
-      {/* Seleção da Unidade */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Selecione sua Unidade Prisional</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Select value={selectedUnit} onValueChange={setSelectedUnit}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Selecione uma unidade prisional" />
-            </SelectTrigger>
-            <SelectContent>
-              {prisonUnits?.map((unit) => (
-                <SelectItem key={unit.id} value={unit.id}>
-                  {unit.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+      <UnitSelector 
+        selectedUnit={selectedUnit} 
+        onUnitChange={setSelectedUnit} 
+      />
 
-      {/* Lista de Audiências */}
-      {selectedUnit && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Calendar className="h-5 w-5" />
-              <span>Audiências Agendadas</span>
-              {audiences && (
-                <Badge variant="outline" className="ml-auto">
-                  {audiences.length} audiência{audiences.length !== 1 ? 's' : ''}
-                </Badge>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading && (
-              <div className="text-center py-8">
-                <div className="text-lg">Carregando audiências...</div>
-              </div>
-            )}
-
-            {audiences && audiences.length === 0 && (
-              <div className="text-center py-8">
-                <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma audiência agendada</h3>
-                <p className="text-gray-600">Não há audiências agendadas para esta unidade no momento.</p>
-              </div>
-            )}
-
-            <div className="space-y-4">
-              {audiences?.map((audience) => (
-                <Card key={audience.id} className="border-l-4 border-l-blue-500">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between space-y-4 lg:space-y-0">
-                      <div className="flex-1 space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
-                          {/* Status de confirmação em posição destacada */}
-                          {getAcknowledgmentBadge(audience.unit_acknowledgment)}
-                          
-                          <div className="flex items-center space-x-2">
-                            <Calendar className="h-4 w-4 text-gray-500" />
-                            <span className="font-medium text-lg">
-                              {new Date(audience.scheduled_date).toLocaleDateString('pt-BR')} às {audience.scheduled_time}
-                            </span>
-                          </div>
-                          {getStatusBadge(audience.status)}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <h3 className="font-semibold text-xl text-gray-900">{audience.defendant_name}</h3>
-                            <p className="text-sm text-gray-600">
-                              <span className="font-medium">Processo:</span> {audience.process_number}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              <span className="font-medium">Central:</span> {audience.serventias?.name || 'Não informado'}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              <span className="font-medium">Unidade:</span> {audience.prison_units_extended?.name || 'Não informado'}
-                            </p>
-                          </div>
-
-                          <div className="space-y-2">
-                            <p className="text-sm">
-                              <span className="font-medium">Magistrado:</span> {audience.magistrates?.name || 'Não definido'}
-                            </p>
-                            <p className="text-sm">
-                              <span className="font-medium">Promotor:</span> {audience.prosecutors?.name || 'Não definido'}
-                            </p>
-                            <p className="text-sm">
-                              <span className="font-medium">Defensor:</span> {audience.defenders?.name || 'Não definido'}
-                              {audience.defenders?.type && (
-                                <span className="text-xs text-gray-500 ml-1">({audience.defenders.type})</span>
-                              )}
-                            </p>
-                            <p className="text-sm">
-                              <span className="font-medium">Assistente Judicial:</span> {audience.judicial_assistant?.name || audience.magistrates?.judicial_assistant?.name || 'Não definido'}
-                            </p>
-                          </div>
-                        </div>
-
-                        {(audience.virtual_room_url || audience.magistrates?.virtual_room_url) && (
-                          <div className="mt-4">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => window.open(audience.virtual_room_url || audience.magistrates?.virtual_room_url, '_blank')}
-                              className="flex items-center space-x-2"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                              <span>Acessar Sala Virtual</span>
-                            </Button>
-                          </div>
-                        )}
-
-                        {/* Campo de observações com botão de atualização */}
-                        <div className="mt-4">
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">
-                            Observações:
-                          </label>
-                          <div className="flex gap-2">
-                            <Textarea
-                              placeholder="Adicione observações ou motivo da negação..."
-                              value={observationsChanges[audience.id] !== undefined 
-                                ? observationsChanges[audience.id] 
-                                : (audience.observations || '')}
-                              onChange={(e) => handleObservationsChange(audience.id, e.target.value)}
-                              className="flex-1 min-h-[80px] text-sm"
-                              disabled={updateObservationsMutation.isPending}
-                            />
-                            {hasObservationsChanged(audience.id, audience.observations) && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleSaveObservations(audience.id)}
-                                disabled={updateObservationsMutation.isPending}
-                                className="flex items-center space-x-2 self-start"
-                              >
-                                <Save className="h-4 w-4" />
-                                <span>Salvar</span>
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="lg:ml-6">
-                        <div className="space-y-4">
-                          <div>
-                            <label className="text-sm font-medium text-gray-700">Status da Confirmação:</label>
-                            <Select
-                              value={audience.unit_acknowledgment}
-                              onValueChange={(value) => handleAcknowledgmentChange(audience.id, value)}
-                              disabled={updateAcknowledgmentMutation.isPending}
-                            >
-                              <SelectTrigger className="w-[180px] mt-1">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="pendente">
-                                  <div className="flex items-center space-x-2">
-                                    <Clock className="h-4 w-4 text-yellow-500" />
-                                    <span>Pendente</span>
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="confirmado">
-                                  <div className="flex items-center space-x-2">
-                                    <CheckCircle className="h-4 w-4 text-green-500" />
-                                    <span>Confirmado</span>
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="negado">
-                                  <div className="flex items-center space-x-2">
-                                    <XCircle className="h-4 w-4 text-red-500" />
-                                    <span>Negado</span>
-                                  </div>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <AudienceList
+        selectedUnit={selectedUnit}
+        observationsChanges={observationsChanges}
+        onAcknowledgmentChange={handleAcknowledgmentChange}
+        onObservationsChange={handleObservationsChange}
+        onSaveObservations={handleSaveObservations}
+        hasObservationsChanged={hasObservationsChanged}
+        isUpdatingAcknowledgment={updateAcknowledgmentMutation.isPending}
+        isUpdatingObservations={updateObservationsMutation.isPending}
+      />
     </div>
   );
 };
