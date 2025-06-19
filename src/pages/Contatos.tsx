@@ -1,9 +1,9 @@
 
 import { useState } from "react";
-import { Users, Plus, Search, Phone, MessageCircle, Mail } from "lucide-react";
+import { Users, Plus, Search, Phone, MessageCircle, Mail, Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -12,115 +12,148 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import ContatoModal from "@/components/Contatos/ContatoModal";
 
 const Contatos = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("todos");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingContactId, setEditingContactId] = useState<string | undefined>();
+  const [deletingContactId, setDeletingContactId] = useState<string | null>(null);
 
-  const contacts = [
-    {
-      id: 1,
-      name: "Dr. Carlos Eduardo Silva",
-      role: "Magistrado",
-      institution: "TJGO",
-      comarca: "Goiânia",
-      phone: "(62) 3201-1111",
-      cellphone: "(62) 99999-1111",
-      whatsapp: "(62) 99999-1111",
-      email: "carlos.silva@tjgo.jus.br",
-      position: "Juiz Titular"
-    },
-    {
-      id: 2,
-      name: "Dra. Ana Paula Oliveira",
-      role: "Promotor",
-      institution: "MPGO",
-      comarca: "Goiânia",
-      phone: "(62) 3243-2222",
-      cellphone: "(62) 99999-2222",
-      whatsapp: "(62) 99999-2222",
-      email: "ana.oliveira@mpgo.mp.br",
-      position: "1ª Promotoria Criminal"
-    },
-    {
-      id: 3,
-      name: "Dr. Roberto Santos Lima",
-      role: "Defensor",
-      institution: "Defensoria Pública",
-      comarca: "Goiânia",
-      phone: "(62) 3269-3333",
-      cellphone: "(62) 99999-3333",
-      whatsapp: "(62) 99999-3333",
-      email: "roberto.lima@defensoria.go.def.br",
-      position: "Defensor Público"
-    },
-    {
-      id: 4,
-      name: "Inspetor José Maria Santos",
-      role: "Polícia Penal",
-      institution: "DGAP",
-      unit: "CDP Aparecida de Goiânia",
-      phone: "(62) 3201-4444",
-      cellphone: "(62) 99999-4444",
-      whatsapp: "(62) 99999-4444",
-      email: "jose.santos@dgap.go.gov.br",
-      position: "Inspetor Chefe"
-    },
-    {
-      id: 5,
-      name: "Dra. Fernanda Luz",
-      role: "Defensor",
-      institution: "Defensoria Pública",
-      comarca: "Aparecida de Goiânia",
-      phone: "(62) 3269-5555",
-      cellphone: "(62) 99999-5555",
-      whatsapp: "(62) 99999-5555",
-      email: "fernanda.luz@defensoria.go.def.br",
-      position: "Defensora Pública"
-    }
-  ];
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  const getRoleBadge = (role: string) => {
-    switch (role) {
-      case "Magistrado":
+  // Fetch contacts from database
+  const { data: contacts = [], isLoading } = useQuery({
+    queryKey: ['contacts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select(`
+          *,
+          regions (
+            name
+          )
+        `)
+        .eq('active', true)
+        .order('name');
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const getRoleBadge = (department: string) => {
+    if (!department) return <Badge variant="secondary">Sem Departamento</Badge>;
+    
+    switch (department.toLowerCase()) {
+      case "magistrado":
         return <Badge className="bg-blue-100 text-blue-800">Magistrado</Badge>;
-      case "Promotor":
+      case "promotor":
         return <Badge className="bg-green-100 text-green-800">Promotor</Badge>;
-      case "Defensor":
+      case "defensor":
         return <Badge className="bg-purple-100 text-purple-800">Defensor</Badge>;
-      case "Polícia Penal":
+      case "polícia penal":
         return <Badge className="bg-orange-100 text-orange-800">Polícia Penal</Badge>;
-      case "Assessor":
+      case "assessor":
         return <Badge className="bg-gray-100 text-gray-800">Assessor</Badge>;
       default:
-        return <Badge variant="secondary">{role}</Badge>;
+        return <Badge variant="secondary">{department}</Badge>;
     }
   };
 
   const handleCall = (phone: string) => {
-    window.open(`tel:${phone}`, '_self');
+    if (phone) {
+      window.open(`tel:${phone}`, '_self');
+    }
   };
 
   const handleWhatsApp = (phone: string, name: string) => {
-    const message = encodeURIComponent(`Olá ${name}, entrando em contato através do SisJud.`);
-    window.open(`https://wa.me/55${phone.replace(/\D/g, '')}?text=${message}`, '_blank');
+    if (phone) {
+      const message = encodeURIComponent(`Olá ${name}, entrando em contato através do SisJud.`);
+      window.open(`https://wa.me/55${phone.replace(/\D/g, '')}?text=${message}`, '_blank');
+    }
   };
 
   const handleEmail = (email: string) => {
-    window.open(`mailto:${email}`, '_self');
+    if (email) {
+      window.open(`mailto:${email}`, '_self');
+    }
+  };
+
+  const handleNewContact = () => {
+    setEditingContactId(undefined);
+    setIsModalOpen(true);
+  };
+
+  const handleEditContact = (contactId: string) => {
+    setEditingContactId(contactId);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteContact = async (contactId: string) => {
+    try {
+      setDeletingContactId(contactId);
+
+      const { error } = await supabase
+        .from('contacts')
+        .update({ active: false })
+        .eq('id', contactId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Contato removido",
+        description: "O contato foi removido com sucesso.",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+    } catch (error: any) {
+      console.error('Erro ao deletar contato:', error);
+      toast({
+        title: "Erro ao remover contato",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingContactId(null);
+    }
   };
 
   const filteredContacts = contacts.filter(contact => {
     const matchesSearch = 
-      contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.institution.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (contact.comarca && contact.comarca.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (contact.unit && contact.unit.toLowerCase().includes(searchTerm.toLowerCase()));
+      contact.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.position?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.regions?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesRole = roleFilter === "todos" || contact.role === roleFilter;
+    const matchesRole = roleFilter === "todos" || contact.department === roleFilter;
     
     return matchesSearch && matchesRole;
   });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg">Carregando contatos...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -129,7 +162,10 @@ const Contatos = () => {
           <h1 className="text-3xl font-bold text-gray-900">Banco de Contatos</h1>
           <p className="text-gray-600">Gerencie todos os contatos do sistema judiciário</p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700">
+        <Button 
+          className="bg-blue-600 hover:bg-blue-700"
+          onClick={handleNewContact}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Novo Contato
         </Button>
@@ -143,7 +179,7 @@ const Contatos = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Buscar por nome, instituição ou comarca..."
+                  placeholder="Buscar por nome, departamento, cargo ou região..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -152,10 +188,10 @@ const Contatos = () => {
             </div>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Função" />
+                <SelectValue placeholder="Departamento" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todas as Funções</SelectItem>
+                <SelectItem value="todos">Todos os Departamentos</SelectItem>
                 <SelectItem value="Magistrado">Magistrado</SelectItem>
                 <SelectItem value="Promotor">Promotor</SelectItem>
                 <SelectItem value="Defensor">Defensor</SelectItem>
@@ -176,64 +212,119 @@ const Contatos = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg text-gray-900">{contact.name}</h3>
-                    <p className="text-sm text-gray-600">{contact.position}</p>
+                    {contact.position && (
+                      <p className="text-sm text-gray-600">{contact.position}</p>
+                    )}
                     <div className="flex items-center space-x-2 mt-2">
-                      {getRoleBadge(contact.role)}
-                      <Badge variant="outline">{contact.institution}</Badge>
+                      {getRoleBadge(contact.department)}
+                      {contact.regions?.name && (
+                        <Badge variant="outline">{contact.regions.name}</Badge>
+                      )}
                     </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditContact(contact.id)}
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          disabled={deletingContactId === contact.id}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tem certeza que deseja excluir o contato de {contact.name}? 
+                            Esta ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteContact(contact.id)}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  {contact.comarca && (
+                  {contact.department && (
                     <p className="text-sm text-gray-600">
-                      <span className="font-medium">Comarca:</span> {contact.comarca}
+                      <span className="font-medium">Departamento:</span> {contact.department}
                     </p>
                   )}
-                  {contact.unit && (
+                  {contact.regions?.name && (
                     <p className="text-sm text-gray-600">
-                      <span className="font-medium">Unidade:</span> {contact.unit}
+                      <span className="font-medium">Região:</span> {contact.regions.name}
                     </p>
                   )}
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Telefone:</span> {contact.phone}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Celular:</span> {contact.cellphone}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">E-mail:</span> {contact.email}
-                  </p>
+                  {contact.phone && (
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">Telefone:</span> {contact.phone}
+                    </p>
+                  )}
+                  {contact.mobile && (
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">Celular:</span> {contact.mobile}
+                    </p>
+                  )}
+                  {contact.email && (
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">E-mail:</span> {contact.email}
+                    </p>
+                  )}
                 </div>
                 
                 <div className="flex flex-wrap gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCall(contact.cellphone)}
-                    className="flex items-center space-x-1"
-                  >
-                    <Phone className="h-3 w-3" />
-                    <span>Ligar</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleWhatsApp(contact.whatsapp, contact.name)}
-                    className="flex items-center space-x-1 text-green-600 border-green-300 hover:bg-green-50"
-                  >
-                    <MessageCircle className="h-3 w-3" />
-                    <span>WhatsApp</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEmail(contact.email)}
-                    className="flex items-center space-x-1"
-                  >
-                    <Mail className="h-3 w-3" />
-                    <span>E-mail</span>
-                  </Button>
+                  {contact.mobile && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCall(contact.mobile)}
+                      className="flex items-center space-x-1"
+                    >
+                      <Phone className="h-3 w-3" />
+                      <span>Ligar</span>
+                    </Button>
+                  )}
+                  {contact.mobile && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleWhatsApp(contact.mobile, contact.name)}
+                      className="flex items-center space-x-1 text-green-600 border-green-300 hover:bg-green-50"
+                    >
+                      <MessageCircle className="h-3 w-3" />
+                      <span>WhatsApp</span>
+                    </Button>
+                  )}
+                  {contact.email && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEmail(contact.email)}
+                      className="flex items-center space-x-1"
+                    >
+                      <Mail className="h-3 w-3" />
+                      <span>E-mail</span>
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -250,6 +341,12 @@ const Contatos = () => {
           </CardContent>
         </Card>
       )}
+
+      <ContatoModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        editingContactId={editingContactId}
+      />
     </div>
   );
 };
