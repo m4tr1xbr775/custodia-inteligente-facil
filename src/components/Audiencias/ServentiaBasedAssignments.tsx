@@ -18,16 +18,24 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ScheduleAssignmentSelector from "./ScheduleAssignmentSelector";
-import PrisonUnitSlotSelector from "./PrisonUnitSlotSelector";
 
 interface ServentiaBasedAssignmentsProps {
   form: UseFormReturn<any>;
   selectedScheduleId: string;
   selectedDate: string;
   selectedPrisonUnitId: string;
+  showPrisonUnitSelector?: boolean;
+  showSlotSelector?: boolean;
 }
 
-const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate, selectedPrisonUnitId }: ServentiaBasedAssignmentsProps) => {
+const ServentiaBasedAssignments = ({ 
+  form, 
+  selectedScheduleId, 
+  selectedDate, 
+  selectedPrisonUnitId,
+  showPrisonUnitSelector = true,
+  showSlotSelector = true
+}: ServentiaBasedAssignmentsProps) => {
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
 
   // Buscar unidades prisionais
@@ -82,37 +90,30 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate, sel
       )}
 
       {/* 2. Seletor de Unidade Prisional */}
-      <FormField
-        control={form.control}
-        name="prison_unit_id"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Unidade Prisional *</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma unidade prisional" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {prisonUnits.map((unit) => (
-                  <SelectItem key={unit.id} value={unit.id}>
-                    {unit.name} ({unit.short_name})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* 3. Seletor de Slot de Horário (após data e unidade serem selecionadas) */}
-      {selectedPrisonUnitId && selectedDate && (
-        <PrisonUnitSlotSelector
-          form={form}
-          selectedDate={selectedDate}
-          selectedPrisonUnitId={selectedPrisonUnitId}
+      {showPrisonUnitSelector && (
+        <FormField
+          control={form.control}
+          name="prison_unit_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Unidade Prisional *</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma unidade prisional" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {prisonUnits.map((unit) => (
+                    <SelectItem key={unit.id} value={unit.id}>
+                      {unit.name} ({unit.short_name})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
         />
       )}
     </div>

@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +11,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import AudienciaBasicInfo from "./AudienciaBasicInfo";
 import AudienciaDateTime from "./AudienciaDateTime";
 import ServentiaBasedAssignments from "./ServentiaBasedAssignments";
+import PrisonUnitSlotSelector from "./PrisonUnitSlotSelector";
 
 const audienciaSchema = z.object({
   defendant_name: z.string().min(1, "Nome do réu é obrigatório"),
@@ -197,10 +199,12 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
               selectedScheduleId="" 
               selectedDate={selectedDate}
               selectedPrisonUnitId={selectedPrisonUnitId}
+              showPrisonUnitSelector={true}
+              showSlotSelector={false}
             />
           </div>
           
-          {/* 2. Data da Audiência (sem horário) */}
+          {/* 2. Data da Audiência */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Data da Audiência</h3>
             <div className="grid grid-cols-1 gap-4">
@@ -208,7 +212,19 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
             </div>
           </div>
           
-          {/* 3. Informações do Processo */}
+          {/* 3. Slot Disponível */}
+          {selectedPrisonUnitId && selectedDate && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Slot Disponível</h3>
+              <PrisonUnitSlotSelector
+                form={form}
+                selectedDate={selectedDate}
+                selectedPrisonUnitId={selectedPrisonUnitId}
+              />
+            </div>
+          )}
+          
+          {/* 4. Informações do Processo */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Informações do Processo</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
