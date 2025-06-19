@@ -1,234 +1,293 @@
 
-import { Clock, Phone, MessageCircle, Users } from "lucide-react";
+import { useState } from "react";
+import { Users, Search, Phone, MessageCircle, Mail, Filter } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const Plantoes = () => {
-  const todayDate = new Date().toLocaleDateString('pt-BR', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+  const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState("todos");
+  const [locationFilter, setLocationFilter] = useState("todos");
+
+  // Fetch all contacts with combined data from different tables
+  const { data: contacts = [], isLoading } = useQuery({
+    queryKey: ['agenda-contacts', typeFilter, locationFilter],
+    queryFn: async () => {
+      const allContacts: any[] = [];
+
+      // Fetch magistrates
+      const { data: magistrates } = await supabase
+        .from('magistrates')
+        .select('id, name, email, phone')
+        .eq('active', true);
+      
+      if (magistrates) {
+        magistrates.forEach(magistrate => {
+          allContacts.push({
+            ...magistrate,
+            type: 'Magistrado',
+            location: 'Comarca Principal' // You can modify this based on your data structure
+          });
+        });
+      }
+
+      // Fetch prosecutors
+      const { data: prosecutors } = await supabase
+        .from('prosecutors')
+        .select('id, name, email, phone')
+        .eq('active', true);
+      
+      if (prosecutors) {
+        prosecutors.forEach(prosecutor => {
+          allContacts.push({
+            ...prosecutor,
+            type: 'Promotor',
+            location: 'Comarca Principal'
+          });
+        });
+      }
+
+      // Fetch defenders
+      const { data: defenders } = await supabase
+        .from('defenders')
+        .select('id, name, email, phone')
+        .eq('active', true);
+      
+      if (defenders) {
+        defenders.forEach(defender => {
+          allContacts.push({
+            ...defender,
+            type: 'Defensor',
+            location: 'Comarca Principal'
+          });
+        });
+      }
+
+      // Fetch contacts table for Analistas and Policiais
+      const { data: generalContacts } = await supabase
+        .from('contacts')
+        .select('id, name, email, phone, mobile, profile, department')
+        .eq('active', true);
+        
+      if (generalContacts) {
+        generalContacts.forEach(contact => {
+          allContacts.push({
+            ...contact,
+            phone: contact.mobile || contact.phone,
+            type: contact.profile || 'Analista',
+            location: contact.department || 'Unidade Geral'
+          });
+        });
+      }
+
+      return allContacts;
+    },
   });
 
-  const onDutyPersonnel = [
-    {
-      id: 1,
-      name: "Dr. Carlos Eduardo Silva",
-      role: "Magistrado",
-      comarca: "Goiânia",
-      phone: "(62) 99999-1111",
-      whatsapp: "(62) 99999-1111",
-      email: "carlos.silva@tjgo.jus.br",
-      period: "24h",
-      status: "ativo"
-    },
-    {
-      id: 2,
-      name: "Dra. Ana Paula Oliveira",
-      role: "Promotor",
-      comarca: "Goiânia",
-      phone: "(62) 99999-2222",
-      whatsapp: "(62) 99999-2222",
-      email: "ana.oliveira@mpgo.mp.br",
-      period: "24h",
-      status: "ativo"
-    },
-    {
-      id: 3,
-      name: "Dr. Roberto Santos Lima",
-      role: "Defensor",
-      comarca: "Goiânia",
-      phone: "(62) 99999-3333",
-      whatsapp: "(62) 99999-3333",
-      email: "roberto.lima@defensoria.go.def.br",
-      period: "24h",
-      status: "ativo"
-    },
-    {
-      id: 4,
-      name: "Inspetor José Maria Santos",
-      role: "Polícia Penal",
-      unit: "CDP Aparecida de Goiânia",
-      phone: "(62) 99999-4444",
-      whatsapp: "(62) 99999-4444",
-      email: "jose.santos@dgap.go.gov.br",
-      period: "12h - Diurno",
-      status: "ativo"
-    },
-    {
-      id: 5,
-      name: "Inspetora Maria José Silva",
-      role: "Polícia Penal",
-      unit: "Presídio Feminino",
-      phone: "(62) 99999-5555",
-      whatsapp: "(62) 99999-5555",
-      email: "maria.silva@dgap.go.gov.br",
-      period: "12h - Noturno",
-      status: "ativo"
-    }
-  ];
+  const getTypeBadge = (type: string) => {
+    const colors = {
+      'Magistrado': 'bg-blue-100 text-blue-800',
+      'Promotor': 'bg-green-100 text-green-800',
+      'Defensor': 'bg-purple-100 text-purple-800',
+      'Analista': 'bg-gray-100 text-gray-800',
+      'Policial Penal': 'bg-orange-100 text-orange-800'
+    };
+    
+    return (
+      <Badge className={colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800'}>
+        {type}
+      </Badge>
+    );
+  };
 
-  const getRoleBadge = (role: string) => {
-    switch (role) {
-      case "Magistrado":
-        return <Badge className="bg-blue-100 text-blue-800">Magistrado</Badge>;
-      case "Promotor":
-        return <Badge className="bg-green-100 text-green-800">Promotor</Badge>;
-      case "Defensor":
-        return <Badge className="bg-purple-100 text-purple-800">Defensor</Badge>;
-      case "Polícia Penal":
-        return <Badge className="bg-orange-100 text-orange-800">Polícia Penal</Badge>;
-      default:
-        return <Badge variant="secondary">{role}</Badge>;
+  const handleWhatsApp = (phone: string, name: string) => {
+    if (phone) {
+      const message = encodeURIComponent(`Olá ${name}, entrando em contato através do SisJud.`);
+      window.open(`https://wa.me/55${phone.replace(/\D/g, '')}?text=${message}`, '_blank');
     }
   };
 
   const handleCall = (phone: string) => {
-    window.open(`tel:${phone}`, '_self');
+    if (phone) {
+      window.open(`tel:${phone}`, '_self');
+    }
   };
 
-  const handleWhatsApp = (phone: string, name: string) => {
-    const message = encodeURIComponent(`Olá ${name}, entrando em contato através do SisJud.`);
-    window.open(`https://wa.me/55${phone.replace(/\D/g, '')}?text=${message}`, '_blank');
+  const handleEmail = (email: string) => {
+    if (email) {
+      window.open(`mailto:${email}`, '_self');
+    }
   };
+
+  const filteredContacts = contacts.filter(contact => {
+    const matchesSearch = 
+      contact.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.type?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesType = typeFilter === "todos" || contact.type === typeFilter;
+    const matchesLocation = locationFilter === "todos" || contact.location?.toLowerCase().includes(locationFilter.toLowerCase());
+    
+    return matchesSearch && matchesType && matchesLocation;
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg">Carregando agenda de contatos...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold text-gray-900">Plantões Ativos</h1>
-        <p className="text-gray-600 capitalize">{todayDate}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Agenda de Contatos</h1>
+          <p className="text-gray-600">Contatos dos operadores do sistema judiciário</p>
+        </div>
       </div>
 
-      {/* Resumo dos Plantões */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="bg-blue-500 p-2 rounded-lg">
-                <Users className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-blue-800">Magistrados</p>
-                <p className="text-xl font-bold text-blue-900">1</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-green-50 border-green-200">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="bg-green-500 p-2 rounded-lg">
-                <Users className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-green-800">Promotores</p>
-                <p className="text-xl font-bold text-green-900">1</p>
+      {/* Filtros */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Buscar por nome, tipo ou localização..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
             </div>
-          </CardContent>
-        </Card>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Tipo de Contato" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os Tipos</SelectItem>
+                <SelectItem value="Magistrado">Magistrado</SelectItem>
+                <SelectItem value="Promotor">Promotor</SelectItem>
+                <SelectItem value="Defensor">Defensor</SelectItem>
+                <SelectItem value="Analista">Analista</SelectItem>
+                <SelectItem value="Policial Penal">Policial Penal</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={locationFilter} onValueChange={setLocationFilter}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Localização" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todas as Localizações</SelectItem>
+                <SelectItem value="comarca principal">Comarca Principal</SelectItem>
+                <SelectItem value="unidade">Unidade</SelectItem>
+                <SelectItem value="comarca">Comarca</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card className="bg-purple-50 border-purple-200">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="bg-purple-500 p-2 rounded-lg">
-                <Users className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-purple-800">Defensores</p>
-                <p className="text-xl font-bold text-purple-900">1</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-orange-50 border-orange-200">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="bg-orange-500 p-2 rounded-lg">
-                <Users className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-orange-800">Polícia Penal</p>
-                <p className="text-xl font-bold text-orange-900">2</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Lista de Plantonistas */}
-      <div className="space-y-4">
-        {onDutyPersonnel.map((person) => (
-          <Card key={person.id} className="hover:shadow-md transition-shadow">
+      {/* Lista de Contatos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {filteredContacts.map((contact) => (
+          <Card key={`${contact.type}-${contact.id}`} className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                <div className="flex-1 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
-                    <h3 className="font-semibold text-lg text-gray-900">{person.name}</h3>
-                    {getRoleBadge(person.role)}
-                    <Badge className="bg-green-100 text-green-800">
-                      <Clock className="h-3 w-3 mr-1" />
-                      {person.period}
-                    </Badge>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      {person.comarca && (
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Comarca:</span> {person.comarca}
-                        </p>
-                      )}
-                      {person.unit && (
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Unidade:</span> {person.unit}
-                        </p>
-                      )}
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">E-mail:</span> {person.email}
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">Telefone:</span> {person.phone}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">WhatsApp:</span> {person.whatsapp}
-                      </p>
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg text-gray-900">{contact.name}</h3>
+                    <div className="flex items-center space-x-2 mt-2">
+                      {getTypeBadge(contact.type)}
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 lg:ml-6">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCall(person.phone)}
-                    className="flex items-center space-x-2"
-                  >
-                    <Phone className="h-4 w-4" />
-                    <span>Ligar</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleWhatsApp(person.whatsapp, person.name)}
-                    className="flex items-center space-x-2 text-green-600 border-green-300 hover:bg-green-50"
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    <span>WhatsApp</span>
-                  </Button>
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Tipo:</span> {contact.type}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Localização:</span> {contact.location}
+                  </p>
+                  {contact.phone && (
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">Telefone:</span> {contact.phone}
+                    </p>
+                  )}
+                  {contact.email && (
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">E-mail:</span> {contact.email}
+                    </p>
+                  )}
+                </div>
+                
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {contact.phone && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCall(contact.phone)}
+                      className="flex items-center space-x-1"
+                    >
+                      <Phone className="h-3 w-3" />
+                      <span>Ligar</span>
+                    </Button>
+                  )}
+                  {contact.phone && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleWhatsApp(contact.phone, contact.name)}
+                      className="flex items-center space-x-1 text-green-600 border-green-300 hover:bg-green-50"
+                    >
+                      <MessageCircle className="h-3 w-3" />
+                      <span>WhatsApp</span>
+                    </Button>
+                  )}
+                  {contact.email && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEmail(contact.email)}
+                      className="flex items-center space-x-1"
+                    >
+                      <Mail className="h-3 w-3" />
+                      <span>E-mail</span>
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {filteredContacts.length === 0 && (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum contato encontrado</h3>
+            <p className="text-gray-600">Tente ajustar os filtros para encontrar os contatos desejados.</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

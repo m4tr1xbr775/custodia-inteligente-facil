@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Users, Plus, Search, Phone, MessageCircle, Mail, Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -148,7 +147,7 @@ const Contatos = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Carregando contatos...</div>
+        <div className="text-lg">Carregando usuários...</div>
       </div>
     );
   }
@@ -157,15 +156,15 @@ const Contatos = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Banco de Contatos</h1>
-          <p className="text-gray-600">Gerencie todos os contatos do sistema judiciário</p>
+          <h1 className="text-3xl font-bold text-gray-900">Cadastro de Usuários</h1>
+          <p className="text-gray-600">Gerencie todos os usuários do sistema judiciário</p>
         </div>
         <Button 
           className="bg-blue-600 hover:bg-blue-700"
           onClick={handleNewContact}
         >
           <Plus className="h-4 w-4 mr-2" />
-          Novo Contato
+          Novo Usuário
         </Button>
       </div>
 
@@ -239,7 +238,7 @@ const Contatos = () => {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Tem certeza que deseja excluir o contato de {contact.name}? 
+                            Tem certeza que deseja excluir o usuário {contact.name}? 
                             Esta ação não pode ser desfeita.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
@@ -330,8 +329,8 @@ const Contatos = () => {
         <Card>
           <CardContent className="p-12 text-center">
             <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum contato encontrado</h3>
-            <p className="text-gray-600">Tente ajustar os filtros ou adicione um novo contato.</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum usuário encontrado</h3>
+            <p className="text-gray-600">Tente ajustar os filtros ou adicione um novo usuário.</p>
           </CardContent>
         </Card>
       )}

@@ -64,7 +64,7 @@ const Audiencias = () => {
     },
   });
 
-  // Fetch audiences with related data including participants
+  // Fixed audiences query
   const { data: audiencesData, isLoading } = useQuery({
     queryKey: ['audiences'],
     queryFn: async () => {
@@ -74,7 +74,7 @@ const Audiencias = () => {
         .from('audiences')
         .select(`
           *,
-          prison_units_extended!inner (
+          prison_units_extended (
             id,
             name,
             short_name

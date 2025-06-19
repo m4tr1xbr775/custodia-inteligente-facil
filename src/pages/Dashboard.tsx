@@ -73,32 +73,48 @@ const Dashboard = () => {
     },
   });
 
-  // Buscar audiências de hoje com detalhes
+  // Buscar audiências de hoje com detalhes - Fixed query
   const { data: todayAudiences = [] } = useQuery({
     queryKey: ["today-audiences"],
     queryFn: async () => {
       const today = new Date().toISOString().split('T')[0];
       
+      console.log("Buscando audiências para data:", today);
+      
       const { data, error } = await supabase
         .from('audiences')
         .select(`
           *,
-          prison_units_extended!inner (
+          prison_units_extended (
             id,
             name,
             short_name
           ),
+          serventias (
+            id,
+            name,
+            type
+          ),
           magistrates (
             id,
-            name
+            name,
+            phone,
+            judicial_assistant_id,
+            judicial_assistant:judicial_assistant_id (
+              id,
+              name,
+              phone
+            )
           ),
           prosecutors (
             id,
-            name
+            name,
+            phone
           ),
           defenders (
             id,
-            name
+            name,
+            phone
           )
         `)
         .eq('scheduled_date', today)
@@ -109,6 +125,7 @@ const Dashboard = () => {
         return [];
       }
       
+      console.log("Audiências encontradas:", data);
       return data || [];
     },
   });
@@ -258,7 +275,7 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Audiências do Dia */}
+        {/*Audiências do Dia */}
         <Card className="w-full">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2 text-lg">
@@ -275,16 +292,8 @@ const Dashboard = () => {
                 </div>
               ) : (
                 todayAudiences.map((audience) => {
-                  // Safely extract prison unit name with proper typing
-                  const prisonUnitName = (() => {
-                    const prisonUnit = audience.prison_units_extended as any;
-                    if (Array.isArray(prisonUnit)) {
-                      return prisonUnit[0]?.name || 'Unidade não definida';
-                    } else if (prisonUnit && typeof prisonUnit === 'object' && 'name' in prisonUnit) {
-                      return prisonUnit.name || 'Unidade não definida';
-                    }
-                    return 'Unidade não definida';
-                  })();
+                  // Safely extract prison unit name
+                  const prisonUnitName = audience.prison_units_extended?.name || 'Unidade não definida';
 
                   return (
                     <div 

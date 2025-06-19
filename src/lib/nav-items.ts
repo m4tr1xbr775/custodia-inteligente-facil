@@ -6,7 +6,8 @@ import {
   Phone, 
   Settings, 
   BarChart3,
-  Clock
+  Clock,
+  UserPlus
 } from "lucide-react";
 
 export const navItems = [
@@ -21,24 +22,24 @@ export const navItems = [
     icon: Calendar,
   },
   {
-    title: "Plantões",
+    title: "Agenda de Contatos",
     href: "/plantoes",
     icon: Users,
   },
   {
-    title: "Unidades",
+    title: "Unidades Prisionais",
     href: "/unidades",
     icon: Building2,
   },
   {
-    title: "Unidades Prisionais",
+    title: "Painel das UPR",
     href: "/unidades-prisionais",
     icon: Building2,
   },
   {
-    title: "Contatos",
+    title: "Cadastro Usuários",
     href: "/contatos",
-    icon: Phone,
+    icon: UserPlus,
   },
   {
     title: "Slots",
