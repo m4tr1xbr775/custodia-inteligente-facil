@@ -24,7 +24,7 @@ interface RegionBasedAssignmentsProps {
   selectedDate?: string;
 }
 
-const RegionBasedAssignments = ({ form, selectedScheduleId, selectedDate }: RegionBasedAssignmentsProps) => {
+const RegionBasedAssignments = ({ form, selectedScheduleId }: RegionBasedAssignmentsProps) => {
   // Fetch active schedules
   const { data: schedules, isLoading: schedulesLoading } = useQuery({
     queryKey: ['schedules'],
@@ -54,11 +54,11 @@ const RegionBasedAssignments = ({ form, selectedScheduleId, selectedDate }: Regi
     },
   });
 
-  // Fetch schedule assignments based on selected schedule and date
+  // Fetch schedule assignments based on selected schedule only (removed date dependency)
   const { data: assignments, isLoading: assignmentsLoading } = useQuery({
-    queryKey: ['schedule-assignments', selectedScheduleId, selectedDate],
+    queryKey: ['schedule-assignments', selectedScheduleId],
     queryFn: async () => {
-      if (!selectedScheduleId || !selectedDate) return [];
+      if (!selectedScheduleId) return [];
       
       const { data, error } = await supabase
         .from('schedule_assignments')
@@ -69,13 +69,12 @@ const RegionBasedAssignments = ({ form, selectedScheduleId, selectedDate }: Regi
           defenders(id, name),
           serventias(id, name)
         `)
-        .eq('schedule_id', selectedScheduleId)
-        .eq('date', selectedDate);
+        .eq('schedule_id', selectedScheduleId);
       
       if (error) throw error;
       return data;
     },
-    enabled: !!selectedScheduleId && !!selectedDate,
+    enabled: !!selectedScheduleId,
   });
 
   const formatScheduleLabel = (schedule: any) => {

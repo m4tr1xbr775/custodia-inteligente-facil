@@ -51,7 +51,6 @@ interface Assignment {
   magistrate_id?: string;
   prosecutor_id?: string;
   defender_id?: string;
-  date: string;
   shift: string;
   created_at: string;
   updated_at: string;
@@ -192,7 +191,7 @@ const ScheduleManagement = () => {
           defender:defenders(name)
         `)
         .eq('schedule_id', selectedScheduleForManagement.id)
-        .order('date');
+        .order('shift');
       
       if (error) throw error;
       return data as Assignment[];
@@ -545,7 +544,7 @@ const ScheduleManagement = () => {
       magistrate_id: assignment.magistrate_id || "none",
       prosecutor_id: assignment.prosecutor_id || "none",
       defender_id: assignment.defender_id || "none",
-      date: assignment.date,
+      date: assignment.date || "",
       shift: assignment.shift,
     });
   };
@@ -876,7 +875,7 @@ const ScheduleManagement = () => {
                             />
                           ) : (
                             <p className="text-sm text-gray-900 mt-1">
-                              {new Date(assignment.date).toLocaleDateString()}
+                              {assignment.date ? new Date(assignment.date).toLocaleDateString() : "-"}
                             </p>
                           )}
                         </div>
