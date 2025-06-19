@@ -32,8 +32,8 @@ const Dashboard = () => {
           start_date,
           end_date,
           schedule_assignments!inner(
-            region_id,
-            regions!inner(
+            serventia_id,
+            serventias!inner(
               id,
               name,
               type
@@ -41,7 +41,7 @@ const Dashboard = () => {
           )
         `)
         .eq("status", "ativo")
-        .eq("schedule_assignments.regions.type", "central_custodia");
+        .eq("schedule_assignments.serventias.type", "central_custodia");
       
       if (error) {
         console.error("Erro ao buscar escalas:", error);
@@ -235,8 +235,8 @@ const Dashboard = () => {
                   schedules.map((schedule) => {
                     // Agrupar centrais de custódia por escala
                     const custodyCenters = schedule.schedule_assignments
-                      ?.filter(assignment => assignment.regions?.type === "central_custodia")
-                      ?.map(assignment => assignment.regions) || [];
+                      ?.filter(assignment => assignment.serventias?.type === "central_custodia")
+                      ?.map(assignment => assignment.serventias) || [];
 
                     return (
                       <div key={schedule.id} className="p-3 bg-green-50 rounded-lg border border-green-200 mb-2">

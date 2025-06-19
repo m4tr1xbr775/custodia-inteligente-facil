@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Calendar, CheckCircle, XCircle, Clock, ExternalLink, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -64,19 +65,19 @@ const UnidadesPrisionais = () => {
         return [];
       }
       
-      // Buscar as regiões relacionadas
-      const regionIds = [...new Set(audiences.map(a => a.region_id).filter(Boolean))];
-      let regions = [];
-      if (regionIds.length > 0) {
-        const { data: regionsData, error: regionsError } = await supabase
-          .from('regions')
+      // Buscar as serventias relacionadas
+      const serventiaIds = [...new Set(audiences.map(a => a.serventia_id).filter(Boolean))];
+      let serventias = [];
+      if (serventiaIds.length > 0) {
+        const { data: serventiasData, error: serventiasError } = await supabase
+          .from('serventias')
           .select('id, name, type')
-          .in('id', regionIds);
+          .in('id', serventiaIds);
         
-        if (regionsError) {
-          console.error("Erro ao buscar regiões:", regionsError);
+        if (serventiasError) {
+          console.error("Erro ao buscar serventias:", serventiasError);
         } else {
-          regions = regionsData || [];
+          serventias = serventiasData || [];
         }
       }
       
@@ -93,11 +94,11 @@ const UnidadesPrisionais = () => {
       
       // Combinar os dados
       const audiencesWithRelations = audiences.map(audience => {
-        const region = regions.find(r => r.id === audience.region_id);
+        const serventia = serventias.find(s => s.id === audience.serventia_id);
         
         return {
           ...audience,
-          regions: region,
+          serventias: serventia,
           prison_units_extended: prisonUnit
         };
       });
@@ -303,7 +304,7 @@ const UnidadesPrisionais = () => {
                               <span className="font-medium">Processo:</span> {audience.process_number}
                             </p>
                             <p className="text-sm text-gray-600">
-                              <span className="font-medium">Central:</span> {audience.regions?.name || 'Não informado'}
+                              <span className="font-medium">Central:</span> {audience.serventias?.name || 'Não informado'}
                             </p>
                           </div>
 

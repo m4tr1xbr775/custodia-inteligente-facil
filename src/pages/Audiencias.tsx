@@ -45,7 +45,7 @@ const Audiencias = () => {
       console.log("Buscando centrais de custódia...");
       
       const { data, error } = await supabase
-        .from('regions')
+        .from('serventias')
         .select('id, name')
         .eq('type', 'central_custodia')
         .order('name');
@@ -93,26 +93,26 @@ const Audiencias = () => {
         console.error("Erro ao buscar unidades prisionais:", prisonUnitsError);
       }
       
-      // Buscar as regiões
-      const regionIds = [...new Set(audiences.map(a => a.region_id).filter(Boolean))];
-      const { data: regions, error: regionsError } = await supabase
-        .from('regions')
+      // Buscar as serventias
+      const serventiaIds = [...new Set(audiences.map(a => a.serventia_id).filter(Boolean))];
+      const { data: serventias, error: serventiasError } = await supabase
+        .from('serventias')
         .select('id, name, type')
-        .in('id', regionIds);
+        .in('id', serventiaIds);
       
-      if (regionsError) {
-        console.error("Erro ao buscar regiões:", regionsError);
+      if (serventiasError) {
+        console.error("Erro ao buscar serventias:", serventiasError);
       }
       
       // Combinar os dados
       const audiencesWithRelations = audiences.map(audience => {
         const prisonUnit = prisonUnits?.find(pu => pu.id === audience.prison_unit_id);
-        const region = regions?.find(r => r.id === audience.region_id);
+        const serventia = serventias?.find(s => s.id === audience.serventia_id);
         
         return {
           ...audience,
           prison_units_extended: prisonUnit,
-          regions: region
+          serventias: serventia
         };
       });
       
@@ -156,18 +156,18 @@ const Audiencias = () => {
       
       const matchesStatus = statusFilter === "todos" || audience.status === statusFilter;
       
-      const matchesCustodyCenter = custodyCenterFilter === "todos" || audience.region_id === custodyCenterFilter;
+      const matchesCustodyCenter = custodyCenterFilter === "todos" || audience.serventia_id === custodyCenterFilter;
       
       return matchesSearch && matchesStatus && matchesCustodyCenter;
     });
   };
 
-  const getRegionIcon = (regionType: string) => {
-    return regionType === 'macrorregiao' ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200';
+  const getRegionIcon = (serventiaType: string) => {
+    return serventiaType === 'macrorregiao' ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200';
   };
 
-  const getRegionIconColor = (regionType: string) => {
-    return regionType === 'macrorregiao' ? 'text-blue-600' : 'text-green-600';
+  const getRegionIconColor = (serventiaType: string) => {
+    return serventiaType === 'macrorregiao' ? 'text-blue-600' : 'text-green-600';
   };
 
   const handleNewAudiencia = () => {
@@ -237,16 +237,16 @@ const Audiencias = () => {
 
   const filteredAudiences = audiencesData ? filterAudiences(audiencesData) : [];
 
-  // Group audiences by region with proper typing
-  const audiencesByRegion = filteredAudiences.reduce((acc: Record<string, { region: any; audiences: any[] }>, audience) => {
-    const regionId = audience.region_id || 'sem-regiao';
-    if (!acc[regionId]) {
-      acc[regionId] = {
-        region: audience.regions || { name: 'Sem Região', type: 'regiao' },
+  // Group audiences by serventia with proper typing
+  const audiencesByServentia = filteredAudiences.reduce((acc: Record<string, { serventia: any; audiences: any[] }>, audience) => {
+    const serventiaId = audience.serventia_id || 'sem-serventia';
+    if (!acc[serventiaId]) {
+      acc[serventiaId] = {
+        serventia: audience.serventias || { name: 'Sem Serventia', type: 'serventia' },
         audiences: []
       };
     }
-    acc[regionId].audiences.push(audience);
+    acc[serventiaId].audiences.push(audience);
     return acc;
   }, {});
 
@@ -312,14 +312,14 @@ const Audiencias = () => {
         </CardContent>
       </Card>
 
-      {/* Audiências Agrupadas por Região */}
+      {/* Audiências Agrupadas por Serventia */}
       <div className="space-y-6">
-        {Object.entries(audiencesByRegion).map(([regionId, groupData]: [string, { region: any; audiences: any[] }]) => (
-          <Card key={regionId} className={`${getRegionIcon(groupData.region?.type)} border-2`}>
+        {Object.entries(audiencesByServentia).map(([serventiaId, groupData]: [string, { serventia: any; audiences: any[] }]) => (
+          <Card key={serventiaId} className={`${getRegionIcon(groupData.serventia?.type)} border-2`}>
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center space-x-3">
-                <MapPin className={`h-6 w-6 ${getRegionIconColor(groupData.region?.type)}`} />
-                <span className={getRegionIconColor(groupData.region?.type)}>{groupData.region?.name}</span>
+                <MapPin className={`h-6 w-6 ${getRegionIconColor(groupData.serventia?.type)}`} />
+                <span className={getRegionIconColor(groupData.serventia?.type)}>{groupData.serventia?.name}</span>
                 <Badge variant="outline" className="ml-auto">
                   {groupData.audiences.length} audiência{groupData.audiences.length !== 1 ? 's' : ''}
                 </Badge>
