@@ -217,6 +217,10 @@ const Dashboard = () => {
   const pendingAudiences = todayAudiences.filter(a => a.status === 'agendada').length;
   const completedAudiences = todayAudiences.filter(a => a.status === 'realizada').length;
 
+  const handleScheduleFilterChange = (value: string) => {
+    setScheduleFilter(value as "todos" | ServentiaType);
+  };
+
   return (
     <div className="space-y-6 w-full max-w-full">
       <div className="flex flex-col space-y-2">
@@ -328,7 +332,7 @@ const Dashboard = () => {
                 <span>Escalas e Plantões</span>
               </div>
               {/* Filtro para Escalas */}
-              <Select value={scheduleFilter} onValueChange={setScheduleFilter}>
+              <Select value={scheduleFilter} onValueChange={handleScheduleFilterChange}>
                 <SelectTrigger className="w-[200px]">
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Filtrar por região" />
