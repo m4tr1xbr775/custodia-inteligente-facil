@@ -1,0 +1,347 @@
+
+import React from "react";
+import { UseFormReturn } from "react-hook-form";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+interface ServentiaBasedAssignmentsProps {
+  form: UseFormReturn<any>;
+  selectedScheduleId: string;
+  selectedDate: string;
+}
+
+const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: ServentiaBasedAssignmentsProps) => {
+  // Buscar todas as escalas/serventias
+  const { data: schedules = [] } = useQuery({
+    queryKey: ['schedules'],
+    queryFn: async () => {
+      console.log("Buscando escalas/serventias...");
+      const { data, error } = await supabase
+        .from('schedules')
+        .select('*')
+        .eq('status', 'ativo')
+        .order('title');
+      
+      if (error) {
+        console.error("Erro ao buscar escalas:", error);
+        return [];
+      }
+      
+      console.log("Escalas encontradas:", data);
+      return data || [];
+    },
+  });
+
+  // Buscar unidades prisionais
+  const { data: prisonUnits = [] } = useQuery({
+    queryKey: ['prison-units'],
+    queryFn: async () => {
+      console.log("Buscando unidades prisionais...");
+      const { data, error } = await supabase
+        .from('prison_units_extended')
+        .select('id, name, short_name')
+        .order('name');
+      
+      if (error) {
+        console.error("Erro ao buscar unidades prisionais:", error);
+        return [];
+      }
+      
+      console.log("Unidades prisionais encontradas:", data);
+      return data || [];
+    },
+  });
+
+  // Buscar plantonistas baseado na serventia e data selecionados
+  const { data: assignments } = useQuery({
+    queryKey: ['schedule-assignments', selectedScheduleId, selectedDate],
+    queryFn: async () => {
+      if (!selectedScheduleId || !selectedDate) {
+        console.log("Schedule ID ou data não selecionados ainda");
+        return null;
+      }
+      
+      console.log("Buscando assignments para schedule_id:", selectedScheduleId, "e data:", selectedDate);
+      
+      const { data, error } = await supabase
+        .from('schedule_assignments')
+        .select(`
+          *,
+          magistrates!magistrate_id(id, name, virtual_room_url),
+          prosecutors!prosecutor_id(id, name),
+          defenders!defender_id(id, name)
+        `)
+        .eq('schedule_id', selectedScheduleId)
+        .eq('date', selectedDate);
+      
+      if (error) {
+        console.error("Erro ao buscar assignments:", error);
+        return null;
+      }
+      
+      console.log("Assignments encontrados:", data);
+      return data && data.length > 0 ? data[0] : null;
+    },
+    enabled: !!selectedScheduleId && !!selectedDate,
+  });
+
+  // Buscar todos os magistrados, promotores e defensores para fallback
+  const { data: magistrates = [] } = useQuery({
+    queryKey: ['magistrates'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('magistrates')
+        .select('id, name, virtual_room_url')
+        .eq('active', true)
+        .order('name');
+      
+      if (error) {
+        console.error("Erro ao buscar magistrados:", error);
+        return [];
+      }
+      
+      return data || [];
+    },
+  });
+
+  const { data: prosecutors = [] } = useQuery({
+    queryKey: ['prosecutors'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('prosecutors')
+        .select('id, name')
+        .eq('active', true)
+        .order('name');
+      
+      if (error) {
+        console.error("Erro ao buscar promotores:", error);
+        return [];
+      }
+      
+      return data || [];
+    },
+  });
+
+  const { data: defenders = [] } = useQuery({
+    queryKey: ['defenders'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('defenders')
+        .select('id, name')
+        .eq('active', true)
+        .order('name');
+      
+      if (error) {
+        console.error("Erro ao buscar defensores:", error);
+        return [];
+      }
+      
+      return data || [];
+    },
+  });
+
+  // Auto-preencher campos quando os assignments são carregados
+  React.useEffect(() => {
+    if (assignments) {
+      console.log("Auto-preenchendo campos com assignments:", assignments);
+      
+      if (assignments.magistrate_id) {
+        form.setValue("magistrate_id", assignments.magistrate_id);
+        // Auto-preencher URL da sala virtual se disponível
+        if (assignments.magistrates?.virtual_room_url) {
+          form.setValue("virtual_room_url", assignments.magistrates.virtual_room_url);
+        }
+      }
+      if (assignments.prosecutor_id) {
+        form.setValue("prosecutor_id", assignments.prosecutor_id);
+      }
+      if (assignments.defender_id) {
+        form.setValue("defender_id", assignments.defender_id);
+      }
+    }
+  }, [assignments, form]);
+
+  // Auto-preencher URL da sala virtual quando magistrado é selecionado
+  const handleMagistrateChange = (magistrateId: string) => {
+    form.setValue("magistrate_id", magistrateId);
+    
+    const selectedMagistrate = magistrates.find(m => m.id === magistrateId);
+    if (selectedMagistrate?.virtual_room_url) {
+      form.setValue("virtual_room_url", selectedMagistrate.virtual_room_url);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <FormField
+        control={form.control}
+        name="schedule_id"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Serventia *</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma serventia" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {schedules.map((schedule) => (
+                  <SelectItem key={schedule.id} value={schedule.id}>
+                    {schedule.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="prison_unit_id"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Unidade Prisional *</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma unidade prisional" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {prisonUnits.map((unit) => (
+                  <SelectItem key={unit.id} value={unit.id}>
+                    {unit.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="magistrate_id"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Juiz/Magistrado</FormLabel>
+            <Select onValueChange={handleMagistrateChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um magistrado" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="none">Nenhum</SelectItem>
+                {magistrates.map((magistrate) => (
+                  <SelectItem key={magistrate.id} value={magistrate.id}>
+                    {magistrate.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="judicial_assistant_id"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Assistente de Juiz</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um assistente" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="none">Nenhum</SelectItem>
+                {magistrates.map((magistrate) => (
+                  <SelectItem key={magistrate.id} value={magistrate.id}>
+                    {magistrate.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="prosecutor_id"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Promotor</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um promotor" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="none">Nenhum</SelectItem>
+                {prosecutors.map((prosecutor) => (
+                  <SelectItem key={prosecutor.id} value={prosecutor.id}>
+                    {prosecutor.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="defender_id"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Defensor</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um defensor" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="none">Nenhum</SelectItem>
+                {defenders.map((defender) => (
+                  <SelectItem key={defender.id} value={defender.id}>
+                    {defender.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
+  );
+};
+
+export default ServentiaBasedAssignments;

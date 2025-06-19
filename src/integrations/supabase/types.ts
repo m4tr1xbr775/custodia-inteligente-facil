@@ -15,10 +15,10 @@ export type Database = {
           central_region_type: string | null
           confirmed_by_unit: boolean | null
           created_at: string
-          defendant_document: string | null
           defendant_name: string
           defender_id: string | null
           id: string
+          judicial_assistant_id: string | null
           magistrate_id: string | null
           observations: string | null
           police_officer_id: string | null
@@ -38,10 +38,10 @@ export type Database = {
           central_region_type?: string | null
           confirmed_by_unit?: boolean | null
           created_at?: string
-          defendant_document?: string | null
           defendant_name: string
           defender_id?: string | null
           id?: string
+          judicial_assistant_id?: string | null
           magistrate_id?: string | null
           observations?: string | null
           police_officer_id?: string | null
@@ -61,10 +61,10 @@ export type Database = {
           central_region_type?: string | null
           confirmed_by_unit?: boolean | null
           created_at?: string
-          defendant_document?: string | null
           defendant_name?: string
           defender_id?: string | null
           id?: string
+          judicial_assistant_id?: string | null
           magistrate_id?: string | null
           observations?: string | null
           police_officer_id?: string | null
@@ -85,6 +85,13 @@ export type Database = {
             columns: ["defender_id"]
             isOneToOne: false
             referencedRelation: "defenders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audiences_judicial_assistant_id_fkey"
+            columns: ["judicial_assistant_id"]
+            isOneToOne: false
+            referencedRelation: "magistrates"
             referencedColumns: ["id"]
           },
           {
@@ -206,6 +213,7 @@ export type Database = {
           phone: string | null
           registration: string | null
           updated_at: string
+          virtual_room_url: string | null
         }
         Insert: {
           active?: boolean | null
@@ -216,6 +224,7 @@ export type Database = {
           phone?: string | null
           registration?: string | null
           updated_at?: string
+          virtual_room_url?: string | null
         }
         Update: {
           active?: boolean | null
@@ -226,6 +235,7 @@ export type Database = {
           phone?: string | null
           registration?: string | null
           updated_at?: string
+          virtual_room_url?: string | null
         }
         Relationships: []
       }

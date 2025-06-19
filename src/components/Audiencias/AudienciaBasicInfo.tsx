@@ -48,24 +48,10 @@ const AudienciaBasicInfo = ({ form }: AudienciaBasicInfoProps) => {
 
       <FormField
         control={form.control}
-        name="defendant_document"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Documento do Réu</FormLabel>
-            <FormControl>
-              <Input placeholder="CPF ou RG" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
         name="virtual_room_url"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>URL da Sala Virtual</FormLabel>
+            <FormLabel>Link da Sala Virtual</FormLabel>
             <FormControl>
               <Input placeholder="https://..." {...field} />
             </FormControl>

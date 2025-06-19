@@ -10,19 +10,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import AudienciaBasicInfo from "./AudienciaBasicInfo";
 import AudienciaDateTime from "./AudienciaDateTime";
-import RegionBasedAssignments from "./RegionBasedAssignments";
+import ServentiaBasedAssignments from "./ServentiaBasedAssignments";
 
 const audienciaSchema = z.object({
   defendant_name: z.string().min(1, "Nome do réu é obrigatório"),
-  defendant_document: z.string().optional(),
   process_number: z.string().min(1, "Número do processo é obrigatório"),
   scheduled_date: z.string().min(1, "Data é obrigatória"),
   scheduled_time: z.string().min(1, "Horário é obrigatório"),
-  schedule_id: z.string().min(1, "Escala é obrigatória"),
+  schedule_id: z.string().min(1, "Serventia é obrigatória"),
   prison_unit_id: z.string().min(1, "Unidade prisional é obrigatória"),
   magistrate_id: z.string().optional(),
   prosecutor_id: z.string().optional(),
   defender_id: z.string().optional(),
+  judicial_assistant_id: z.string().optional(),
   virtual_room_url: z.string().url().optional().or(z.literal("")),
   observations: z.string().optional(),
 });
@@ -43,7 +43,6 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
     resolver: zodResolver(audienciaSchema),
     defaultValues: {
       defendant_name: initialData?.defendant_name || "",
-      defendant_document: initialData?.defendant_document || "",
       process_number: initialData?.process_number || "",
       scheduled_date: initialData?.scheduled_date || "",
       scheduled_time: initialData?.scheduled_time || "",
@@ -52,12 +51,13 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
       magistrate_id: initialData?.magistrate_id || "",
       prosecutor_id: initialData?.prosecutor_id || "",
       defender_id: initialData?.defender_id || "",
+      judicial_assistant_id: initialData?.judicial_assistant_id || "",
       virtual_room_url: initialData?.virtual_room_url || "",
       observations: initialData?.observations || "",
     },
   });
 
-  // Watch dos campos de escala e data para filtrar plantonistas
+  // Watch dos campos de serventia e data para filtrar plantonistas
   const selectedScheduleId = form.watch("schedule_id");
   const selectedDate = form.watch("scheduled_date");
 
@@ -135,7 +135,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
           regionId = defaultRegion[0].id;
           console.log("Usando região padrão:", regionId);
         } else {
-          throw new Error("Não foi possível determinar a região para esta audiência. Verifique se a escala tem assignments configurados.");
+          throw new Error("Não foi possível determinar a região para esta audiência. Verifique se a serventia tem assignments configurados.");
         }
       }
       
@@ -147,7 +147,6 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
       // Preparar os dados para inserção/atualização
       const audienceData = {
         defendant_name: data.defendant_name,
-        defendant_document: data.defendant_document || null,
         process_number: data.process_number,
         scheduled_date: data.scheduled_date,
         scheduled_time: data.scheduled_time,
@@ -156,6 +155,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
         magistrate_id: handleNoneValue(data.magistrate_id),
         prosecutor_id: handleNoneValue(data.prosecutor_id),
         defender_id: handleNoneValue(data.defender_id),
+        judicial_assistant_id: handleNoneValue(data.judicial_assistant_id),
         virtual_room_url: data.virtual_room_url || null,
         observations: data.observations || null,
       };
@@ -228,17 +228,17 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Informações Básicas</h3>
+            <h3 className="text-lg font-medium">Serventia e Processo</h3>
+            <ServentiaBasedAssignments 
+              form={form} 
+              selectedScheduleId={selectedScheduleId} 
+              selectedDate={selectedDate} 
+            />
             <AudienciaBasicInfo form={form} />
           </div>
           
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Agendamento</h3>
-            <RegionBasedAssignments 
-              form={form} 
-              selectedScheduleId={selectedScheduleId} 
-              selectedDate={selectedDate} 
-            />
             <AudienciaDateTime form={form} />
           </div>
         </div>
