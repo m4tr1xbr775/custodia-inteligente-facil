@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -220,7 +219,7 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="department">Comarca de Origem</Label>
+            <Label htmlFor="department">Serventia de Origem</Label>
             <Input
               id="department"
               value={formData.department}

@@ -177,7 +177,7 @@ const Contatos = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Buscar por nome, comarca de origem ou cargo..."
+                  placeholder="Buscar por nome, serventia de origem ou cargo..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -265,7 +265,7 @@ const Contatos = () => {
                   )}
                   {contact.department && (
                     <p className="text-sm text-gray-600">
-                      <span className="font-medium">Comarca de Origem:</span> {contact.department}
+                      <span className="font-medium">Serventia de Origem:</span> {contact.department}
                     </p>
                   )}
                   {contact.phone && (
