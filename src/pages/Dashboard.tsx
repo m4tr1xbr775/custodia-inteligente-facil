@@ -1,3 +1,4 @@
+
 import { Calendar, Clock, Users, Building, CheckCircle, AlertCircle, MapPin, Phone, MessageCircle, Filter } from "lucide-react";
 import StatsCard from "@/components/Dashboard/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -292,8 +293,10 @@ const Dashboard = () => {
                 </div>
               ) : (
                 todayAudiences.map((audience) => {
-                  // Safely extract prison unit name
-                  const prisonUnitName = audience.prison_units_extended?.name || 'Unidade não definida';
+                  // Safely extract prison unit name - Fixed the array access issue
+                  const prisonUnitName = Array.isArray(audience.prison_units_extended) 
+                    ? audience.prison_units_extended[0]?.name || 'Unidade não definida'
+                    : audience.prison_units_extended?.name || 'Unidade não definida';
 
                   return (
                     <div 
