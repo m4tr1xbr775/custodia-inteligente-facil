@@ -15,10 +15,10 @@ export const formatProcessNumber = (processNumber: string): string => {
   // Remove todos os caracteres não numéricos
   const cleaned = processNumber.replace(/\D/g, '');
   
-  // Se não tem pelo menos 13 dígitos, retorna como está
-  if (cleaned.length < 13) return processNumber;
+  // Se não tem pelo menos 20 dígitos, retorna como está
+  if (cleaned.length < 20) return processNumber;
   
-  // Formatar para NNNNNNN-DD.AAAA.J.TR.OOOO
+  // Formatar para NNNNNNN-DD.AAAA.J.TR.OOOO (20 dígitos)
   const formatted = cleaned.replace(
     /(\d{7})(\d{2})(\d{4})(\d{1})(\d{2})(\d{4})/,
     '$1-$2.$3.$4.$5.$6'
@@ -38,11 +38,18 @@ export const ProjudiIcon: React.FC<ProjudiIconProps> = ({
       return;
     }
     
-    // Remove formatação e espaços para a URL
+    // Remove formatação e espaços para garantir apenas números
     const cleanNumber = processNumber.replace(/\D/g, '');
+    
+    // Formatar o número corretamente para o Projudi
     const formattedNumber = formatProcessNumber(cleanNumber);
     
+    // Construir a URL com o número formatado
     const url = `https://projudi.tjgo.jus.br/BuscaProcesso?PaginaAtual=2&ProcessoNumero=${formattedNumber}`;
+    
+    console.log('Abrindo Projudi com número:', formattedNumber);
+    console.log('URL completa:', url);
+    
     window.open(url, '_blank');
   };
 
