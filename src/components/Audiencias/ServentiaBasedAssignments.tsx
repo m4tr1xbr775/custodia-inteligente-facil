@@ -1,3 +1,4 @@
+
 import React from "react";
 import { UseFormReturn } from "react-hook-form";
 import {
@@ -24,58 +25,29 @@ interface ServentiaBasedAssignmentsProps {
 }
 
 const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: ServentiaBasedAssignmentsProps) => {
-  // Buscar apenas escalas que têm atribuições completas (magistrado, promotor, defensor)
+  // Buscar apenas escalas ativas (mesmo critério da aba Configurações - Atribuições)
   const { data: schedules = [] } = useQuery({
-    queryKey: ['schedules-with-assignments'],
+    queryKey: ['active-schedules'],
     queryFn: async () => {
-      console.log("Buscando escalas com atribuições...");
+      console.log("Buscando escalas ativas...");
       
-      // Primeiro buscar todas as escalas ativas
-      const { data: allSchedules, error: schedulesError } = await supabase
+      const { data: activeSchedules, error: schedulesError } = await supabase
         .from('schedules')
         .select('id, title, description')
         .eq('status', 'ativa')
         .order('title');
       
       if (schedulesError) {
-        console.error("Erro ao buscar escalas:", schedulesError);
+        console.error("Erro ao buscar escalas ativas:", schedulesError);
         return [];
       }
       
-      if (!allSchedules || allSchedules.length === 0) {
-        console.log("Nenhuma escala ativa encontrada");
-        return [];
-      }
-      
-      // Para cada escala, verificar se tem assignments com atribuições
-      const schedulesWithAssignments = [];
-      
-      for (const schedule of allSchedules) {
-        const { data: assignments, error: assignmentsError } = await supabase
-          .from('schedule_assignments')
-          .select('magistrate_id, prosecutor_id, defender_id, judicial_assistant_id')
-          .eq('schedule_id', schedule.id)
-          .not('magistrate_id', 'is', null)
-          .not('prosecutor_id', 'is', null)
-          .not('defender_id', 'is', null);
-        
-        if (assignmentsError) {
-          console.error("Erro ao buscar assignments para escala:", schedule.id, assignmentsError);
-          continue;
-        }
-        
-        // Se encontrou pelo menos um assignment com magistrado, promotor e defensor
-        if (assignments && assignments.length > 0) {
-          schedulesWithAssignments.push(schedule);
-        }
-      }
-      
-      console.log("Escalas com atribuições encontradas:", schedulesWithAssignments);
-      return schedulesWithAssignments;
+      console.log("Escalas ativas encontradas:", activeSchedules);
+      return activeSchedules || [];
     },
   });
 
-  // Buscar plantonistas baseado na serventia e data selecionados
+  // Buscar atribuições baseado na escala e data selecionados
   const { data: assignments } = useQuery({
     queryKey: ['schedule-assignments', selectedScheduleId, selectedDate],
     queryFn: async () => {
@@ -92,7 +64,8 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
           *,
           magistrates!magistrate_id(id, name, virtual_room_url),
           prosecutors!prosecutor_id(id, name),
-          defenders!defender_id(id, name)
+          defenders!defender_id(id, name),
+          judicial_assistants:contacts!judicial_assistant_id(id, name)
         `)
         .eq('schedule_id', selectedScheduleId)
         .eq('date', selectedDate);
@@ -163,6 +136,26 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
     },
   });
 
+  // Buscar assistentes judiciais (contatos com perfil "Assessor de Juiz")
+  const { data: judicialAssistants = [] } = useQuery({
+    queryKey: ['judicial-assistants'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('id, name')
+        .eq('profile', 'Assessor de Juiz')
+        .eq('active', true)
+        .order('name');
+      
+      if (error) {
+        console.error("Erro ao buscar assistentes judiciais:", error);
+        return [];
+      }
+      
+      return data || [];
+    },
+  });
+
   // Auto-preencher campos quando os assignments são carregados
   React.useEffect(() => {
     if (assignments) {
@@ -180,6 +173,9 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
       }
       if (assignments.defender_id) {
         form.setValue("defender_id", assignments.defender_id);
+      }
+      if (assignments.judicial_assistant_id) {
+        form.setValue("judicial_assistant_id", assignments.judicial_assistant_id);
       }
     }
   }, [assignments, form]);
@@ -205,7 +201,7 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
             <Select onValueChange={field.onChange} value={field.value}>
               <FormControl>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma escala" />
+                  <SelectValue placeholder="Selecione uma escala ativa" />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
@@ -218,7 +214,7 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
                   ))
                 ) : (
                   <SelectItem value="no-schedules" disabled>
-                    Nenhuma escala com atribuições encontrada
+                    Nenhuma escala ativa encontrada
                   </SelectItem>
                 )}
               </SelectContent>
@@ -269,9 +265,9 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="none">Nenhum</SelectItem>
-                  {magistrates.map((magistrate) => (
-                    <SelectItem key={magistrate.id} value={magistrate.id}>
-                      {magistrate.name}
+                  {judicialAssistants.map((assistant) => (
+                    <SelectItem key={assistant.id} value={assistant.id}>
+                      {assistant.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
