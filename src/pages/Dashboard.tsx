@@ -14,10 +14,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { Database } from "@/integrations/supabase/types";
+
+type ServentiaType = Database["public"]["Enums"]["serventia_type"];
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [scheduleFilter, setScheduleFilter] = useState("todos");
+  const [scheduleFilter, setScheduleFilter] = useState<"todos" | ServentiaType>("todos");
   
   const todayDate = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',
@@ -163,7 +166,7 @@ const Dashboard = () => {
       
       // Aplicar filtro se não for "todos"
       if (scheduleFilter !== "todos") {
-        query = query.eq("schedule_assignments.serventias.type", scheduleFilter);
+        query = query.eq("schedule_assignments.serventias.type", scheduleFilter as ServentiaType);
       }
       
       const { data, error } = await query;

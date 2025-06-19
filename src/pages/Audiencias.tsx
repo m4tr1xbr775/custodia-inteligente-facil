@@ -26,6 +26,9 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AudienciaModal from "@/components/Audiencias/AudienciaModal";
+import { Database } from "@/integrations/supabase/types";
+
+type AudienceStatus = Database["public"]["Enums"]["audience_status"];
 
 const Audiencias = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -118,7 +121,7 @@ const Audiencias = () => {
 
   // Mutation para atualizar status da audiência
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ audienceId, newStatus }: { audienceId: string; newStatus: string }) => {
+    mutationFn: async ({ audienceId, newStatus }: { audienceId: string; newStatus: AudienceStatus }) => {
       const { error } = await supabase
         .from('audiences')
         .update({ status: newStatus })
@@ -213,7 +216,7 @@ const Audiencias = () => {
     setEditingAudienciaId(undefined);
   };
 
-  const handleStatusChange = (audienceId: string, newStatus: string) => {
+  const handleStatusChange = (audienceId: string, newStatus: AudienceStatus) => {
     setUpdatingStatusId(audienceId);
     updateStatusMutation.mutate({ audienceId, newStatus });
   };
