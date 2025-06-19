@@ -91,7 +91,7 @@ export type Database = {
             foreignKeyName: "audiences_judicial_assistant_id_fkey"
             columns: ["judicial_assistant_id"]
             isOneToOne: false
-            referencedRelation: "magistrates"
+            referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
           {
