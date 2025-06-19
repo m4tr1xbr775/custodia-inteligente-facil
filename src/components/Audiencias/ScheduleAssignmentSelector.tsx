@@ -25,16 +25,11 @@ interface ScheduleAssignmentSelectorProps {
 }
 
 const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: ScheduleAssignmentSelectorProps) => {
-  // Buscar schedule_assignments para a data selecionada
+  // Buscar schedule_assignments disponíveis (não filtrado por data ainda)
   const { data: scheduleAssignments = [] } = useQuery({
-    queryKey: ['schedule-assignments-for-date', selectedDate],
+    queryKey: ['schedule-assignments-available'],
     queryFn: async () => {
-      if (!selectedDate) {
-        console.log("Data não selecionada ainda");
-        return [];
-      }
-      
-      console.log("Buscando schedule_assignments para data:", selectedDate);
+      console.log("Buscando schedule_assignments disponíveis...");
       
       const { data, error } = await supabase
         .from('schedule_assignments')
@@ -44,10 +39,11 @@ const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: 
           serventias!serventia_id(id, name, type),
           magistrates!magistrate_id(id, name, virtual_room_url, judicial_assistant_id),
           prosecutors!prosecutor_id(id, name),
-          defenders!defender_id(id, name)
+          defenders!defender_id(id, name),
+          judicial_assistants:contacts!judicial_assistant_id(id, name, phone)
         `)
-        .eq('date', selectedDate)
-        .order('shift');
+        .order('date', { ascending: false })
+        .limit(50);
       
       if (error) {
         console.error("Erro ao buscar schedule_assignments:", error);
@@ -57,7 +53,6 @@ const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: 
       console.log("Schedule assignments encontrados:", data);
       return data || [];
     },
-    enabled: !!selectedDate,
   });
 
   const handleAssignmentChange = (assignmentId: string) => {
@@ -71,11 +66,7 @@ const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: 
       form.setValue("magistrate_id", selectedAssignment.magistrate_id);
       form.setValue("prosecutor_id", selectedAssignment.prosecutor_id);
       form.setValue("defender_id", selectedAssignment.defender_id);
-      
-      // Preencher judicial_assistant_id do magistrate
-      if (selectedAssignment.magistrates?.judicial_assistant_id) {
-        form.setValue("judicial_assistant_id", selectedAssignment.magistrates.judicial_assistant_id);
-      }
+      form.setValue("judicial_assistant_id", selectedAssignment.judicial_assistant_id);
       
       // Preencher virtual_room_url do magistrate
       if (selectedAssignment.magistrates?.virtual_room_url) {
@@ -91,13 +82,10 @@ const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: 
     const schedule = assignment.schedules;
     const serventia = assignment.serventias;
     const magistrate = assignment.magistrates;
-    const prosecutor = assignment.prosecutors;
-    const defender = assignment.defenders;
+    const date = new Date(assignment.date).toLocaleDateString('pt-BR');
     
-    return `${schedule?.title} - ${serventia?.name} - ${assignment.shift} | 
-            Juiz: ${magistrate?.name || 'N/A'} | 
-            Promotor: ${prosecutor?.name || 'N/A'} | 
-            Defensor: ${defender?.name || 'N/A'}`;
+    return `${date} - ${schedule?.title} - ${serventia?.name} - ${assignment.shift} | 
+            Juiz: ${magistrate?.name || 'N/A'}`;
   };
 
   return (
@@ -110,7 +98,7 @@ const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: 
           <Select onValueChange={handleAssignmentChange} value={field.value}>
             <FormControl>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione um plantão para a data escolhida" />
+                <SelectValue placeholder="Selecione um plantão" />
               </SelectTrigger>
             </FormControl>
             <SelectContent>
@@ -122,7 +110,7 @@ const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: 
                 ))
               ) : (
                 <SelectItem value="no-assignments" disabled>
-                  Nenhum plantão encontrado para esta data
+                  Nenhum plantão encontrado
                 </SelectItem>
               )}
             </SelectContent>

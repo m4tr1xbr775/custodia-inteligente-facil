@@ -24,13 +24,11 @@ interface ServentiaBasedAssignmentsProps {
   form: UseFormReturn<any>;
   selectedScheduleId: string;
   selectedDate: string;
+  selectedPrisonUnitId: string;
 }
 
-const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: ServentiaBasedAssignmentsProps) => {
+const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate, selectedPrisonUnitId }: ServentiaBasedAssignmentsProps) => {
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
-  
-  // Watch do prison_unit_id para o slot selector
-  const selectedPrisonUnitId = form.watch("prison_unit_id");
 
   // Buscar unidades prisionais
   const { data: prisonUnits = [] } = useQuery({
@@ -59,7 +57,7 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
 
   return (
     <div className="space-y-4">
-      {/* Seletor de Plantão (Schedule Assignment) */}
+      {/* 1. Seletor de Plantão (Schedule Assignment) */}
       <ScheduleAssignmentSelector
         form={form}
         selectedDate={selectedDate}
@@ -77,11 +75,13 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
             <div><strong>Juiz:</strong> {selectedAssignment.magistrates?.name || 'N/A'}</div>
             <div><strong>Promotor:</strong> {selectedAssignment.prosecutors?.name || 'N/A'}</div>
             <div><strong>Defensor:</strong> {selectedAssignment.defenders?.name || 'N/A'}</div>
+            <div><strong>Assessor:</strong> {selectedAssignment.judicial_assistants?.name || 'N/A'}</div>
+            <div><strong>Telefone Assessor:</strong> {selectedAssignment.judicial_assistants?.phone || 'N/A'}</div>
           </div>
         </div>
       )}
 
-      {/* Seletor de Unidade Prisional */}
+      {/* 2. Seletor de Unidade Prisional */}
       <FormField
         control={form.control}
         name="prison_unit_id"
@@ -107,7 +107,7 @@ const ServentiaBasedAssignments = ({ form, selectedScheduleId, selectedDate }: S
         )}
       />
 
-      {/* Seletor de Slot de Horário */}
+      {/* 3. Seletor de Slot de Horário (após data e unidade serem selecionadas) */}
       {selectedPrisonUnitId && selectedDate && (
         <PrisonUnitSlotSelector
           form={form}
