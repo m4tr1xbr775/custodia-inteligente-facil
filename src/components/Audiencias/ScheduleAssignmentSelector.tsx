@@ -26,7 +26,7 @@ interface ScheduleAssignmentSelectorProps {
 
 const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: ScheduleAssignmentSelectorProps) => {
   // Buscar schedule_assignments para a data selecionada
-  const { data: scheduleAssignments = [] } = useQuery({
+  const { data: scheduleAssignments = [], isLoading } = useQuery({
     queryKey: ['schedule-assignments-for-date', selectedDate],
     queryFn: async () => {
       if (!selectedDate) {
@@ -100,6 +100,16 @@ const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: 
             Defensor: ${defender?.name || 'N/A'}`;
   };
 
+  const getPlaceholderText = () => {
+    if (!selectedDate) {
+      return "Selecione primeiro a data da audiência";
+    }
+    if (isLoading) {
+      return "Carregando plantões...";
+    }
+    return "Selecione um plantão para a data escolhida";
+  };
+
   return (
     <FormField
       control={form.control}
@@ -107,10 +117,14 @@ const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: 
       render={({ field }) => (
         <FormItem>
           <FormLabel>Plantão (Escala + Profissionais) *</FormLabel>
-          <Select onValueChange={handleAssignmentChange} value={field.value}>
+          <Select 
+            onValueChange={handleAssignmentChange} 
+            value={field.value}
+            disabled={!selectedDate || isLoading}
+          >
             <FormControl>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione um plantão para a data escolhida" />
+                <SelectValue placeholder={getPlaceholderText()} />
               </SelectTrigger>
             </FormControl>
             <SelectContent>
@@ -122,12 +136,17 @@ const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: 
                 ))
               ) : (
                 <SelectItem value="no-assignments" disabled>
-                  Nenhum plantão encontrado para esta data
+                  {selectedDate ? "Nenhum plantão encontrado para esta data" : "Selecione uma data primeiro"}
                 </SelectItem>
               )}
             </SelectContent>
           </Select>
           <FormMessage />
+          {selectedDate && scheduleAssignments.length === 0 && !isLoading && (
+            <p className="text-sm text-yellow-600 mt-1">
+              💡 Dica: Verifique se existem plantões cadastrados para a data {new Date(selectedDate).toLocaleDateString('pt-BR')} na seção Plantões.
+            </p>
+          )}
         </FormItem>
       )}
     />

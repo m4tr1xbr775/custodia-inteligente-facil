@@ -195,17 +195,26 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <AudienciaDateTime form={form} />
             </div>
+            {!selectedDate && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-700">
+                  📅 Selecione primeiro a data da audiência para carregar os plantões disponíveis.
+                </p>
+              </div>
+            )}
           </div>
           
           {/* Plantão e Horários - SEGUNDO */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Plantão e Horários</h3>
-            <ServentiaBasedAssignments 
-              form={form} 
-              selectedScheduleId="" // Não mais usado
-              selectedDate={selectedDate} 
-            />
-          </div>
+          {selectedDate && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Plantão e Horários</h3>
+              <ServentiaBasedAssignments 
+                form={form} 
+                selectedScheduleId="" // Não mais usado
+                selectedDate={selectedDate} 
+              />
+            </div>
+          )}
           
           {/* Informações do Processo - TERCEIRO */}
           <div className="space-y-4">
