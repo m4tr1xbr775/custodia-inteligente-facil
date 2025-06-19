@@ -30,20 +30,6 @@ const AudienciaDateTime = ({ form }: AudienciaDateTimeProps) => {
           </FormItem>
         )}
       />
-
-      <FormField
-        control={form.control}
-        name="scheduled_time"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Horário *</FormLabel>
-            <FormControl>
-              <Input type="time" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
     </div>
   );
 };

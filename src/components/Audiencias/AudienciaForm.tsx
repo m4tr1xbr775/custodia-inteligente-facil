@@ -189,7 +189,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="space-y-6">
-          {/* Plantão e Profissionais */}
+          {/* 1. Plantão e Profissionais */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Plantão e Profissionais</h3>
             <ServentiaBasedAssignments 
@@ -200,15 +200,15 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
             />
           </div>
           
-          {/* Data da Audiência (sem horário) */}
+          {/* 2. Data da Audiência (sem horário) */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Data da Audiência</h3>
             <div className="grid grid-cols-1 gap-4">
-              <AudienciaDateTime form={form} showTimeField={false} />
+              <AudienciaDateTime form={form} />
             </div>
           </div>
           
-          {/* Informações do Processo */}
+          {/* 3. Informações do Processo */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Informações do Processo</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
