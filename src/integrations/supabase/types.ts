@@ -378,7 +378,6 @@ export type Database = {
       schedule_assignments: {
         Row: {
           created_at: string
-          date: string
           defender_id: string | null
           id: string
           judicial_assistant_id: string | null
@@ -391,7 +390,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          date: string
           defender_id?: string | null
           id?: string
           judicial_assistant_id?: string | null
@@ -404,7 +402,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          date?: string
           defender_id?: string | null
           id?: string
           judicial_assistant_id?: string | null

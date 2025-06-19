@@ -38,7 +38,6 @@ interface Assignment {
   magistrate_id?: string;
   prosecutor_id?: string;
   defender_id?: string;
-  date: string;
   shift: string;
   created_at: string;
   updated_at: string;
@@ -72,7 +71,7 @@ const AssignmentManagement = () => {
     magistrate_id: "none",
     prosecutor_id: "none",
     defender_id: "none",
-    shift: "diurno",
+    shift: "integral",
     judicial_assistant_id: "none",
   });
 
@@ -93,6 +92,9 @@ const AssignmentManagement = () => {
       return data;
     },
   });
+
+  // Get selected schedule details
+  const selectedSchedule = schedules.find(s => s.id === selectedScheduleId);
 
   // Fetch serventias
   const { data: serventias = [] } = useQuery({
@@ -176,7 +178,7 @@ const AssignmentManagement = () => {
           judicial_assistant:contacts!judicial_assistant_id(name)
         `)
         .eq('schedule_id', selectedScheduleId)
-        .order('date');
+        .order('created_at');
       
       if (error) throw error;
       return data as Assignment[];
@@ -373,7 +375,7 @@ const AssignmentManagement = () => {
       magistrate_id: "none",
       prosecutor_id: "none",
       defender_id: "none",
-      shift: "diurno",
+      shift: "integral",
       judicial_assistant_id: "none",
     });
   };
@@ -382,6 +384,21 @@ const AssignmentManagement = () => {
     if (confirm("Tem certeza que deseja remover esta atribuição?")) {
       deleteMutation.mutate(id);
     }
+  };
+
+  const handleNewAssignment = () => {
+    setEditingAssignment(null);
+    // Pre-fill form with selected schedule and default values
+    setFormData({
+      serventia_id: "",
+      magistrate_id: "none",
+      prosecutor_id: "none",
+      defender_id: "none",
+      shift: "integral",
+      judicial_assistant_id: "none",
+    });
+    setSelectedMagistrateId("");
+    setIsDialogOpen(true);
   };
 
   // Helper function to get shift badge color
@@ -448,10 +465,12 @@ const AssignmentManagement = () => {
       {selectedScheduleId && (
         <>
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Atribuições da Escala</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Atribuições da Escala: {selectedSchedule?.title}
+            </h3>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="flex items-center space-x-2" onClick={() => setEditingAssignment(null)}>
+                <Button className="flex items-center space-x-2" onClick={handleNewAssignment}>
                   <Plus className="h-4 w-4" />
                   <span>Adicionar Atribuição</span>
                 </Button>
@@ -459,7 +478,7 @@ const AssignmentManagement = () => {
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                   <DialogTitle>
-                    {editingAssignment ? "Editar Atribuição" : "Adicionar Nova Atribuição"}
+                    {editingAssignment ? "Editar Atribuição" : `Adicionar Nova Atribuição - ${selectedSchedule?.title}`}
                   </DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -579,7 +598,6 @@ const AssignmentManagement = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Data</TableHead>
                       <TableHead>Serventia</TableHead>
                       <TableHead>Turno</TableHead>
                       <TableHead>Magistrado</TableHead>
@@ -592,16 +610,13 @@ const AssignmentManagement = () => {
                   <TableBody>
                     {assignments.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center text-gray-500">
+                        <TableCell colSpan={7} className="text-center text-gray-500">
                           Nenhuma atribuição encontrada
                         </TableCell>
                       </TableRow>
                     ) : (
                       assignments.map((assignment) => (
                         <TableRow key={assignment.id}>
-                          <TableCell className="font-medium">
-                            {new Date(assignment.date).toLocaleDateString()}
-                          </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-1">
                               <MapPin className="h-3 w-3" />
