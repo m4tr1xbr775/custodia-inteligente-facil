@@ -259,7 +259,7 @@ const Dashboard = () => {
     if (value === "todos") {
       setScheduleFilter("todos");
     } else if (value === "central_custodia" || value === "macrorregiao") {
-      setScheduleFilter(value);
+      setScheduleFilter(value as ServentiaType);
     }
   };
 
