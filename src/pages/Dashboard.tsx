@@ -74,7 +74,7 @@ const Dashboard = () => {
     },
   });
 
-  // Buscar serventias para o filtro de audiências
+  // Buscar apenas serventias de Central de Custódia para o filtro de audiências
   const { data: serventias = [] } = useQuery({
     queryKey: ["serventias-filter"],
     queryFn: async () => {
@@ -93,7 +93,7 @@ const Dashboard = () => {
     },
   });
 
-  // Buscar audiências de hoje com detalhes - Corrigido para usar left joins
+  // Buscar audiências de hoje com detalhes - filtro apenas por Central de Custódia
   const { data: todayAudiences = [] } = useQuery({
     queryKey: ["today-audiences", audienceServentiaFilter],
     queryFn: async () => {
@@ -134,9 +134,13 @@ const Dashboard = () => {
         .eq('scheduled_date', today)
         .order('scheduled_time');
 
-      // Aplicar filtro de serventia se não for "todos"
-      if (audienceServentiaFilter !== "todos") {
-        query = query.eq('serventias.type', audienceServentiaFilter);
+      // Aplicar filtro de serventia - apenas Central de Custódia
+      if (audienceServentiaFilter !== "central_custodia") {
+        // Se não for "central_custodia", então é um ID específico de serventia
+        query = query.eq('serventia_id', audienceServentiaFilter);
+      } else {
+        // Se for "central_custodia", filtrar por tipo
+        query = query.eq('serventias.type', 'central_custodia');
       }
       
       const { data, error } = await query;
@@ -328,15 +332,14 @@ const Dashboard = () => {
                 <Calendar className="h-5 w-5 text-blue-600" />
                 <span>Audiências de Hoje</span>
               </div>
-              {/* Filtro para Audiências por Serventia */}
+              {/* Filtro para Audiências por Central de Custódia */}
               <Select value={audienceServentiaFilter} onValueChange={handleAudienceServentiaFilterChange}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-[220px]">
                   <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Filtrar por serventia" />
+                  <SelectValue placeholder="Filtrar por central" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="central_custodia">Centrais de Custódia</SelectItem>
-                  <SelectItem value="todos">Todas as Serventias</SelectItem>
+                  <SelectItem value="central_custodia">Todas as Centrais</SelectItem>
                   {serventias.map((serventia) => (
                     <SelectItem key={serventia.id} value={serventia.id}>
                       {serventia.name}

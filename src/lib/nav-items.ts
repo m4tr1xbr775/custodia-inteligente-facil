@@ -32,7 +32,7 @@ export const navItems = [
     icon: Building2,
   },
   {
-    title: "Painel das UPR",
+    title: "UPR Audiências",
     href: "/unidades-prisionais",
     icon: Building2,
   },
