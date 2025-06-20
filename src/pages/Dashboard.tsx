@@ -20,7 +20,8 @@ type ServentiaType = Database["public"]["Enums"]["serventia_type"];
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [scheduleFilter, setScheduleFilter] = useState<"todos" | ServentiaType>("todos");
+  const [scheduleFilter, setScheduleFilter] = useState<"todos" | ServentiaType>("macrorregiao");
+  const [audienceServentiaFilter, setAudienceServentiaFilter] = useState<string>("central_custodia");
   
   const todayDate = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',
@@ -73,15 +74,34 @@ const Dashboard = () => {
     },
   });
 
+  // Buscar serventias para o filtro de audiências
+  const { data: serventias = [] } = useQuery({
+    queryKey: ["serventias-filter"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('serventias')
+        .select('id, name, type')
+        .eq('type', 'central_custodia')
+        .order('name');
+      
+      if (error) {
+        console.error("Erro ao buscar serventias:", error);
+        return [];
+      }
+      
+      return data || [];
+    },
+  });
+
   // Buscar audiências de hoje com detalhes - Corrigido para usar left joins
   const { data: todayAudiences = [] } = useQuery({
-    queryKey: ["today-audiences"],
+    queryKey: ["today-audiences", audienceServentiaFilter],
     queryFn: async () => {
       const today = new Date().toISOString().split('T')[0];
       
       console.log("Buscando audiências para data:", today);
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('audiences')
         .select(`
           *,
@@ -113,6 +133,13 @@ const Dashboard = () => {
         `)
         .eq('scheduled_date', today)
         .order('scheduled_time');
+
+      // Aplicar filtro de serventia se não for "todos"
+      if (audienceServentiaFilter !== "todos") {
+        query = query.eq('serventias.type', audienceServentiaFilter);
+      }
+      
+      const { data, error } = await query;
       
       if (error) {
         console.error("Erro ao buscar audiências de hoje:", error);
@@ -232,6 +259,26 @@ const Dashboard = () => {
     setScheduleFilter(value as "todos" | ServentiaType);
   };
 
+  const handleAudienceServentiaFilterChange = (value: string) => {
+    setAudienceServentiaFilter(value);
+  };
+
+  // Função para obter cor do perfil
+  const getProfileColor = (profileType: string) => {
+    switch (profileType) {
+      case 'magistrado':
+        return 'bg-blue-50 text-blue-800 border-blue-200';
+      case 'promotor':
+        return 'bg-green-50 text-green-800 border-green-200';
+      case 'defensor':
+        return 'bg-purple-50 text-purple-800 border-purple-200';
+      case 'assessor':
+        return 'bg-orange-50 text-orange-800 border-orange-200';
+      default:
+        return 'bg-gray-50 text-gray-800 border-gray-200';
+    }
+  };
+
   return (
     <div className="space-y-6 w-full max-w-full">
       <div className="flex flex-col space-y-2">
@@ -272,9 +319,27 @@ const Dashboard = () => {
         {/*Audiências do Dia */}
         <Card className="w-full">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-lg">
-              <Calendar className="h-5 w-5 text-blue-600" />
-              <span>Audiências de Hoje</span>
+            <CardTitle className="flex items-center justify-between text-lg">
+              <div className="flex items-center space-x-2">
+                <Calendar className="h-5 w-5 text-blue-600" />
+                <span>Audiências de Hoje</span>
+              </div>
+              {/* Filtro para Audiências por Serventia */}
+              <Select value={audienceServentiaFilter} onValueChange={handleAudienceServentiaFilterChange}>
+                <SelectTrigger className="w-[200px]">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Filtrar por serventia" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="central_custodia">Centrais de Custódia</SelectItem>
+                  <SelectItem value="todos">Todas as Serventias</SelectItem>
+                  {serventias.map((serventia) => (
+                    <SelectItem key={serventia.id} value={serventia.id}>
+                      {serventia.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -386,13 +451,13 @@ const Dashboard = () => {
                         </div>
                         
                         {assignment.magistrates && (
-                          <div className="flex items-center justify-between py-1">
+                          <div className={`flex items-center justify-between py-2 px-3 rounded-lg border ${getProfileColor('magistrado')}`}>
                             <div className="flex-1">
-                              <span className="text-sm text-blue-800 font-medium">
+                              <span className="text-sm font-medium">
                                 Magistrado: {assignment.magistrates.name}
                               </span>
                               {assignment.magistrates.phone && (
-                                <div className="text-xs text-blue-600">Tel: {assignment.magistrates.phone}</div>
+                                <div className="text-xs mt-1">Tel: {assignment.magistrates.phone}</div>
                               )}
                             </div>
                             {assignment.magistrates.phone && (
@@ -409,13 +474,13 @@ const Dashboard = () => {
                         )}
                         
                         {assignment.prosecutors && (
-                          <div className="flex items-center justify-between py-1">
+                          <div className={`flex items-center justify-between py-2 px-3 rounded-lg border ${getProfileColor('promotor')}`}>
                             <div className="flex-1">
-                              <span className="text-sm text-blue-800 font-medium">
+                              <span className="text-sm font-medium">
                                 Promotor: {assignment.prosecutors.name}
                               </span>
                               {assignment.prosecutors.phone && (
-                                <div className="text-xs text-blue-600">Tel: {assignment.prosecutors.phone}</div>
+                                <div className="text-xs mt-1">Tel: {assignment.prosecutors.phone}</div>
                               )}
                             </div>
                             {assignment.prosecutors.phone && (
@@ -432,13 +497,13 @@ const Dashboard = () => {
                         )}
                         
                         {assignment.defenders && (
-                          <div className="flex items-center justify-between py-1">
+                          <div className={`flex items-center justify-between py-2 px-3 rounded-lg border ${getProfileColor('defensor')}`}>
                             <div className="flex-1">
-                              <span className="text-sm text-blue-800 font-medium">
+                              <span className="text-sm font-medium">
                                 Defensor: {assignment.defenders.name}
                               </span>
                               {assignment.defenders.phone && (
-                                <div className="text-xs text-blue-600">Tel: {assignment.defenders.phone}</div>
+                                <div className="text-xs mt-1">Tel: {assignment.defenders.phone}</div>
                               )}
                             </div>
                             {assignment.defenders.phone && (
@@ -455,13 +520,13 @@ const Dashboard = () => {
                         )}
                         
                         {assignment.magistrates?.judicial_assistant && (
-                          <div className="flex items-center justify-between py-1">
+                          <div className={`flex items-center justify-between py-2 px-3 rounded-lg border ${getProfileColor('assessor')}`}>
                             <div className="flex-1">
-                              <span className="text-sm text-blue-800 font-medium">
+                              <span className="text-sm font-medium">
                                 Assessor: {assignment.magistrates.judicial_assistant.name}
                               </span>
                               {assignment.magistrates.judicial_assistant.phone && (
-                                <div className="text-xs text-blue-600">Tel: {assignment.magistrates.judicial_assistant.phone}</div>
+                                <div className="text-xs mt-1">Tel: {assignment.magistrates.judicial_assistant.phone}</div>
                               )}
                             </div>
                             {assignment.magistrates.judicial_assistant.phone && (
