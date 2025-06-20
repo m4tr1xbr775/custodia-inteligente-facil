@@ -5,6 +5,7 @@ import UserManagement from "@/components/Configuracoes/UserManagement";
 import ServentiaManagement from "@/components/Configuracoes/ServentiaManagement";
 import ScheduleManagement from "@/components/Configuracoes/ScheduleManagement";
 import AssignmentManagement from "@/components/Configuracoes/AssignmentManagement";
+import EscalaAutoUpdater from "@/components/Configuracoes/EscalaAutoUpdater";
 
 const Configuracoes = () => {
   const [activeTab, setActiveTab] = useState("magistrates");
@@ -16,6 +17,11 @@ const Configuracoes = () => {
         <p className="text-gray-600">
           Gerencie magistrados, promotores, defensores públicos/advogados, serventias de plantão e escalas semanais
         </p>
+      </div>
+
+      {/* Componente de Atualização Automática de Escalas */}
+      <div className="mb-6">
+        <EscalaAutoUpdater />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

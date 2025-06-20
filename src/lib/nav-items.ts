@@ -42,7 +42,7 @@ export const navItems = [
     icon: UserPlus,
   },
   {
-    title: "Slots",
+    title: "Pautas",
     href: "/configuracoes-slots",
     icon: Clock,
   },
