@@ -204,7 +204,7 @@ const Dashboard = () => {
       
       // Aplicar filtro se não for "todos"
       if (scheduleFilter !== "todos") {
-        query = query.eq("schedule_assignments.serventias.type", scheduleFilter);
+        query = query.eq("schedule_assignments.serventias.type", scheduleFilter as ServentiaType);
       }
       
       const { data, error } = await query;
