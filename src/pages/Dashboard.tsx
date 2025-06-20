@@ -204,7 +204,7 @@ const Dashboard = () => {
       
       // Aplicar filtro se não for "todos"
       if (scheduleFilter !== "todos") {
-        query = query.eq("schedule_assignments.serventias.type", scheduleFilter as ServentiaType);
+        query = query.eq("schedule_assignments.serventias.type", scheduleFilter);
       }
       
       const { data, error } = await query;
@@ -256,8 +256,10 @@ const Dashboard = () => {
   const completedAudiences = todayAudiences.filter(a => a.status === 'realizada').length;
 
   const handleScheduleFilterChange = (value: string) => {
-    if (value === "todos" || value === "central_custodia" || value === "macrorregiao") {
-      setScheduleFilter(value as "todos" | ServentiaType);
+    if (value === "todos") {
+      setScheduleFilter("todos");
+    } else if (value === "central_custodia" || value === "macrorregiao") {
+      setScheduleFilter(value);
     }
   };
 
