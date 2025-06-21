@@ -3,8 +3,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Dashboard from "./pages/Dashboard";
 import Audiencias from "./pages/Audiencias";
 import Plantoes from "./pages/Plantoes";
@@ -21,6 +21,17 @@ import ProtectedRoute from "./components/Layout/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
+// Componente para redirecionar usuários não ativos
+const InactiveUserRedirect = () => {
+  const { userProfile } = useAuth();
+  
+  if (userProfile && !userProfile.active) {
+    return <Navigate to="/audiencias" replace />;
+  }
+  
+  return <Dashboard />;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -36,11 +47,27 @@ const App = () => (
                 <MainLayout />
               </ProtectedRoute>
             }>
-              <Route index element={<Dashboard />} />
-              <Route path="audiencias" element={<Audiencias />} />
-              <Route path="plantoes" element={<Plantoes />} />
-              <Route path="unidades" element={<Unidades />} />
-              <Route path="unidades-prisionais" element={<UnidadesPrisionais />} />
+              <Route index element={<InactiveUserRedirect />} />
+              <Route path="audiencias" element={
+                <ProtectedRoute resource="audiencias" action="read">
+                  <Audiencias />
+                </ProtectedRoute>
+              } />
+              <Route path="plantoes" element={
+                <ProtectedRoute resource="plantoes" action="read">
+                  <Plantoes />
+                </ProtectedRoute>
+              } />
+              <Route path="unidades" element={
+                <ProtectedRoute resource="unidades" action="read">
+                  <Unidades />
+                </ProtectedRoute>
+              } />
+              <Route path="unidades-prisionais" element={
+                <ProtectedRoute resource="unidades-prisionais" action="read">
+                  <UnidadesPrisionais />
+                </ProtectedRoute>
+              } />
               <Route path="contatos" element={
                 <ProtectedRoute requireAdmin>
                   <Contatos />

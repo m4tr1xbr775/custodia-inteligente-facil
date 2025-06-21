@@ -6,23 +6,29 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const Sidebar = () => {
   const location = useLocation();
-  const { userProfile } = useAuth();
+  const { userProfile, hasPermission } = useAuth();
 
-  const isAdminOnlyPage = (href: string) => {
-    const adminPages = ['/contatos', '/configuracoes-slots', '/configuracoes'];
-    return adminPages.includes(href);
+  const getResourceFromHref = (href: string) => {
+    const resourceMap: Record<string, string> = {
+      '/': 'dashboard',
+      '/audiencias': 'audiencias',
+      '/plantoes': 'plantoes',
+      '/unidades': 'unidades',
+      '/unidades-prisionais': 'unidades-prisionais',
+      '/contatos': 'contatos',
+      '/configuracoes-slots': 'configuracoes-slots',
+      '/configuracoes': 'configuracoes'
+    };
+    return resourceMap[href] || href.substring(1);
   };
 
   const canAccessPage = (href: string) => {
     if (!userProfile) return false;
     
-    // Administradores têm acesso a tudo
-    if (userProfile.profile === 'Administrador') return true;
+    const resource = getResourceFromHref(href);
     
-    // Usuários não-admin não podem acessar páginas administrativas
-    if (isAdminOnlyPage(href)) return false;
-    
-    return true;
+    // Verificar permissões usando o sistema de permissões
+    return hasPermission(resource, 'read');
   };
 
   const filteredNavItems = navItems.filter(item => canAccessPage(item.href));

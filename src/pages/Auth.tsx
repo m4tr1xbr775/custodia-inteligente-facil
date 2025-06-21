@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -274,17 +275,7 @@ const Auth = () => {
           <TabsContent value="signup">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  Cadastrar-se
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={fillAdminData}
-                    type="button"
-                  >
-                    Preencher Admin
-                  </Button>
-                </CardTitle>
+                <CardTitle>Cadastrar-se</CardTitle>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSignup} className="space-y-4">
@@ -335,6 +326,8 @@ const Auth = () => {
                         <SelectItem value="Juiz">Juiz</SelectItem>
                         <SelectItem value="Promotor">Promotor</SelectItem>
                         <SelectItem value="Defensor Público">Defensor Público</SelectItem>
+                        <SelectItem value="Advogado">Advogado</SelectItem>
+                        <SelectItem value="Polícia Penal">Polícia Penal</SelectItem>
                         <SelectItem value="Assessor de Juiz">Assessor de Juiz</SelectItem>
                         <SelectItem value="Analista">Analista</SelectItem>
                         <SelectItem value="Gestor">Gestor</SelectItem>

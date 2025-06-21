@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -237,15 +238,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const hasPermission = (resource: string, action: string): boolean => {
-    if (!userProfile || !userProfile.active) return false;
+    if (!userProfile) return false;
+    
+    // Usuários não ativados só podem visualizar audiências
+    if (!userProfile.active) {
+      return resource === 'audiencias' && action === 'read';
+    }
     
     // Administradores têm acesso total
     if (userProfile.profile === 'Administrador') return true;
     
-    // Para usuários não-admin, apenas visualização de audiências é permitida inicialmente
-    if (resource === 'audiencias' && action === 'read') return true;
+    // Definir permissões baseadas no perfil
+    const profilePermissions = getProfilePermissions(userProfile.profile);
     
+    // Verificar se o recurso está permitido para o perfil
+    if (!profilePermissions.resources.includes(resource)) {
+      return false;
+    }
+    
+    // Por padrão, todos os perfis ativos têm permissão de leitura para recursos permitidos
+    if (action === 'read') return true;
+    
+    // Para outras ações, verificar na tabela permissions (implementação futura via admin)
+    // Por enquanto, apenas leitura é permitida para usuários não-admin
     return false;
+  };
+
+  const getProfilePermissions = (profile: string) => {
+    const permissionsMap: Record<string, { resources: string[] }> = {
+      'Advogado': {
+        resources: ['dashboard', 'audiencias']
+      },
+      'Defensor Público': {
+        resources: ['dashboard', 'audiencias']
+      },
+      'Promotor': {
+        resources: ['dashboard', 'audiencias']
+      },
+      'Polícia Penal': {
+        resources: ['dashboard', 'unidades', 'unidades-prisionais']
+      },
+      'Juiz': {
+        resources: ['dashboard', 'audiencias', 'unidades', 'unidades-prisionais', 'plantoes']
+      },
+      'Assessor de Juiz': {
+        resources: ['dashboard', 'audiencias', 'unidades', 'unidades-prisionais', 'plantoes']
+      },
+      'Analista': {
+        resources: ['dashboard', 'audiencias', 'unidades', 'unidades-prisionais', 'plantoes']
+      },
+      'Gestor': {
+        resources: ['dashboard', 'audiencias', 'unidades', 'unidades-prisionais', 'plantoes']
+      }
+    };
+
+    return permissionsMap[profile] || { resources: ['dashboard'] };
   };
 
   const value = {

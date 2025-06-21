@@ -17,7 +17,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   resource, 
   action = 'read' 
 }) => {
-  const { user, userProfile, loading, signOut } = useAuth();
+  const { user, userProfile, loading, signOut, hasPermission } = useAuth();
   const location = useLocation();
 
   const handleBackToLogin = async () => {
@@ -63,25 +63,40 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
+  // Usuários não ativados só podem acessar audiências (modo leitura)
   if (!userProfile.active) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center bg-white p-8 rounded-lg shadow-md max-w-md w-full mx-4">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Conta Pendente de Aprovação</h2>
-          <p className="text-gray-600 mb-4">Sua conta está aguardando aprovação do administrador.</p>
-          <p className="text-gray-600 mb-6">Você será notificado quando sua conta for ativada.</p>
-          <Button 
-            onClick={handleBackToLogin}
-            className="w-full"
-            variant="outline"
-          >
-            Voltar ao Login
-          </Button>
+    const currentPath = location.pathname;
+    
+    // Se não estiver na rota de audiências, redirecionar
+    if (currentPath !== '/audiencias') {
+      return <Navigate to="/audiencias" replace />;
+    }
+    
+    // Se estiver na rota de audiências mas for uma ação que não seja leitura
+    if (resource && action !== 'read') {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center bg-white p-8 rounded-lg shadow-md max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Acesso Limitado</h2>
+            <p className="text-gray-600 mb-6">
+              Sua conta está aguardando aprovação. Você tem acesso apenas à visualização de audiências.
+            </p>
+            <Button 
+              onClick={() => window.location.href = '/audiencias'}
+              className="w-full"
+              variant="outline"
+            >
+              Voltar às Audiências
+            </Button>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
+    
+    return <>{children}</>;
   }
 
+  // Verificar permissões para usuários ativos
   if (requireAdmin && userProfile.profile !== 'Administrador') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -93,7 +108,26 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             className="w-full"
             variant="outline"
           >
-            Voltar ao Login
+            Voltar ao Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Verificar permissões específicas de recurso/ação
+  if (resource && !hasPermission(resource, action)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center bg-white p-8 rounded-lg shadow-md max-w-md w-full mx-4">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Sem Permissão</h2>
+          <p className="text-gray-600 mb-6">Você não tem permissão para realizar esta ação.</p>
+          <Button 
+            onClick={() => window.history.back()}
+            className="w-full"
+            variant="outline"
+          >
+            Voltar
           </Button>
         </div>
       </div>
