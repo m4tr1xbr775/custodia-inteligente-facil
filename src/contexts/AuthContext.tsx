@@ -76,6 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -95,6 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Check for existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log('Existing session:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -201,8 +203,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Administradores têm acesso total
     if (userProfile.profile === 'Administrador') return true;
     
-    // Para usuários não-admin, verificar permissões específicas
-    // Por enquanto, apenas visualização de audiências é permitida para usuários não ativos
+    // Para usuários não-admin, apenas visualização de audiências é permitida inicialmente
     if (resource === 'audiencias' && action === 'read') return true;
     
     return false;

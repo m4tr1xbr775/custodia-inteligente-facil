@@ -5,7 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
-import { navItems } from "./lib/nav-items";
 import Dashboard from "./pages/Dashboard";
 import Audiencias from "./pages/Audiencias";
 import Plantoes from "./pages/Plantoes";
@@ -15,6 +14,7 @@ import Contatos from "./pages/Contatos";
 import Configuracoes from "./pages/Configuracoes";
 import ConfiguracoesSlots from "./pages/ConfiguracoesSlots";
 import Auth from "./pages/Auth";
+import AdminSetup from "./pages/AdminSetup";
 import NotFound from "./pages/NotFound";
 import MainLayout from "./components/Layout/MainLayout";
 import ProtectedRoute from "./components/Layout/ProtectedRoute";
@@ -30,6 +30,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/admin-setup" element={<AdminSetup />} />
             <Route path="/" element={
               <ProtectedRoute>
                 <MainLayout />
