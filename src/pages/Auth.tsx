@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, UserPlus, LogIn } from 'lucide-react';
+import { Eye, EyeOff, UserPlus, LogIn, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Auth = () => {
   const { signIn, signUp, user, loading } = useAuth();
@@ -18,6 +18,7 @@ const Auth = () => {
   
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAdminHint, setShowAdminHint] = useState(false);
   
   // Login form state
   const [loginData, setLoginData] = useState({
@@ -58,10 +59,17 @@ const Auth = () => {
       return;
     }
 
+    console.log('🔐 Tentando fazer login com:', loginData.email);
     const { error } = await signIn(loginData.email, loginData.password);
 
     if (error) {
-      console.error('Login error:', error);
+      console.error('❌ Erro no login:', error);
+      
+      // Se o erro for de credenciais inválidas e o email for do admin, mostrar dica
+      if (error.message === 'Invalid login credentials' && loginData.email === 'm4tr1xbr@gmail.com') {
+        setShowAdminHint(true);
+      }
+      
       toast({
         title: "Erro no login",
         description: error.message === 'Invalid login credentials' 
@@ -150,6 +158,19 @@ const Auth = () => {
     setIsSubmitting(false);
   };
 
+  const fillAdminData = () => {
+    setSignupData({
+      name: 'Credson Batista',
+      email: 'm4tr1xbr@gmail.com',
+      password: 'Admin123!',
+      confirmPassword: 'Admin123!',
+      department: '3ª UJS - CRIMINAL',
+      phone: '62984452619',
+      mobile: '62984452619',
+      profile: 'Administrador'
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -165,6 +186,26 @@ const Auth = () => {
           <h2 className="text-3xl font-bold text-gray-900">SisJud</h2>
           <p className="mt-2 text-gray-600">Sistema Judiciário</p>
         </div>
+
+        {showAdminHint && (
+          <Alert className="border-orange-200 bg-orange-50">
+            <AlertCircle className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-800">
+              <strong>Usuário administrador não encontrado!</strong><br />
+              Você precisa criar a conta do administrador primeiro. 
+              <Button 
+                variant="link" 
+                className="p-0 h-auto text-orange-800 underline ml-1"
+                onClick={() => {
+                  fillAdminData();
+                  setShowAdminHint(false);
+                }}
+              >
+                Clique aqui para preencher os dados automaticamente
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
@@ -233,7 +274,17 @@ const Auth = () => {
           <TabsContent value="signup">
             <Card>
               <CardHeader>
-                <CardTitle>Cadastrar-se</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  Cadastrar-se
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={fillAdminData}
+                    type="button"
+                  >
+                    Preencher Admin
+                  </Button>
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSignup} className="space-y-4">
@@ -280,6 +331,7 @@ const Auth = () => {
                         <SelectValue placeholder="Selecione seu perfil" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="Administrador">Administrador</SelectItem>
                         <SelectItem value="Juiz">Juiz</SelectItem>
                         <SelectItem value="Promotor">Promotor</SelectItem>
                         <SelectItem value="Defensor Público">Defensor Público</SelectItem>
