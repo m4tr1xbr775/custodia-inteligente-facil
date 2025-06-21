@@ -1,33 +1,53 @@
 
-import { NavLink } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { navItems } from "@/lib/nav-items";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Sidebar = () => {
+  const location = useLocation();
+  const { userProfile } = useAuth();
+
+  const isAdminOnlyPage = (href: string) => {
+    const adminPages = ['/contatos', '/configuracoes-slots', '/configuracoes'];
+    return adminPages.includes(href);
+  };
+
+  const canAccessPage = (href: string) => {
+    if (!userProfile) return false;
+    
+    // Administradores têm acesso a tudo
+    if (userProfile.profile === 'Administrador') return true;
+    
+    // Usuários não-admin não podem acessar páginas administrativas
+    if (isAdminOnlyPage(href)) return false;
+    
+    return true;
+  };
+
+  const filteredNavItems = navItems.filter(item => canAccessPage(item.href));
+
   return (
-    <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 md:z-50">
-      <div className="flex-1 flex flex-col min-h-0 bg-gray-800">
-        <div className="flex items-center h-16 flex-shrink-0 px-4 bg-gray-900">
-          <h1 className="text-white text-lg font-bold truncate">Sistema Custódia</h1>
-        </div>
-        <div className="flex-1 flex flex-col overflow-y-auto">
-          <nav className="flex-1 px-2 py-4 space-y-1">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.href}
+    <div className="pb-12 w-64">
+      <div className="space-y-4 py-4">
+        <div className="px-3 py-2">
+          <div className="space-y-1">
+            {filteredNavItems.map((item, index) => (
+              <Link
+                key={index}
                 to={item.href}
-                className={({ isActive }) =>
-                  `group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors truncate ${
-                    isActive
-                      ? "bg-gray-900 text-white"
-                      : "text-gray-300 hover:bg-gray-700 hover:text-white"
-                  }`
-                }
+                className={cn(
+                  "flex items-center rounded-lg px-3 py-2 text-gray-900 transition-all hover:bg-gray-100",
+                  location.pathname === item.href
+                    ? "bg-gray-100 text-gray-900 font-medium"
+                    : "text-gray-700"
+                )}
               >
-                <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
-                <span className="truncate">{item.title}</span>
-              </NavLink>
+                <item.icon className="mr-2 h-4 w-4" />
+                {item.title}
+              </Link>
             ))}
-          </nav>
+          </div>
         </div>
       </div>
     </div>

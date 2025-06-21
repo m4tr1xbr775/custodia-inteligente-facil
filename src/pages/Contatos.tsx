@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Plus, Search, Phone, MessageCircle, Mail, Edit, Trash2 } from "lucide-react";
+import { Users, Plus, Search, Phone, MessageCircle, Mail, Edit, Trash2, UserCheck, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,20 +22,23 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import ContatoModal from "@/components/Contatos/ContatoModal";
 
 const Contatos = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("todos");
+  const [statusFilter, setStatusFilter] = useState("todos");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingContactId, setEditingContactId] = useState<string | undefined>();
   const [deletingContactId, setDeletingContactId] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { userProfile } = useAuth();
 
   // Fetch contacts from database
   const { data: contacts = [], isLoading } = useQuery({
@@ -44,11 +47,39 @@ const Contatos = () => {
       const { data, error } = await supabase
         .from('contacts')
         .select('*')
-        .eq('active', true)
         .order('name');
       
       if (error) throw error;
       return data || [];
+    },
+    enabled: userProfile?.profile === 'Administrador',
+  });
+
+  // Mutation para ativar/desativar usuário
+  const toggleUserStatusMutation = useMutation({
+    mutationFn: async ({ contactId, newStatus }: { contactId: string; newStatus: boolean }) => {
+      const { error } = await supabase
+        .from('contacts')
+        .update({ active: newStatus })
+        .eq('id', contactId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, { newStatus }) => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      toast({
+        title: newStatus ? "Usuário ativado" : "Usuário desativado",
+        description: newStatus 
+          ? "O usuário agora pode acessar o sistema." 
+          : "O usuário foi desativado com sucesso.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: `Erro ao alterar status do usuário: ${error.message}`,
+        variant: "destructive",
+      });
     },
   });
 
@@ -73,6 +104,12 @@ const Contatos = () => {
       default:
         return <Badge variant="secondary">{profile}</Badge>;
     }
+  };
+
+  const getStatusBadge = (active: boolean) => {
+    return active 
+      ? <Badge className="bg-green-100 text-green-800">Ativo</Badge>
+      : <Badge className="bg-red-100 text-red-800">Inativo</Badge>;
   };
 
   const handleCall = (phone: string) => {
@@ -110,7 +147,7 @@ const Contatos = () => {
 
       const { error } = await supabase
         .from('contacts')
-        .update({ active: false })
+        .delete()
         .eq('id', contactId);
 
       if (error) throw error;
@@ -133,6 +170,13 @@ const Contatos = () => {
     }
   };
 
+  const handleToggleUserStatus = (contactId: string, currentStatus: boolean) => {
+    toggleUserStatusMutation.mutate({
+      contactId,
+      newStatus: !currentStatus
+    });
+  };
+
   const filteredContacts = contacts.filter(contact => {
     const matchesSearch = 
       contact.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -140,8 +184,11 @@ const Contatos = () => {
       contact.profile?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesRole = roleFilter === "todos" || contact.profile === roleFilter;
+    const matchesStatus = statusFilter === "todos" || 
+      (statusFilter === "ativo" && contact.active) ||
+      (statusFilter === "inativo" && !contact.active);
     
-    return matchesSearch && matchesRole;
+    return matchesSearch && matchesRole && matchesStatus;
   });
 
   if (isLoading) {
@@ -198,6 +245,16 @@ const Contatos = () => {
                 <SelectItem value="Administrador">Administrador</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[150px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="ativo">Ativos</SelectItem>
+                <SelectItem value="inativo">Inativos</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -213,9 +270,19 @@ const Contatos = () => {
                     <h3 className="font-semibold text-lg text-gray-900">{contact.name}</h3>
                     <div className="flex items-center space-x-2 mt-2">
                       {getRoleBadge(contact.profile)}
+                      {getStatusBadge(contact.active)}
                     </div>
                   </div>
                   <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleUserStatus(contact.id, contact.active)}
+                      disabled={toggleUserStatusMutation.isPending}
+                      className={contact.active ? "text-red-600 hover:text-red-700" : "text-green-600 hover:text-green-700"}
+                    >
+                      {contact.active ? <UserX className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"

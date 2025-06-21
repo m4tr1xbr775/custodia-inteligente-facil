@@ -136,6 +136,7 @@ export type Database = {
           phone: string | null
           profile: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           active?: boolean | null
@@ -148,6 +149,7 @@ export type Database = {
           phone?: string | null
           profile?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           active?: boolean | null
@@ -160,6 +162,7 @@ export type Database = {
           phone?: string | null
           profile?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -237,6 +240,108 @@ export type Database = {
           {
             foreignKeyName: "magistrates_judicial_assistant_id_fkey"
             columns: ["judicial_assistant_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          metadata: Json | null
+          target_user_id: string | null
+          title: string
+          type: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          metadata?: Json | null
+          target_user_id?: string | null
+          title: string
+          type: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          metadata?: Json | null
+          target_user_id?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      permissions: {
+        Row: {
+          action: string
+          created_at: string
+          granted: boolean
+          granted_by: string | null
+          id: string
+          resource: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          granted?: boolean
+          granted_by?: string | null
+          id?: string
+          resource: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          granted?: boolean
+          granted_by?: string | null
+          id?: string
+          resource?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permissions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "permissions_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "contacts"
             referencedColumns: ["id"]
@@ -542,6 +647,10 @@ export type Database = {
       generate_future_slots: {
         Args: { days_ahead?: number }
         Returns: string
+      }
+      user_has_permission: {
+        Args: { resource_name: string; action_name: string }
+        Returns: boolean
       }
     }
     Enums: {
