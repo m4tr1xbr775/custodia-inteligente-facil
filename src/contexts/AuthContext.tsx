@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -54,6 +53,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log('🔍 Buscando perfil para userId:', userId);
+      
       const { data, error } = await supabase
         .from('contacts')
         .select('*')
@@ -61,33 +62,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) {
-        console.error('Error fetching user profile:', error);
+        console.error('❌ Erro ao buscar perfil do usuário:', error);
+        console.log('📊 Detalhes do erro:', {
+          message: error.message,
+          code: error.code,
+          hint: error.hint,
+          details: error.details
+        });
+        
+        // Tentar buscar todos os contatos para debug
+        const { data: allContacts, error: allError } = await supabase
+          .from('contacts')
+          .select('*');
+          
+        if (allError) {
+          console.error('❌ Erro ao buscar todos os contatos:', allError);
+        } else {
+          console.log('📋 Todos os contatos na tabela:', allContacts);
+          console.log('🔎 Procurando por user_id:', userId);
+          const matchingContact = allContacts?.find(c => c.user_id === userId);
+          console.log('🎯 Contato correspondente encontrado:', matchingContact);
+        }
+        
         return null;
       }
 
+      console.log('✅ Perfil encontrado:', data);
       return data;
     } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
+      console.error('💥 Erro inesperado ao buscar perfil:', error);
       return null;
     }
   };
 
   useEffect(() => {
+    console.log('🚀 Inicializando AuthProvider');
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
+        console.log('🔄 Auth state changed:', event, 'User email:', session?.user?.email, 'User ID:', session?.user?.id);
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          console.log('👤 Usuário autenticado, buscando perfil...');
           // Fetch user profile after auth state change
           setTimeout(async () => {
             const profile = await fetchUserProfile(session.user.id);
+            console.log('📄 Perfil obtido:', profile);
             setUserProfile(profile);
             setLoading(false);
           }, 0);
         } else {
+          console.log('🚫 Nenhum usuário autenticado');
           setUserProfile(null);
           setLoading(false);
         }
@@ -96,12 +124,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Check for existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log('Existing session:', session?.user?.email);
+      console.log('🔍 Verificando sessão existente:', session?.user?.email, 'User ID:', session?.user?.id);
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
+        console.log('👤 Sessão existente encontrada, buscando perfil...');
         const profile = await fetchUserProfile(session.user.id);
+        console.log('📄 Perfil da sessão existente:', profile);
         setUserProfile(profile);
       }
       
@@ -136,6 +166,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (authData.user) {
+        console.log('📝 Criando perfil para novo usuário:', authData.user.id);
+        
         // Create user profile in contacts table
         const { error: profileError } = await supabase
           .from('contacts')
@@ -151,10 +183,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
 
         if (profileError) {
-          console.error('Error creating user profile:', profileError);
+          console.error('❌ Erro ao criar perfil do usuário:', profileError);
           return { error: profileError };
         }
 
+        console.log('✅ Perfil criado com sucesso');
         toast({
           title: "Cadastro realizado com sucesso!",
           description: "Aguarde a aprovação do administrador para acessar o sistema.",
@@ -163,37 +196,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return { error: null };
     } catch (error) {
-      console.error('Error in signUp:', error);
+      console.error('💥 Erro no signUp:', error);
       return { error };
     }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log('🔐 Tentando fazer login com:', email);
+      
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error('❌ Erro no login:', error);
         return { error };
       }
 
+      console.log('✅ Login realizado com sucesso');
       return { error: null };
     } catch (error) {
-      console.error('Error in signIn:', error);
+      console.error('💥 Erro no signIn:', error);
       return { error };
     }
   };
 
   const signOut = async () => {
     try {
+      console.log('🚪 Fazendo logout...');
       await supabase.auth.signOut();
       setUser(null);
       setSession(null);
       setUserProfile(null);
+      console.log('✅ Logout realizado com sucesso');
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('❌ Erro ao fazer logout:', error);
     }
   };
 
