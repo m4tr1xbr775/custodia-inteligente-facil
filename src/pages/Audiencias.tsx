@@ -26,8 +26,10 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AudienciaModal from "@/components/Audiencias/AudienciaModal";
+import DateFilter from "@/components/Audiencias/DateFilter";
 import { ProjudiIcon } from "@/components/ui/projudi-icon";
 import { Database } from "@/integrations/supabase/types";
+import { addDays, subDays, startOfDay, endOfDay, isAfter, isBefore, isWithinInterval } from "date-fns";
 
 type AudienceStatus = Database["public"]["Enums"]["audience_status"];
 
@@ -35,6 +37,9 @@ const Audiencias = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [custodyCenterFilter, setCustodyCenterFilter] = useState("todos");
+  const [dateFilter, setDateFilter] = useState("futuras");
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>();
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAudienciaId, setEditingAudienciaId] = useState<string | undefined>();
   const [deletingAudienceId, setDeletingAudienceId] = useState<string | null>(null);
@@ -150,6 +155,59 @@ const Audiencias = () => {
     }
   });
 
+  const getDateRange = () => {
+    const today = new Date();
+    
+    switch (dateFilter) {
+      case 'futuras':
+        return { start: startOfDay(today), end: null };
+      case 'ultimos-7':
+        return { start: startOfDay(subDays(today, 7)), end: endOfDay(today) };
+      case 'ultimos-30':
+        return { start: startOfDay(subDays(today, 30)), end: endOfDay(today) };
+      case 'personalizado':
+        if (customStartDate && customEndDate) {
+          return { 
+            start: startOfDay(customStartDate), 
+            end: endOfDay(customEndDate) 
+          };
+        }
+        return { start: null, end: null };
+      default:
+        return { start: null, end: null };
+    }
+  };
+
+  const filterAudiences = (audiences: any[]) => {
+    return audiences.filter(audience => {
+      const matchesSearch = 
+        audience.defendant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        audience.process_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        audience.prison_units_extended?.name.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === "todos" || audience.status === statusFilter;
+      
+      const matchesCustodyCenter = custodyCenterFilter === "todos" || audience.serventia_id === custodyCenterFilter;
+      
+      const { start, end } = getDateRange();
+      let matchesDate = true;
+      
+      if (start || end) {
+        const audienceDate = new Date(audience.scheduled_date);
+        
+        if (start && end) {
+          matchesDate = isWithinInterval(audienceDate, { start, end });
+        } else if (start && !end) {
+          matchesDate = isAfter(audienceDate, start) || audienceDate.toDateString() === start.toDateString();
+        } else if (!start && end) {
+          matchesDate = isBefore(audienceDate, end) || audienceDate.toDateString() === end.toDateString();
+        }
+      }
+      
+      return matchesSearch && matchesStatus && matchesCustodyCenter && matchesDate;
+    });
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "agendada":
@@ -174,21 +232,6 @@ const Audiencias = () => {
       default:
         return <Badge variant="outline" className="border-yellow-300 text-yellow-700">Pendente Confirmação</Badge>;
     }
-  };
-
-  const filterAudiences = (audiences: any[]) => {
-    return audiences.filter(audience => {
-      const matchesSearch = 
-        audience.defendant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        audience.process_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        audience.prison_units_extended?.name.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesStatus = statusFilter === "todos" || audience.status === statusFilter;
-      
-      const matchesCustodyCenter = custodyCenterFilter === "todos" || audience.serventia_id === custodyCenterFilter;
-      
-      return matchesSearch && matchesStatus && matchesCustodyCenter;
-    });
   };
 
   const getRegionIcon = (serventiaType: string) => {
@@ -306,45 +349,56 @@ const Audiencias = () => {
       {/* Filtros */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Buscar por nome, processo ou unidade..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+          <div className="flex flex-col space-y-4">
+            <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Buscar por nome, processo ou unidade..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
               </div>
+              <Select value={custodyCenterFilter} onValueChange={setCustodyCenterFilter}>
+                <SelectTrigger className="w-full sm:w-[220px]">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Central de Custódia" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas as Centrais</SelectItem>
+                  {custodyCenters.map((center) => (
+                    <SelectItem key={center.id} value={center.id}>
+                      {center.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[200px]">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Status</SelectItem>
+                  <SelectItem value="agendada">Agendada</SelectItem>
+                  <SelectItem value="realizada">Realizada</SelectItem>
+                  <SelectItem value="cancelada">Cancelada</SelectItem>
+                  <SelectItem value="nao_compareceu">Não Compareceu</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={custodyCenterFilter} onValueChange={setCustodyCenterFilter}>
-              <SelectTrigger className="w-full sm:w-[220px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Central de Custódia" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todas as Centrais</SelectItem>
-                {custodyCenters.map((center) => (
-                  <SelectItem key={center.id} value={center.id}>
-                    {center.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os Status</SelectItem>
-                <SelectItem value="agendada">Agendada</SelectItem>
-                <SelectItem value="realizada">Realizada</SelectItem>
-                <SelectItem value="cancelada">Cancelada</SelectItem>
-                <SelectItem value="nao_compareceu">Não Compareceu</SelectItem>
-              </SelectContent>
-            </Select>
+            
+            <DateFilter
+              dateFilter={dateFilter}
+              onDateFilterChange={setDateFilter}
+              customStartDate={customStartDate}
+              customEndDate={customEndDate}
+              onCustomStartDateChange={setCustomStartDate}
+              onCustomEndDateChange={setCustomEndDate}
+            />
           </div>
           <div className="mt-4 text-sm text-gray-600">
             Mostrando {filteredAudiences.length} de {audiencesData?.length || 0} audiências

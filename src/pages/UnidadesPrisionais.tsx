@@ -1,13 +1,17 @@
-
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import UnitSelector from "@/components/UnidadesPrisionais/UnitSelector";
 import AudienceList from "@/components/UnidadesPrisionais/AudienceList";
+import DateFilter from "@/components/Audiencias/DateFilter";
+import { Card, CardContent } from "@/components/ui/card";
 
 const UnidadesPrisionais = () => {
   const [selectedUnit, setSelectedUnit] = useState("");
+  const [dateFilter, setDateFilter] = useState("futuras");
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>();
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>();
   const [observationsChanges, setObservationsChanges] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -105,13 +109,31 @@ const UnidadesPrisionais = () => {
         </div>
       </div>
 
-      <UnitSelector 
-        selectedUnit={selectedUnit} 
-        onUnitChange={setSelectedUnit} 
-      />
+      <div className="flex flex-col sm:flex-row gap-4">
+        <UnitSelector 
+          selectedUnit={selectedUnit} 
+          onUnitChange={setSelectedUnit} 
+        />
+      </div>
+
+      <Card>
+        <CardContent className="p-4">
+          <DateFilter
+            dateFilter={dateFilter}
+            onDateFilterChange={setDateFilter}
+            customStartDate={customStartDate}
+            customEndDate={customEndDate}
+            onCustomStartDateChange={setCustomStartDate}
+            onCustomEndDateChange={setCustomEndDate}
+          />
+        </CardContent>
+      </Card>
 
       <AudienceList
         selectedUnit={selectedUnit}
+        dateFilter={dateFilter}
+        customStartDate={customStartDate}
+        customEndDate={customEndDate}
         observationsChanges={observationsChanges}
         onAcknowledgmentChange={handleAcknowledgmentChange}
         onObservationsChange={handleObservationsChange}
