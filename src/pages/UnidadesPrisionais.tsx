@@ -19,6 +19,7 @@ const UnidadesPrisionais = () => {
   // Mutation to update acknowledgment status
   const updateAcknowledgmentMutation = useMutation({
     mutationFn: async ({ audienceId, status }: { audienceId: string, status: string }) => {
+      console.log("Atualizando status de confirmação:", { audienceId, status });
       const { data, error } = await supabase
         .from('audiences')
         .update({ unit_acknowledgment: status })
@@ -49,6 +50,7 @@ const UnidadesPrisionais = () => {
   // Mutation to update observations
   const updateObservationsMutation = useMutation({
     mutationFn: async ({ audienceId, observations }: { audienceId: string, observations: string }) => {
+      console.log("Atualizando observações:", { audienceId, observations });
       const { data, error } = await supabase
         .from('audiences')
         .update({ observations })

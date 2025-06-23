@@ -1,4 +1,3 @@
-
 import { Calendar, CheckCircle, XCircle, Clock, ExternalLink, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ProjudiIcon } from "@/components/ui/projudi-icon";
+import { parseLocalDate } from "@/lib/dateUtils";
 
 interface AudienceCardProps {
   audience: any;
@@ -60,6 +60,15 @@ const AudienceCard = ({
     }
   };
 
+  // Função para formatar data de forma segura
+  const formatAudienceDate = (dateString: string) => {
+    console.log("AudienceCard - Formatando data da audiência:", dateString);
+    const date = parseLocalDate(dateString);
+    const formattedDate = date.toLocaleDateString('pt-BR');
+    console.log("AudienceCard - Data formatada:", formattedDate);
+    return formattedDate;
+  };
+
   return (
     <Card className="border-l-4 border-l-blue-500">
       <CardContent className="p-6">
@@ -72,7 +81,7 @@ const AudienceCard = ({
               <div className="flex items-center space-x-2">
                 <Calendar className="h-4 w-4 text-gray-500" />
                 <span className="font-medium text-lg">
-                  {new Date(audience.scheduled_date).toLocaleDateString('pt-BR')} às {audience.scheduled_time}
+                  {formatAudienceDate(audience.scheduled_date)} às {audience.scheduled_time}
                 </span>
               </div>
               {getStatusBadge(audience.status)}

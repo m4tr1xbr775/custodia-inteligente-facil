@@ -1,10 +1,10 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import AudienceCard from "./AudienceCard";
 import { Loader2, Calendar } from "lucide-react";
 import { addDays, subDays, startOfDay, endOfDay, isAfter, isBefore, isWithinInterval } from "date-fns";
+import { parseLocalDate } from "@/lib/dateUtils";
 
 interface AudienceListProps {
   selectedUnit: string;
@@ -104,13 +104,14 @@ const AudienceList = ({
         throw error;
       }
 
-      // Apply date filtering
+      // Apply date filtering com parseLocalDate
       const { start, end } = getDateRange();
       let filteredData = data || [];
       
       if (start || end) {
         filteredData = filteredData.filter(audience => {
-          const audienceDate = new Date(audience.scheduled_date);
+          // Usar parseLocalDate para evitar problemas de timezone
+          const audienceDate = parseLocalDate(audience.scheduled_date);
           
           if (start && end) {
             return isWithinInterval(audienceDate, { start, end });

@@ -8,6 +8,7 @@ import { RefreshCw, Calendar, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { formatLocalDate, parseLocalDate, getTodayLocalString } from "@/lib/dateUtils";
 
 const EscalaAutoUpdater = () => {
   const [startDate, setStartDate] = useState("");
@@ -18,6 +19,12 @@ const EscalaAutoUpdater = () => {
   const updateEscalasMutation = useMutation({
     mutationFn: async ({ startDate, endDate }: { startDate: string; endDate: string }) => {
       console.log("Atualizando escalas com novos períodos:", { startDate, endDate });
+      
+      // Validar e converter datas usando funções seguras
+      const startDateFormatted = formatLocalDate(parseLocalDate(startDate));
+      const endDateFormatted = formatLocalDate(parseLocalDate(endDate));
+      
+      console.log("Datas formatadas para update:", { startDateFormatted, endDateFormatted });
       
       // Buscar todas as escalas ativas
       const { data: activeSchedules, error: schedulesError } = await supabase
@@ -36,8 +43,8 @@ const EscalaAutoUpdater = () => {
         const { error } = await supabase
           .from('schedules')
           .update({
-            start_date: startDate,
-            end_date: endDate,
+            start_date: startDateFormatted,
+            end_date: endDateFormatted,
             updated_at: new Date().toISOString()
           })
           .eq('id', schedule.id);
@@ -82,7 +89,11 @@ const EscalaAutoUpdater = () => {
       return;
     }
     
-    if (new Date(startDate) > new Date(endDate)) {
+    // Validar datas usando parseLocalDate
+    const startDateObj = parseLocalDate(startDate);
+    const endDateObj = parseLocalDate(endDate);
+    
+    if (startDateObj > endDateObj) {
       toast({
         title: "Erro",
         description: "A data de início deve ser anterior à data de fim",
@@ -115,7 +126,11 @@ const EscalaAutoUpdater = () => {
                 id="updateStartDate"
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(e) => {
+                  console.log("EscalaAutoUpdater - Data início selecionada:", e.target.value);
+                  setStartDate(e.target.value);
+                }}
+                min={getTodayLocalString()}
                 required
               />
             </div>
@@ -125,7 +140,11 @@ const EscalaAutoUpdater = () => {
                 id="updateEndDate"
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={(e) => {
+                  console.log("EscalaAutoUpdater - Data fim selecionada:", e.target.value);
+                  setEndDate(e.target.value);
+                }}
+                min={startDate || getTodayLocalString()}
                 required
               />
             </div>
