@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,7 +18,7 @@ const audienciaSchema = z.object({
   scheduled_date: z.string().min(1, "Data é obrigatória"),
   scheduled_time: z.string().min(1, "Horário é obrigatório"),
   schedule_assignment_id: z.string().min(1, "Plantão é obrigatório"),
-  prison_unit_id: z.string().min(1, "Unidade prisional é obrigatório"),
+  prison_unit_id: z.string().min(1, "Unidade prisional é obrigatória"),
   prison_unit_slot_id: z.string().min(1, "Horário disponível é obrigatório"),
   serventia_id: z.string().optional(),
   magistrate_id: z.string().optional(),
@@ -130,31 +129,47 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
       if (!data.prison_unit_id) {
         throw new Error("Unidade prisional é obrigatória");
       }
-      if (!data.prison_unit_slot_id) {
-        throw new Error("Slot de horário é obrigatório");
-      }
 
-      // Verificar se já existe uma audiência no mesmo slot (apenas para criação)
+      // Nova validação: verificar se há salas disponíveis (apenas para criação)
       if (!isEditing) {
-        console.log("Verificando conflitos de slot para slot ID:", data.prison_unit_slot_id);
-        const { data: existingAudiences, error: conflictError } = await supabase
+        console.log("Verificando disponibilidade de salas...");
+        
+        // Buscar número de salas da unidade
+        const { data: unitData, error: unitError } = await supabase
+          .from('prison_units_extended')
+          .select('number_of_rooms')
+          .eq('id', data.prison_unit_id)
+          .single();
+
+        if (unitError) {
+          console.error("Erro ao buscar dados da unidade:", unitError);
+          throw new Error("Erro ao verificar disponibilidade da unidade");
+        }
+
+        const numberOfRooms = unitData?.number_of_rooms || 1;
+        console.log("Número de salas da unidade:", numberOfRooms);
+
+        // Contar audiências já agendadas no mesmo horário
+        const { data: existingAudiences, error: countError } = await supabase
           .from('audiences')
           .select('id')
           .eq('prison_unit_id', data.prison_unit_id)
           .eq('scheduled_date', data.scheduled_date)
           .eq('scheduled_time', data.scheduled_time);
         
-        if (conflictError) {
-          console.error("Erro ao verificar conflitos:", conflictError);
-          throw new Error("Erro ao verificar conflitos de horário");
+        if (countError) {
+          console.error("Erro ao verificar ocupação:", countError);
+          throw new Error("Erro ao verificar disponibilidade de horário");
         }
         
-        if (existingAudiences && existingAudiences.length > 0) {
-          console.log("Conflito encontrado:", existingAudiences);
-          throw new Error("Já existe uma audiência agendada para este horário e unidade prisional. Por favor, escolha outro horário.");
+        const currentOccupancy = existingAudiences?.length || 0;
+        console.log(`Ocupação atual: ${currentOccupancy}/${numberOfRooms}`);
+        
+        if (currentOccupancy >= numberOfRooms) {
+          throw new Error("Não há salas disponíveis para este horário. Por favor, escolha outro horário.");
         }
         
-        console.log("Nenhum conflito encontrado, prosseguindo...");
+        console.log("Validação de disponibilidade passou, prosseguindo...");
       }
       
       // Preparar os dados para inserção/atualização
@@ -207,29 +222,14 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
         
         if (error) {
           console.error("Erro na inserção:", error);
+          if (error.code === '23505') { // Unique constraint violation
+            throw new Error("Este horário acabou de ser ocupado por outra audiência. Por favor, selecione outro horário.");
+          }
           throw new Error(`Erro ao criar audiência: ${error.message}`);
         }
         
         console.log("Inserção bem-sucedida:", insertResult);
         result = insertResult;
-        
-        // Marcar o slot como ocupado apenas para criação
-        console.log("Marcando slot como ocupado:", data.prison_unit_slot_id);
-        const { error: slotError } = await supabase
-          .from('prison_unit_slots')
-          .update({ 
-            is_available: false, 
-            audience_id: result.id 
-          })
-          .eq('id', data.prison_unit_slot_id);
-        
-        if (slotError) {
-          console.error("Erro ao marcar slot como ocupado:", slotError);
-          // Não vamos falhar a criação da audiência por isso
-          console.log("Continuando apesar do erro no slot...");
-        } else {
-          console.log("Slot marcado como ocupado com sucesso");
-        }
       }
       
       console.log("=== PROCESSO CONCLUÍDO COM SUCESSO ===");
@@ -239,6 +239,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
       console.log("Mutation bem-sucedida, invalidando queries...");
       queryClient.invalidateQueries({ queryKey: ["audiences"] });
       queryClient.invalidateQueries({ queryKey: ["available-slots"] });
+      queryClient.invalidateQueries({ queryKey: ["unit_audiences"] });
       if (initialData?.id) {
         queryClient.invalidateQueries({ queryKey: ["audiencia", initialData.id] });
       }
@@ -304,10 +305,10 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
             </div>
           </div>
           
-          {/* 3. Slot Disponível */}
+          {/* 3. Horário Disponível */}
           {selectedPrisonUnitId && selectedDate && (
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Slot Disponível</h3>
+              <h3 className="text-lg font-medium">Horário Disponível</h3>
               <PrisonUnitSlotSelector
                 form={form}
                 selectedDate={selectedDate}

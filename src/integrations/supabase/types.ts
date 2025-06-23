@@ -408,6 +408,7 @@ export type Database = {
           landline: string
           municipalities: string
           name: string
+          number_of_rooms: number
           responsible: string
           short_name: string
           type: string
@@ -425,6 +426,7 @@ export type Database = {
           landline: string
           municipalities: string
           name: string
+          number_of_rooms?: number
           responsible: string
           short_name: string
           type: string
@@ -442,6 +444,7 @@ export type Database = {
           landline?: string
           municipalities?: string
           name?: string
+          number_of_rooms?: number
           responsible?: string
           short_name?: string
           type?: string
@@ -636,18 +639,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      generate_daily_slots_all_units: {
-        Args: { slot_date: string }
-        Returns: undefined
-      }
-      generate_daily_slots_for_unit: {
-        Args: { unit_id: string; slot_date: string }
-        Returns: undefined
-      }
-      generate_future_slots: {
-        Args: { days_ahead?: number }
-        Returns: string
-      }
       user_has_permission: {
         Args: { resource_name: string; action_name: string }
         Returns: boolean

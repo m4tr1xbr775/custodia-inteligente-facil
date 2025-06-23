@@ -402,6 +402,9 @@ const Unidades = () => {
                           <p className="text-sm text-gray-600">
                             <span className="font-medium">Ocupação:</span> {Math.round((unit.current_population / unit.capacity) * 100)}%
                           </p>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">Salas para Audiências:</span> {unit.number_of_rooms || 1}
+                          </p>
                         </div>
                       </div>
                       
