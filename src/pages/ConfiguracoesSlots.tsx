@@ -13,7 +13,7 @@ const ConfiguracoesSlots = () => {
           <h1 className="text-3xl font-bold">Configurações de Pautas</h1>
         </div>
         <p className="text-gray-600">
-          Gerencie a criação e configuração das pautas de horários para audiências
+          Gerencie a análise de capacidade do sistema de agendamento dinâmico
         </p>
       </div>
 

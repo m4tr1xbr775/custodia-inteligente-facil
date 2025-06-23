@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, RefreshCw } from "lucide-react";
+import { Calendar, Clock, RefreshCw, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
@@ -26,12 +26,12 @@ const PautaInitializer = () => {
       endTime: string;
       interval: string;
     }) => {
-      console.log("Gerando pautas com parâmetros:", { startDate, endDate, startTime, endTime, interval });
+      console.log("Gerando relatório de capacidade com parâmetros:", { startDate, endDate, startTime, endTime, interval });
       
       // Buscar todas as unidades prisionais
       const { data: units, error: unitsError } = await supabase
         .from('prison_units_extended')
-        .select('id');
+        .select('id, name, number_of_rooms');
       
       if (unitsError) throw unitsError;
       
@@ -41,71 +41,37 @@ const PautaInitializer = () => {
       const diffTime = Math.abs(end.getTime() - start.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
       
-      // Calcular quantas pautas por dia
+      // Calcular quantos slots por dia
       const startMinutes = parseInt(startTime.split(':')[0]) * 60 + parseInt(startTime.split(':')[1]);
       const endMinutes = parseInt(endTime.split(':')[0]) * 60 + parseInt(endTime.split(':')[1]);
       const totalMinutes = endMinutes - startMinutes;
-      const pautasPerDay = Math.floor(totalMinutes / parseInt(interval));
+      const slotsPerDay = Math.floor(totalMinutes / parseInt(interval));
       
-      // Gerar pautas para cada unidade e cada dia
-      const pautasToInsert = [];
-      
-      for (let day = 0; day < diffDays; day++) {
-        const currentDate = new Date(start);
-        currentDate.setDate(start.getDate() + day);
-        const dateStr = currentDate.toISOString().split('T')[0];
-        
-        for (const unit of units) {
-          for (let i = 0; i < pautasPerDay; i++) {
-            const pautaMinutes = startMinutes + (i * parseInt(interval));
-            const hours = Math.floor(pautaMinutes / 60);
-            const minutes = pautaMinutes % 60;
-            const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
-            
-            pautasToInsert.push({
-              prison_unit_id: unit.id,
-              date: dateStr,
-              time: timeStr,
-              is_available: true
-            });
-          }
-        }
-      }
-      
-      console.log(`Inserindo ${pautasToInsert.length} pautas...`);
-      
-      // Inserir pautas em lotes
-      const batchSize = 1000;
-      for (let i = 0; i < pautasToInsert.length; i += batchSize) {
-        const batch = pautasToInsert.slice(i, i + batchSize);
-        const { error } = await supabase
-          .from('prison_unit_slots')
-          .upsert(batch, {
-            onConflict: 'prison_unit_id,date,time',
-            ignoreDuplicates: true
-          });
-        
-        if (error) throw error;
+      // Calcular capacidade total
+      let totalCapacity = 0;
+      for (const unit of units) {
+        totalCapacity += (unit.number_of_rooms * slotsPerDay * diffDays);
       }
       
       return {
-        totalPautas: pautasToInsert.length,
+        totalCapacity,
         unidades: units.length,
         dias: diffDays,
-        pautasPorDia: pautasPerDay
+        slotsPorDia: slotsPerDay,
+        units: units
       };
     },
     onSuccess: (data) => {
       toast({
-        title: "Sucesso!",
-        description: `${data.totalPautas} pautas criadas para ${data.unidades} unidades durante ${data.dias} dias (${data.pautasPorDia} pautas por dia)`,
+        title: "Análise de Capacidade Concluída!",
+        description: `Capacidade total: ${data.totalCapacity} slots para ${data.unidades} unidades durante ${data.dias} dias (${data.slotsPorDia} slots por dia por unidade)`,
       });
     },
     onError: (error: any) => {
-      console.error("Erro ao gerar pautas:", error);
+      console.error("Erro ao analisar capacidade:", error);
       toast({
         title: "Erro",
-        description: `Erro ao gerar pautas: ${error.message}`,
+        description: `Erro ao analisar capacidade: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -149,8 +115,15 @@ const PautaInitializer = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <RefreshCw className="h-5 w-5" />
-          Gerar Pautas Automaticamente
+          Análise de Capacidade de Agendamento
         </CardTitle>
+        <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-blue-800">
+            <p className="font-medium">Sistema Dinâmico Ativo</p>
+            <p>O sistema agora calcula horários disponíveis em tempo real. Esta ferramenta apenas analisa a capacidade teórica do período selecionado.</p>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -221,12 +194,12 @@ const PautaInitializer = () => {
             {generatePautasMutation.isPending ? (
               <>
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Gerando Pautas...
+                Analisando...
               </>
             ) : (
               <>
                 <Calendar className="h-4 w-4 mr-2" />
-                Gerar Pautas
+                Analisar Capacidade
               </>
             )}
           </Button>

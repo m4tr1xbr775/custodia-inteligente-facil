@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Building, Plus, Search, Phone, MessageCircle, MapPin, Edit, Trash2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,8 +31,6 @@ interface PrisonUnit {
   functional: string;
   whatsapp: string;
   email: string;
-  capacity: number;
-  current_population: number;
   address: string;
   municipalities: string;
   region_id?: string;
@@ -68,8 +65,6 @@ const Unidades = () => {
       return (data || []).map(unit => ({
         ...unit,
         type: unit.type as "CDP" | "Presídio" | "CPP",
-        capacity: unit.capacity || 0,
-        current_population: unit.current_population || 0,
         number_of_rooms: unit.number_of_rooms || 1
       })) as PrisonUnit[];
     },
@@ -175,20 +170,6 @@ const Unidades = () => {
         return <Badge className="bg-purple-100 text-purple-800">CPP</Badge>;
       default:
         return <Badge variant="secondary">{type}</Badge>;
-    }
-  };
-
-  const getOccupancyBadge = (current: number, capacity: number) => {
-    if (capacity === 0) {
-      return <Badge variant="secondary">N/A</Badge>;
-    }
-    const percentage = (current / capacity) * 100;
-    if (percentage >= 90) {
-      return <Badge className="bg-red-100 text-red-800">Superlotação</Badge>;
-    } else if (percentage >= 80) {
-      return <Badge className="bg-yellow-100 text-yellow-800">Atenção</Badge>;
-    } else {
-      return <Badge className="bg-green-100 text-green-800">Normal</Badge>;
     }
   };
 
@@ -372,7 +353,6 @@ const Unidades = () => {
                       <div className="flex items-center space-x-3 mb-2">
                         <h3 className="font-semibold text-lg text-gray-900">{unit.name}</h3>
                         {getTypeBadge(unit.type)}
-                        {getOccupancyBadge(unit.current_population, unit.capacity)}
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -402,16 +382,10 @@ const Unidades = () => {
                         
                         <div>
                           <p className="text-sm text-gray-600">
-                            <span className="font-medium">Capacidade:</span> {unit.capacity} vagas
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">População Atual:</span> {unit.current_population}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">Ocupação:</span> {unit.capacity > 0 ? Math.round((unit.current_population / unit.capacity) * 100) : 0}%
-                          </p>
-                          <p className="text-sm text-gray-600">
                             <span className="font-medium">Salas para Audiências:</span> {unit.number_of_rooms}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">Capacidade por Slot:</span> {unit.number_of_rooms} audiência{unit.number_of_rooms > 1 ? 's' : ''}
                           </p>
                         </div>
                       </div>
