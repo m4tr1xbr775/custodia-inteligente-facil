@@ -26,10 +26,10 @@ const ConfiguracoesSlots = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              Informações das Pautas
+              Informações do Sistema
             </CardTitle>
             <CardDescription>
-              Como funciona o sistema de pautas
+              Como funciona o novo sistema de agendamento
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -37,9 +37,9 @@ const ConfiguracoesSlots = () => {
               <div className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
                 <div>
-                  <h4 className="font-medium">Horário Configurável</h4>
+                  <h4 className="font-medium">Cálculo em Tempo Real</h4>
                   <p className="text-sm text-gray-600">
-                    Defina o horário de início e fim para geração das pautas
+                    Horários são calculados dinamicamente baseado na capacidade das salas
                   </p>
                 </div>
               </div>
@@ -47,9 +47,9 @@ const ConfiguracoesSlots = () => {
               <div className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
                 <div>
-                  <h4 className="font-medium">Intervalos Flexíveis</h4>
+                  <h4 className="font-medium">Múltiplas Salas</h4>
                   <p className="text-sm text-gray-600">
-                    Escolha intervalos de 15 ou 30 minutos entre as pautas
+                    Cada unidade pode ter múltiplas salas para audiências simultâneas
                   </p>
                 </div>
               </div>
@@ -57,9 +57,9 @@ const ConfiguracoesSlots = () => {
               <div className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-orange-500 rounded-full mt-2"></div>
                 <div>
-                  <h4 className="font-medium">Disponibilidade Automática</h4>
+                  <h4 className="font-medium">Intervalos de 15 Minutos</h4>
                   <p className="text-sm text-gray-600">
-                    Pautas são marcadas como indisponíveis quando uma audiência é agendada
+                    Horários disponíveis de 09:00 às 17:45 em intervalos de 15 minutos
                   </p>
                 </div>
               </div>
@@ -67,9 +67,9 @@ const ConfiguracoesSlots = () => {
               <div className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
                 <div>
-                  <h4 className="font-medium">Liberação Automática</h4>
+                  <h4 className="font-medium">Validação Automática</h4>
                   <p className="text-sm text-gray-600">
-                    Pautas são liberadas automaticamente quando audiências são canceladas
+                    Sistema previne duplo agendamento na mesma sala e horário
                   </p>
                 </div>
               </div>
@@ -88,21 +88,21 @@ const ConfiguracoesSlots = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <h3 className="font-semibold text-blue-800">Pautas Configuráveis</h3>
-              <p className="text-2xl font-bold text-blue-600">Flex</p>
-              <p className="text-sm text-blue-600">Por unidade prisional</p>
+              <h3 className="font-semibold text-blue-800">Sistema</h3>
+              <p className="text-2xl font-bold text-blue-600">Dinâmico</p>
+              <p className="text-sm text-blue-600">Cálculo em tempo real</p>
             </div>
             
             <div className="text-center p-4 bg-green-50 rounded-lg">
-              <h3 className="font-semibold text-green-800">Duração das Pautas</h3>
-              <p className="text-2xl font-bold text-green-600">15-30min</p>
-              <p className="text-sm text-green-600">Intervalo configurável</p>
+              <h3 className="font-semibold text-green-800">Intervalos</h3>
+              <p className="text-2xl font-bold text-green-600">15min</p>
+              <p className="text-sm text-green-600">Das 09:00 às 17:45</p>
             </div>
             
             <div className="text-center p-4 bg-orange-50 rounded-lg">
-              <h3 className="font-semibold text-orange-800">Período Recomendado</h3>
-              <p className="text-2xl font-bold text-orange-600">90</p>
-              <p className="text-sm text-orange-600">Dias à frente</p>
+              <h3 className="font-semibold text-orange-800">Capacidade</h3>
+              <p className="text-2xl font-bold text-orange-600">Multi-sala</p>
+              <p className="text-sm text-orange-600">Por unidade prisional</p>
             </div>
           </div>
         </CardContent>

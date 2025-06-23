@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Building, Plus, Search, Phone, MessageCircle, MapPin, Edit, Trash2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ interface PrisonUnit {
   address: string;
   municipalities: string;
   region_id?: string;
+  number_of_rooms: number;
   created_at: string;
   updated_at: string;
 }
@@ -62,10 +64,13 @@ const Unidades = () => {
         throw error;
       }
       
-      // Type assertion to ensure data conforms to PrisonUnit interface
+      // Garantir que todos os campos obrigatórios estejam presentes
       return (data || []).map(unit => ({
         ...unit,
-        type: unit.type as "CDP" | "Presídio" | "CPP"
+        type: unit.type as "CDP" | "Presídio" | "CPP",
+        capacity: unit.capacity || 0,
+        current_population: unit.current_population || 0,
+        number_of_rooms: unit.number_of_rooms || 1
       })) as PrisonUnit[];
     },
   });
@@ -174,6 +179,9 @@ const Unidades = () => {
   };
 
   const getOccupancyBadge = (current: number, capacity: number) => {
+    if (capacity === 0) {
+      return <Badge variant="secondary">N/A</Badge>;
+    }
     const percentage = (current / capacity) * 100;
     if (percentage >= 90) {
       return <Badge className="bg-red-100 text-red-800">Superlotação</Badge>;
@@ -400,10 +408,10 @@ const Unidades = () => {
                             <span className="font-medium">População Atual:</span> {unit.current_population}
                           </p>
                           <p className="text-sm text-gray-600">
-                            <span className="font-medium">Ocupação:</span> {Math.round((unit.current_population / unit.capacity) * 100)}%
+                            <span className="font-medium">Ocupação:</span> {unit.capacity > 0 ? Math.round((unit.current_population / unit.capacity) * 100) : 0}%
                           </p>
                           <p className="text-sm text-gray-600">
-                            <span className="font-medium">Salas para Audiências:</span> {unit.number_of_rooms || 1}
+                            <span className="font-medium">Salas para Audiências:</span> {unit.number_of_rooms}
                           </p>
                         </div>
                       </div>

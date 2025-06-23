@@ -348,54 +348,6 @@ export type Database = {
           },
         ]
       }
-      prison_unit_slots: {
-        Row: {
-          audience_id: string | null
-          created_at: string
-          date: string
-          id: string
-          is_available: boolean | null
-          prison_unit_id: string
-          time: string
-          updated_at: string
-        }
-        Insert: {
-          audience_id?: string | null
-          created_at?: string
-          date: string
-          id?: string
-          is_available?: boolean | null
-          prison_unit_id: string
-          time: string
-          updated_at?: string
-        }
-        Update: {
-          audience_id?: string | null
-          created_at?: string
-          date?: string
-          id?: string
-          is_available?: boolean | null
-          prison_unit_id?: string
-          time?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "prison_unit_slots_audience_id_fkey"
-            columns: ["audience_id"]
-            isOneToOne: false
-            referencedRelation: "audiences"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prison_unit_slots_prison_unit_id_fkey"
-            columns: ["prison_unit_id"]
-            isOneToOne: false
-            referencedRelation: "prison_units_extended"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       prison_units_extended: {
         Row: {
           address: string
