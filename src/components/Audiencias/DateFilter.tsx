@@ -1,94 +1,118 @@
 
-import React from 'react';
-import { CalendarIcon, Filter } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Calendar, CalendarDays } from "lucide-react";
+import { formatLocalDate, parseLocalDate, getTodayLocalString } from "@/lib/dateUtils";
 
 interface DateFilterProps {
   dateFilter: string;
-  onDateFilterChange: (value: string) => void;
+  onDateFilterChange: (filter: string) => void;
   customStartDate?: Date;
   customEndDate?: Date;
   onCustomStartDateChange: (date: Date | undefined) => void;
   onCustomEndDateChange: (date: Date | undefined) => void;
 }
 
-const DateFilter: React.FC<DateFilterProps> = ({
+const DateFilter = ({
   dateFilter,
   onDateFilterChange,
   customStartDate,
   customEndDate,
   onCustomStartDateChange,
   onCustomEndDateChange,
-}) => {
+}: DateFilterProps) => {
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    console.log("Data inicial selecionada:", value);
+    
+    if (value) {
+      const date = parseLocalDate(value);
+      console.log("Data inicial parseada:", date);
+      onCustomStartDateChange(date);
+    } else {
+      onCustomStartDateChange(undefined);
+    }
+  };
+
+  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    console.log("Data final selecionada:", value);
+    
+    if (value) {
+      const date = parseLocalDate(value);
+      console.log("Data final parseada:", date);
+      onCustomEndDateChange(date);
+    } else {
+      onCustomEndDateChange(undefined);
+    }
+  };
+
   return (
-    <div className="flex flex-col sm:flex-row gap-2">
-      <Select value={dateFilter} onValueChange={onDateFilterChange}>
-        <SelectTrigger className="w-full sm:w-[200px]">
-          <Filter className="h-4 w-4 mr-2" />
-          <SelectValue placeholder="Filtro de Data" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="futuras">A partir de hoje</SelectItem>
-          <SelectItem value="ultimos-7">Últimos 7 dias</SelectItem>
-          <SelectItem value="ultimos-30">Últimos 30 dias</SelectItem>
-          <SelectItem value="personalizado">Período personalizado</SelectItem>
-        </SelectContent>
-      </Select>
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant={dateFilter === "futuras" ? "default" : "outline"}
+          onClick={() => onDateFilterChange("futuras")}
+          className="flex items-center gap-2"
+        >
+          <Calendar className="h-4 w-4" />
+          Futuras
+        </Button>
+        <Button
+          size="sm"
+          variant={dateFilter === "ultimos-7" ? "default" : "outline"}
+          onClick={() => onDateFilterChange("ultimos-7")}
+          className="flex items-center gap-2"
+        >
+          <CalendarDays className="h-4 w-4" />
+          Últimos 7 dias
+        </Button>
+        <Button
+          size="sm"
+          variant={dateFilter === "ultimos-30" ? "default" : "outline"}
+          onClick={() => onDateFilterChange("ultimos-30")}
+          className="flex items-center gap-2"
+        >
+          <CalendarDays className="h-4 w-4" />
+          Últimos 30 dias
+        </Button>
+        <Button
+          size="sm"
+          variant={dateFilter === "personalizado" ? "default" : "outline"}
+          onClick={() => onDateFilterChange("personalizado")}
+          className="flex items-center gap-2"
+        >
+          <Calendar className="h-4 w-4" />
+          Período personalizado
+        </Button>
+      </div>
 
-      {dateFilter === 'personalizado' && (
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full sm:w-[140px] justify-start text-left font-normal",
-                  !customStartDate && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {customStartDate ? format(customStartDate, "dd/MM/yyyy") : "Data início"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={customStartDate}
-                onSelect={onCustomStartDateChange}
-                initialFocus
-                className="p-3 pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full sm:w-[140px] justify-start text-left font-normal",
-                  !customEndDate && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {customEndDate ? format(customEndDate, "dd/MM/yyyy") : "Data fim"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={customEndDate}
-                onSelect={onCustomEndDateChange}
-                initialFocus
-                className="p-3 pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
+      {dateFilter === "personalizado" && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border rounded-md bg-gray-50">
+          <div>
+            <Label htmlFor="customStartDate">Data Inicial</Label>
+            <Input
+              id="customStartDate"
+              type="date"
+              value={customStartDate ? formatLocalDate(customStartDate) : ""}
+              onChange={handleStartDateChange}
+              max={getTodayLocalString()}
+            />
+          </div>
+          <div>
+            <Label htmlFor="customEndDate">Data Final</Label>
+            <Input
+              id="customEndDate"
+              type="date"
+              value={customEndDate ? formatLocalDate(customEndDate) : ""}
+              onChange={handleEndDateChange}
+              min={customStartDate ? formatLocalDate(customStartDate) : undefined}
+              max={getTodayLocalString()}
+            />
+          </div>
         </div>
       )}
     </div>

@@ -9,6 +9,7 @@ import { Calendar, Clock, RefreshCw, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
+import { parseLocalDate, formatLocalDate, getTodayLocalString, isValidDateString } from "@/lib/dateUtils";
 
 const PautaInitializer = () => {
   const [startDate, setStartDate] = useState("");
@@ -27,6 +28,13 @@ const PautaInitializer = () => {
       interval: string;
     }) => {
       console.log("Gerando relatório de capacidade com parâmetros:", { startDate, endDate, startTime, endTime, interval });
+      console.log("Data início recebida:", startDate);
+      console.log("Data fim recebida:", endDate);
+      
+      // Validar formato das datas
+      if (!isValidDateString(startDate) || !isValidDateString(endDate)) {
+        throw new Error("Formato de data inválido");
+      }
       
       // Buscar todas as unidades prisionais
       const { data: units, error: unitsError } = await supabase
@@ -35,11 +43,17 @@ const PautaInitializer = () => {
       
       if (unitsError) throw unitsError;
       
-      // Calcular número de dias
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+      // Calcular número de dias usando as funções locais
+      const start = parseLocalDate(startDate);
+      const end = parseLocalDate(endDate);
+      
+      console.log("Data início parseada:", start);
+      console.log("Data fim parseada:", end);
+      
       const diffTime = Math.abs(end.getTime() - start.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      
+      console.log("Diferença em dias calculada:", diffDays);
       
       // Calcular quantos slots por dia
       const startMinutes = parseInt(startTime.split(':')[0]) * 60 + parseInt(startTime.split(':')[1]);
@@ -52,6 +66,8 @@ const PautaInitializer = () => {
       for (const unit of units) {
         totalCapacity += (unit.number_of_rooms * slotsPerDay * diffDays);
       }
+      
+      console.log("Capacidade total calculada:", totalCapacity);
       
       return {
         totalCapacity,
@@ -80,6 +96,8 @@ const PautaInitializer = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log("Formulário submetido com datas:", { startDate, endDate });
+    
     if (!startDate || !endDate) {
       toast({
         title: "Erro",
@@ -89,7 +107,21 @@ const PautaInitializer = () => {
       return;
     }
     
-    if (new Date(startDate) > new Date(endDate)) {
+    // Validar formato das datas
+    if (!isValidDateString(startDate) || !isValidDateString(endDate)) {
+      toast({
+        title: "Erro",
+        description: "Formato de data inválido",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Comparar datas usando as funções locais
+    const startDateObj = parseLocalDate(startDate);
+    const endDateObj = parseLocalDate(endDate);
+    
+    if (startDateObj > endDateObj) {
       toast({
         title: "Erro",
         description: "A data de início deve ser anterior à data de fim",
@@ -108,6 +140,18 @@ const PautaInitializer = () => {
     }
 
     generatePautasMutation.mutate({ startDate, endDate, startTime, endTime, interval });
+  };
+
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    console.log("Data de início selecionada:", value);
+    setStartDate(value);
+  };
+
+  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    console.log("Data de fim selecionada:", value);
+    setEndDate(value);
   };
 
   return (
@@ -134,7 +178,8 @@ const PautaInitializer = () => {
                 id="startDate"
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={handleStartDateChange}
+                min={getTodayLocalString()}
                 required
               />
             </div>
@@ -144,7 +189,8 @@ const PautaInitializer = () => {
                 id="endDate"
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={handleEndDateChange}
+                min={startDate || getTodayLocalString()}
                 required
               />
             </div>

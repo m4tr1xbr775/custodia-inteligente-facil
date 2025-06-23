@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,11 +12,14 @@ import AudienciaBasicInfo from "./AudienciaBasicInfo";
 import AudienciaDateTime from "./AudienciaDateTime";
 import ServentiaBasedAssignments from "./ServentiaBasedAssignments";
 import PrisonUnitSlotSelector from "./PrisonUnitSlotSelector";
+import { toLocalDateString, isValidDateString } from "@/lib/dateUtils";
 
 const audienciaSchema = z.object({
   defendant_name: z.string().min(1, "Nome do réu é obrigatório"),
   process_number: z.string().min(1, "Número do processo é obrigatório"),
-  scheduled_date: z.string().min(1, "Data é obrigatória"),
+  scheduled_date: z.string().min(1, "Data é obrigatória").refine((date) => {
+    return isValidDateString(date);
+  }, "Data deve estar no formato válido"),
   scheduled_time: z.string().min(1, "Horário é obrigatório"),
   schedule_assignment_id: z.string().min(1, "Plantão é obrigatório"),
   prison_unit_id: z.string().min(1, "Unidade prisional é obrigatória"),
@@ -46,7 +50,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
     defaultValues: {
       defendant_name: initialData?.defendant_name || "",
       process_number: initialData?.process_number || "",
-      scheduled_date: initialData?.scheduled_date || "",
+      scheduled_date: initialData?.scheduled_date ? toLocalDateString(initialData.scheduled_date) : "",
       scheduled_time: initialData?.scheduled_time || "",
       schedule_assignment_id: initialData?.schedule_assignment_id || "",
       prison_unit_id: initialData?.prison_unit_id || "",
@@ -65,10 +69,14 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
   React.useEffect(() => {
     if (initialData) {
       console.log("Populando formulário com dados:", initialData);
+      console.log("Data original do banco:", initialData.scheduled_date);
+      const formattedDate = toLocalDateString(initialData.scheduled_date);
+      console.log("Data formatada para o form:", formattedDate);
+      
       form.reset({
         defendant_name: initialData.defendant_name || "",
         process_number: initialData.process_number || "",
-        scheduled_date: initialData.scheduled_date || "",
+        scheduled_date: formattedDate,
         scheduled_time: initialData.scheduled_time || "",
         schedule_assignment_id: initialData.schedule_assignment_id || "",
         prison_unit_id: initialData.prison_unit_id || "",
@@ -110,6 +118,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
     mutationFn: async (data: AudienciaFormData) => {
       console.log("=== INÍCIO DO PROCESSO DE SALVAMENTO ===");
       console.log("Dados recebidos do formulário:", data);
+      console.log("Data que será salva:", data.scheduled_date);
       console.log("Modo edição:", isEditing);
       console.log("ID da audiência (se editando):", initialData?.id);
       
@@ -128,6 +137,11 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
       }
       if (!data.prison_unit_id) {
         throw new Error("Unidade prisional é obrigatória");
+      }
+
+      // Validar formato da data
+      if (!isValidDateString(data.scheduled_date)) {
+        throw new Error("Formato de data inválido");
       }
 
       // Nova validação: verificar se há salas disponíveis (apenas para criação)
@@ -176,7 +190,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
       const audienceData = {
         defendant_name: data.defendant_name.trim(),
         process_number: data.process_number.trim(),
-        scheduled_date: data.scheduled_date,
+        scheduled_date: data.scheduled_date, // Usar a data diretamente sem conversão
         scheduled_time: data.scheduled_time,
         serventia_id: data.serventia_id || null,
         prison_unit_id: data.prison_unit_id,
@@ -189,6 +203,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
       };
       
       console.log("Dados preparados para salvamento:", audienceData);
+      console.log("Data final que será enviada ao banco:", audienceData.scheduled_date);
       
       let result;
       
@@ -229,6 +244,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
         }
         
         console.log("Inserção bem-sucedida:", insertResult);
+        console.log("Data salva no banco:", insertResult.scheduled_date);
         result = insertResult;
       }
       
@@ -264,6 +280,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
   const onSubmit = (data: AudienciaFormData) => {
     console.log("=== FORMULÁRIO SUBMETIDO ===");
     console.log("Dados do formulário:", data);
+    console.log("Data que será processada:", data.scheduled_date);
     console.log("Validação passou, iniciando mutation...");
     mutation.mutate(data);
   };
