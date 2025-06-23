@@ -41,11 +41,9 @@ const unidadeSchema = z.object({
   functional: z.string().min(1, 'Telefone funcional é obrigatório'),
   whatsapp: z.string().min(1, 'WhatsApp é obrigatório'),
   email: z.string().email('E-mail inválido'),
-  capacity: z.number().min(1, 'Capacidade deve ser maior que 0'),
-  current_population: z.number().min(0, 'População atual não pode ser negativa'),
   number_of_rooms: z.number().min(1, 'Número de salas deve ser maior que 0'),
-  address: z.string().min(1, 'Endereço é obrigatório'),
-  municipalities: z.string().min(1, 'Municípios atendidos são obrigatórios'),
+  address: z.string().optional(),
+  municipalities: z.string().optional(),
 });
 
 type UnidadeFormData = z.infer<typeof unidadeSchema>;
@@ -72,8 +70,6 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
       functional: '',
       whatsapp: '',
       email: '',
-      capacity: 0,
-      current_population: 0,
       number_of_rooms: 1,
       address: '',
       municipalities: '',
@@ -94,8 +90,6 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
         functional: initialData.functional || '',
         whatsapp: initialData.whatsapp || '',
         email: initialData.email || '',
-        capacity: initialData.capacity || 0,
-        current_population: initialData.current_population || 0,
         number_of_rooms: initialData.number_of_rooms || 1,
         address: initialData.address || '',
         municipalities: initialData.municipalities || '',
@@ -112,8 +106,6 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
         functional: '',
         whatsapp: '',
         email: '',
-        capacity: 0,
-        current_population: 0,
         number_of_rooms: 1,
         address: '',
         municipalities: '',
@@ -295,44 +287,6 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
 
               <FormField
                 control={form.control}
-                name="capacity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Capacidade</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="1000"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="current_population"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>População Atual</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="850"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="number_of_rooms"
                 render={({ field }) => (
                   <FormItem>
@@ -357,7 +311,7 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
               name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Endereço</FormLabel>
+                  <FormLabel>Endereço (Opcional)</FormLabel>
                   <FormControl>
                     <Textarea 
                       placeholder="Endereço completo da unidade"
@@ -375,7 +329,7 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
               name="municipalities"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Municípios Atendidos</FormLabel>
+                  <FormLabel>Municípios Atendidos (Opcional)</FormLabel>
                   <FormControl>
                     <Textarea 
                       placeholder="Liste os municípios atendidos, separados por vírgula"

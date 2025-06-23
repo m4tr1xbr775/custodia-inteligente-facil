@@ -65,7 +65,10 @@ const Unidades = () => {
       return (data || []).map(unit => ({
         ...unit,
         type: unit.type as "CDP" | "Presídio" | "CPP",
-        number_of_rooms: unit.number_of_rooms || 1
+        number_of_rooms: unit.number_of_rooms || 1,
+        // Garantir que campos opcionais tenham valores padrão se necessário
+        address: unit.address || '',
+        municipalities: unit.municipalities || ''
       })) as PrisonUnit[];
     },
   });
@@ -73,13 +76,22 @@ const Unidades = () => {
   // Create unit mutation
   const createUnitMutation = useMutation({
     mutationFn: async (data: any) => {
+      // Limpar dados vazios opcionais
+      const cleanData = { ...data };
+      if (!cleanData.address || cleanData.address.trim() === '') {
+        cleanData.address = '';
+      }
+      if (!cleanData.municipalities || cleanData.municipalities.trim() === '') {
+        cleanData.municipalities = '';
+      }
+      
       const { error } = await supabase
         .from('prison_units_extended')
         .insert([{
-          ...data,
-          municipalities: Array.isArray(data.municipalities) 
-            ? data.municipalities.join(', ') 
-            : data.municipalities
+          ...cleanData,
+          municipalities: Array.isArray(cleanData.municipalities) 
+            ? cleanData.municipalities.join(', ') 
+            : cleanData.municipalities || ''
         }]);
       
       if (error) throw error;
@@ -104,13 +116,22 @@ const Unidades = () => {
   // Update unit mutation
   const updateUnitMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      // Limpar dados vazios opcionais
+      const cleanData = { ...data };
+      if (!cleanData.address || cleanData.address.trim() === '') {
+        cleanData.address = '';
+      }
+      if (!cleanData.municipalities || cleanData.municipalities.trim() === '') {
+        cleanData.municipalities = '';
+      }
+      
       const { error } = await supabase
         .from('prison_units_extended')
         .update({
-          ...data,
-          municipalities: Array.isArray(data.municipalities) 
-            ? data.municipalities.join(', ') 
-            : data.municipalities
+          ...cleanData,
+          municipalities: Array.isArray(cleanData.municipalities) 
+            ? cleanData.municipalities.join(', ') 
+            : cleanData.municipalities || ''
         })
         .eq('id', id);
       
@@ -222,7 +243,7 @@ const Unidades = () => {
   const filteredUnits = units.filter(unit => {
     const searchLower = searchTerm.toLowerCase();
     const municipalitiesArray = typeof unit.municipalities === 'string' 
-      ? unit.municipalities.split(',').map(m => m.trim()) 
+      ? unit.municipalities.split(',').map(m => m.trim()).filter(m => m !== '') 
       : [];
     
     return unit.name.toLowerCase().includes(searchLower) ||
@@ -341,7 +362,7 @@ const Unidades = () => {
       <div className="space-y-4">
         {filteredUnits.map((unit) => {
           const municipalitiesArray = typeof unit.municipalities === 'string' 
-            ? unit.municipalities.split(',').map(m => m.trim()) 
+            ? unit.municipalities.split(',').map(m => m.trim()).filter(m => m !== '') 
             : [];
 
           return (
@@ -390,23 +411,27 @@ const Unidades = () => {
                         </div>
                       </div>
                       
-                      <div className="mt-3">
-                        <p className="text-sm text-gray-600 mb-1">
-                          <span className="font-medium">Municípios Atendidos:</span>
-                        </p>
-                        <div className="flex flex-wrap gap-1">
-                          {municipalitiesArray.map((municipality: string, index: number) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {municipality}
-                            </Badge>
-                          ))}
+                      {municipalitiesArray.length > 0 && (
+                        <div className="mt-3">
+                          <p className="text-sm text-gray-600 mb-1">
+                            <span className="font-medium">Municípios Atendidos:</span>
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {municipalitiesArray.map((municipality: string, index: number) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {municipality}
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
                       
-                      <div className="mt-3 flex items-start space-x-2">
-                        <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <p className="text-sm text-gray-600">{unit.address}</p>
-                      </div>
+                      {unit.address && (
+                        <div className="mt-3 flex items-start space-x-2">
+                          <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                          <p className="text-sm text-gray-600">{unit.address}</p>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="flex flex-col space-y-2 lg:ml-6">
