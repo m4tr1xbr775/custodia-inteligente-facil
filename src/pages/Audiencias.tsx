@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Calendar, Plus, Search, Filter, ExternalLink, MapPin, Trash2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ import DateFilter from "@/components/Audiencias/DateFilter";
 import { ProjudiIcon } from "@/components/ui/projudi-icon";
 import { Database } from "@/integrations/supabase/types";
 import { addDays, subDays, startOfDay, endOfDay, isAfter, isBefore, isWithinInterval } from "date-fns";
+import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 
 type AudienceStatus = Database["public"]["Enums"]["audience_status"];
 
@@ -193,7 +195,8 @@ const Audiencias = () => {
       let matchesDate = true;
       
       if (start || end) {
-        const audienceDate = new Date(audience.scheduled_date);
+        // Usar parseLocalDate para evitar problemas de timezone
+        const audienceDate = parseLocalDate(audience.scheduled_date);
         
         if (start && end) {
           matchesDate = isWithinInterval(audienceDate, { start, end });
@@ -240,6 +243,15 @@ const Audiencias = () => {
 
   const getRegionIconColor = (serventiaType: string) => {
     return serventiaType === 'macrorregiao' ? 'text-blue-600' : 'text-green-600';
+  };
+
+  // Função para formatar data de forma segura
+  const formatAudienceDate = (dateString: string) => {
+    console.log("Formatando data da audiência:", dateString);
+    const date = parseLocalDate(dateString);
+    const formattedDate = date.toLocaleDateString('pt-BR');
+    console.log("Data formatada:", formattedDate);
+    return formattedDate;
   };
 
   const handleNewAudiencia = () => {
@@ -429,7 +441,7 @@ const Audiencias = () => {
                           <div className="flex items-center space-x-2">
                             <Calendar className="h-4 w-4 text-gray-500" />
                             <span className="font-medium">
-                              {new Date(audience.scheduled_date).toLocaleDateString('pt-BR')} - {audience.scheduled_time}
+                              {formatAudienceDate(audience.scheduled_date)} - {audience.scheduled_time}
                             </span>
                           </div>
                           {getStatusBadge(audience.status)}
