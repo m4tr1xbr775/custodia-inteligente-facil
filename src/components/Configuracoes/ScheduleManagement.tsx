@@ -31,6 +31,7 @@ import { Calendar, Plus, Edit, Trash2, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 
 interface Schedule {
   id: string;
@@ -1068,13 +1069,13 @@ const ScheduleManagement = () => {
                       <div className="flex items-center space-x-1 text-sm">
                         <Calendar className="h-3 w-3" />
                         <span>
-                          {new Date(schedule.start_date).toLocaleDateString()} - {new Date(schedule.end_date).toLocaleDateString()}
+                          {formatLocalDate(parseLocalDate(schedule.start_date))} - {formatLocalDate(parseLocalDate(schedule.end_date))}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(schedule.status)}</TableCell>
                     <TableCell>
-                      {new Date(schedule.created_at).toLocaleDateString()}
+                      {formatLocalDate(parseLocalDate(schedule.created_at.split('T')[0]))}
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
