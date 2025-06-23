@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,11 +39,11 @@ const EscalaAutoUpdater = () => {
         .select('*')
         .eq('status', 'ativa');
       
-      // Filtrar por tipo se não for "todas"
+      // Filtrar por tipo se não for "todas" - usando 'title' ao invés de 'name'
       if (updateType === 'macrorregiao') {
-        query = query.like('name', '%Macrorregião%');
+        query = query.like('title', '%Macrorregião%');
       } else if (updateType === 'central') {
-        query = query.like('name', '%Central%');
+        query = query.like('title', '%Central%');
       }
       
       const { data: activeSchedules, error: schedulesError } = await query;
