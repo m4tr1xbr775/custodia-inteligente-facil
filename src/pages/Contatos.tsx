@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Users, Plus, Search, Phone, MessageCircle, Mail, Edit, Trash2, UserCheck, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSearchParams } from "react-router-dom";
 import ContatoModal from "@/components/Contatos/ContatoModal";
 
 const Contatos = () => {
@@ -35,10 +37,28 @@ const Contatos = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingContactId, setEditingContactId] = useState<string | undefined>();
   const [deletingContactId, setDeletingContactId] = useState<string | null>(null);
+  const [highlightedContactId, setHighlightedContactId] = useState<string | null>(null);
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { userProfile } = useAuth();
+
+  // Verificar se há um usuário para destacar baseado nos parâmetros da URL
+  useEffect(() => {
+    const highlightParam = searchParams.get('highlight');
+    if (highlightParam) {
+      setHighlightedContactId(highlightParam);
+      // Remover o parâmetro da URL após 5 segundos
+      setTimeout(() => {
+        setHighlightedContactId(null);
+        setSearchParams(params => {
+          params.delete('highlight');
+          return params;
+        });
+      }, 5000);
+    }
+  }, [searchParams, setSearchParams]);
 
   // Fetch contacts from database
   const { data: contacts = [], isLoading } = useQuery({
@@ -97,8 +117,6 @@ const Contatos = () => {
         return <Badge className="bg-orange-100 text-orange-800">Assessor de Juiz</Badge>;
       case "analista":
         return <Badge className="bg-gray-100 text-gray-800">Analista</Badge>;
-      case "gestor":
-        return <Badge className="bg-yellow-100 text-yellow-800">Gestor</Badge>;
       case "administrador":
         return <Badge className="bg-red-100 text-red-800">Administrador</Badge>;
       default:
@@ -241,7 +259,6 @@ const Contatos = () => {
                 <SelectItem value="Defensor Público">Defensor Público</SelectItem>
                 <SelectItem value="Assessor de Juiz">Assessor de Juiz</SelectItem>
                 <SelectItem value="Analista">Analista</SelectItem>
-                <SelectItem value="Gestor">Gestor</SelectItem>
                 <SelectItem value="Administrador">Administrador</SelectItem>
               </SelectContent>
             </Select>
@@ -262,7 +279,14 @@ const Contatos = () => {
       {/* Lista de Contatos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filteredContacts.map((contact) => (
-          <Card key={contact.id} className="hover:shadow-md transition-shadow">
+          <Card 
+            key={contact.id} 
+            className={`hover:shadow-md transition-shadow ${
+              highlightedContactId === contact.id 
+                ? 'ring-2 ring-blue-500 bg-blue-50' 
+                : ''
+            }`}
+          >
             <CardContent className="p-6">
               <div className="space-y-4">
                 <div className="flex items-start justify-between">
@@ -271,6 +295,9 @@ const Contatos = () => {
                     <div className="flex items-center space-x-2 mt-2">
                       {getRoleBadge(contact.profile)}
                       {getStatusBadge(contact.active)}
+                      {highlightedContactId === contact.id && (
+                        <Badge className="bg-blue-100 text-blue-800 animate-pulse">Novo</Badge>
+                      )}
                     </div>
                   </div>
                   <div className="flex space-x-2">

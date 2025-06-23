@@ -12,7 +12,7 @@ import Unidades from "./pages/Unidades";
 import UnidadesPrisionais from "./pages/UnidadesPrisionais";
 import Contatos from "./pages/Contatos";
 import Configuracoes from "./pages/Configuracoes";
-import ConfiguracoesSlots from "./pages/ConfiguracoesSlots";
+import Historico from "./pages/Historico";
 import Auth from "./pages/Auth";
 import AdminSetup from "./pages/AdminSetup";
 import NotFound from "./pages/NotFound";
@@ -73,9 +73,9 @@ const App = () => (
                   <Contatos />
                 </ProtectedRoute>
               } />
-              <Route path="configuracoes-slots" element={
+              <Route path="historico" element={
                 <ProtectedRoute requireAdmin>
-                  <ConfiguracoesSlots />
+                  <Historico />
                 </ProtectedRoute>
               } />
               <Route path="configuracoes" element={

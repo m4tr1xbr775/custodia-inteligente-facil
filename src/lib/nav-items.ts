@@ -6,8 +6,8 @@ import {
   Phone, 
   Settings, 
   BarChart3,
-  Clock,
-  UserPlus
+  UserPlus,
+  History
 } from "lucide-react";
 
 export const navItems = [
@@ -42,9 +42,9 @@ export const navItems = [
     icon: UserPlus,
   },
   {
-    title: "Pautas",
-    href: "/configuracoes-slots",
-    icon: Clock,
+    title: "Histórico",
+    href: "/historico",
+    icon: History,
   },
   {
     title: "Configurações",

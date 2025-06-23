@@ -5,6 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RefreshCw, Calendar, Copy } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -13,12 +20,13 @@ import { formatLocalDate, parseLocalDate, getTodayLocalString } from "@/lib/date
 const EscalaAutoUpdater = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [updateType, setUpdateType] = useState("todas");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const updateEscalasMutation = useMutation({
-    mutationFn: async ({ startDate, endDate }: { startDate: string; endDate: string }) => {
-      console.log("Atualizando escalas com novos períodos:", { startDate, endDate });
+    mutationFn: async ({ startDate, endDate, updateType }: { startDate: string; endDate: string; updateType: string }) => {
+      console.log("Atualizando escalas com novos períodos:", { startDate, endDate, updateType });
       
       // Validar e converter datas usando funções seguras
       const startDateFormatted = formatLocalDate(parseLocalDate(startDate));
@@ -26,16 +34,27 @@ const EscalaAutoUpdater = () => {
       
       console.log("Datas formatadas para update:", { startDateFormatted, endDateFormatted });
       
-      // Buscar todas as escalas ativas
-      const { data: activeSchedules, error: schedulesError } = await supabase
+      // Construir query baseada no tipo de atualização
+      let query = supabase
         .from('schedules')
         .select('*')
         .eq('status', 'ativa');
       
+      // Filtrar por tipo se não for "todas"
+      if (updateType === 'macrorregiao') {
+        query = query.like('name', '%Macrorregião%');
+      } else if (updateType === 'central') {
+        query = query.like('name', '%Central%');
+      }
+      
+      const { data: activeSchedules, error: schedulesError } = await query;
+      
       if (schedulesError) throw schedulesError;
       
       if (!activeSchedules || activeSchedules.length === 0) {
-        throw new Error('Nenhuma escala ativa encontrada para atualizar');
+        const typeLabel = updateType === 'macrorregiao' ? 'de Macrorregiões' : 
+                         updateType === 'central' ? 'de Central de Custódia' : '';
+        throw new Error(`Nenhuma escala ativa ${typeLabel} encontrada para atualizar`);
       }
       
       // Atualizar cada escala com as novas datas
@@ -57,14 +76,17 @@ const EscalaAutoUpdater = () => {
       
       return {
         totalUpdated: updatedSchedules.length,
-        schedules: updatedSchedules
+        schedules: updatedSchedules,
+        updateType
       };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      const typeLabel = data.updateType === 'macrorregiao' ? ' de Macrorregiões' : 
+                       data.updateType === 'central' ? ' de Central de Custódia' : '';
       toast({
         title: "Sucesso!",
-        description: `${data.totalUpdated} escalas foram atualizadas com os novos períodos`,
+        description: `${data.totalUpdated} escalas${typeLabel} foram atualizadas com os novos períodos`,
       });
     },
     onError: (error: any) => {
@@ -102,7 +124,7 @@ const EscalaAutoUpdater = () => {
       return;
     }
 
-    updateEscalasMutation.mutate({ startDate, endDate });
+    updateEscalasMutation.mutate({ startDate, endDate, updateType });
   };
 
   return (
@@ -116,7 +138,21 @@ const EscalaAutoUpdater = () => {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="text-sm text-gray-600 mb-4">
-            <p>Esta função irá atualizar automaticamente todas as escalas ativas com os novos períodos definidos.</p>
+            <p>Esta função irá atualizar automaticamente as escalas ativas com os novos períodos definidos.</p>
+          </div>
+          
+          <div>
+            <Label htmlFor="updateType">Tipo de Escalas para Atualizar</Label>
+            <Select value={updateType} onValueChange={setUpdateType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo de escalas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas as Escalas</SelectItem>
+                <SelectItem value="macrorregiao">Apenas Macrorregiões</SelectItem>
+                <SelectItem value="central">Apenas Central de Custódia</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="grid grid-cols-2 gap-4">
@@ -163,7 +199,7 @@ const EscalaAutoUpdater = () => {
             ) : (
               <>
                 <Calendar className="h-4 w-4 mr-2" />
-                Atualizar Todas as Escalas
+                Atualizar Escalas Selecionadas
               </>
             )}
           </Button>

@@ -16,7 +16,7 @@ const Sidebar = () => {
       '/unidades': 'unidades',
       '/unidades-prisionais': 'unidades-prisionais',
       '/contatos': 'contatos',
-      '/configuracoes-slots': 'configuracoes-slots',
+      '/historico': 'historico',
       '/configuracoes': 'configuracoes'
     };
     return resourceMap[href] || href.substring(1);
@@ -26,6 +26,11 @@ const Sidebar = () => {
     if (!userProfile) return false;
     
     const resource = getResourceFromHref(href);
+    
+    // Histórico é exclusivo para administradores
+    if (resource === 'historico') {
+      return userProfile.profile === 'Administrador';
+    }
     
     // Verificar permissões usando o sistema de permissões
     return hasPermission(resource, 'read');
