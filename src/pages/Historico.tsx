@@ -23,7 +23,8 @@ interface LogEntry {
   record_id: string;
   user_id: string;
   user_name: string;
-  changes: any;
+  old_values: any;
+  new_values: any;
   timestamp: string;
   description: string;
 }
@@ -38,51 +39,21 @@ const Historico = () => {
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ['system-logs'],
     queryFn: async () => {
-      // Como não temos uma tabela de logs ainda, vamos simular alguns dados
-      // Em uma implementação real, você criaria uma tabela de logs no banco
-      const mockLogs: LogEntry[] = [
-        {
-          id: '1',
-          action: 'CREATE',
-          table_name: 'contacts',
-          record_id: 'user123',
-          user_id: 'admin1',
-          user_name: 'Administrator',
-          changes: { name: 'João Silva', profile: 'Juiz' },
-          timestamp: new Date().toISOString(),
-          description: 'Criou novo usuário: João Silva'
-        },
-        {
-          id: '2',
-          action: 'UPDATE',
-          table_name: 'schedules',
-          record_id: 'schedule456',
-          user_id: 'admin1',
-          user_name: 'Administrator',
-          changes: { status: 'ativa', start_date: '2025-06-23' },
-          timestamp: new Date(Date.now() - 86400000).toISOString(),
-          description: 'Atualizou escala para status ativo'
-        },
-        {
-          id: '3',
-          action: 'DELETE',
-          table_name: 'audiences',
-          record_id: 'aud789',
-          user_id: 'admin1',
-          user_name: 'Administrator',
-          changes: {},
-          timestamp: new Date(Date.now() - 172800000).toISOString(),
-          description: 'Removeu audiência agendada'
-        }
-      ];
-      return mockLogs;
+      const { data, error } = await supabase
+        .from('system_logs')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(100);
+      
+      if (error) throw error;
+      return data || [];
     },
     enabled: userProfile?.profile === 'Administrador',
   });
 
   const getActionBadge = (action: string) => {
     switch (action.toLowerCase()) {
-      case "create":
+      case "insert":
         return <Badge className="bg-green-100 text-green-800">Criação</Badge>;
       case "update":
         return <Badge className="bg-blue-100 text-blue-800">Atualização</Badge>;
@@ -100,16 +71,41 @@ const Historico = () => {
       'audiences': 'Audiências',
       'magistrates': 'Magistrados',
       'prosecutors': 'Promotores',
-      'defenders': 'Defensores'
+      'defenders': 'Defensores',
+      'prison_units_extended': 'Unidades Prisionais',
+      'serventias': 'Serventias'
     };
     
     return <Badge variant="outline">{tableLabels[tableName] || tableName}</Badge>;
   };
 
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
+  };
+
+  const getChangesDescription = (log: LogEntry) => {
+    if (log.action === 'INSERT') {
+      return log.description || `Criou novo registro na tabela ${log.table_name}`;
+    } else if (log.action === 'UPDATE') {
+      return log.description || `Atualizou registro na tabela ${log.table_name}`;
+    } else if (log.action === 'DELETE') {
+      return log.description || `Excluiu registro da tabela ${log.table_name}`;
+    }
+    return log.description || 'Alteração no sistema';
+  };
+
   const filteredLogs = logs.filter(log => {
     const matchesSearch = 
       log.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.user_name?.toLowerCase().includes(searchTerm.toLowerCase());
+      log.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.table_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesAction = actionFilter === "todos" || log.action.toLowerCase() === actionFilter;
     const matchesTable = tableFilter === "todos" || log.table_name === tableFilter;
@@ -158,7 +154,7 @@ const Historico = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Buscar por descrição ou usuário..."
+                  placeholder="Buscar por descrição, usuário ou tabela..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -171,7 +167,7 @@ const Historico = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todas as Ações</SelectItem>
-                <SelectItem value="create">Criação</SelectItem>
+                <SelectItem value="insert">Criação</SelectItem>
                 <SelectItem value="update">Atualização</SelectItem>
                 <SelectItem value="delete">Exclusão</SelectItem>
               </SelectContent>
@@ -206,25 +202,42 @@ const Historico = () => {
                       {getActionBadge(log.action)}
                       {getTableBadge(log.table_name)}
                     </div>
-                    <p className="font-medium text-gray-900">{log.description}</p>
+                    <p className="font-medium text-gray-900">{getChangesDescription(log)}</p>
                   </div>
                   <div className="text-right">
                     <div className="flex items-center space-x-1 text-sm text-gray-500 mb-1">
                       <Calendar className="h-3 w-3" />
-                      <span>{formatLocalDate(parseLocalDate(log.timestamp.split('T')[0]))}</span>
+                      <span>{formatTimestamp(log.timestamp)}</span>
                     </div>
                     <div className="flex items-center space-x-1 text-sm text-gray-500">
                       <User className="h-3 w-3" />
-                      <span>{log.user_name}</span>
+                      <span>{log.user_name || 'Sistema'}</span>
                     </div>
                   </div>
                 </div>
                 
-                {Object.keys(log.changes).length > 0 && (
+                {(log.old_values || log.new_values) && (
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Alterações:</h4>
-                    <div className="text-sm text-gray-600">
-                      <pre className="whitespace-pre-wrap">{JSON.stringify(log.changes, null, 2)}</pre>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Detalhes da Alteração:</h4>
+                    <div className="text-sm text-gray-600 space-y-2">
+                      {log.old_values && log.action === 'UPDATE' && (
+                        <div>
+                          <span className="font-medium">Valores Anteriores:</span>
+                          <pre className="whitespace-pre-wrap mt-1 p-2 bg-red-50 rounded text-xs">
+                            {JSON.stringify(log.old_values, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                      {log.new_values && (
+                        <div>
+                          <span className="font-medium">
+                            {log.action === 'INSERT' ? 'Dados Criados:' : 'Novos Valores:'}
+                          </span>
+                          <pre className="whitespace-pre-wrap mt-1 p-2 bg-green-50 rounded text-xs">
+                            {JSON.stringify(log.new_values, null, 2)}
+                          </pre>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -239,7 +252,12 @@ const Historico = () => {
           <CardContent className="p-12 text-center">
             <History className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum registro encontrado</h3>
-            <p className="text-gray-600">Tente ajustar os filtros ou aguarde por novas atividades no sistema.</p>
+            <p className="text-gray-600">
+              {logs.length === 0 
+                ? "Ainda não há registros de alterações no sistema." 
+                : "Tente ajustar os filtros para encontrar os registros desejados."
+              }
+            </p>
           </CardContent>
         </Card>
       )}
