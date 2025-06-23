@@ -200,6 +200,11 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
         judicial_assistant_id: data.judicial_assistant_id || null,
         virtual_room_url: data.virtual_room_url?.trim() || null,
         observations: data.observations?.trim() || null,
+        // Resetar confirmação da unidade quando editando
+        ...(isEditing && {
+          confirmed_by_unit: false,
+          unit_acknowledgment: 'pendente'
+        })
       };
       
       console.log("Dados preparados para salvamento:", audienceData);
@@ -210,6 +215,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
       if (isEditing && initialData?.id) {
         console.log("=== EXECUTANDO ATUALIZAÇÃO ===");
         console.log("Atualizando audiência com ID:", initialData.id);
+        console.log("Resetando status de confirmação para pendente");
         
         const { data: updateResult, error } = await supabase
           .from("audiences")
@@ -261,7 +267,7 @@ const AudienciaForm = ({ onSuccess, initialData, isEditing = false }: AudienciaF
       }
       toast({
         title: "Sucesso",
-        description: isEditing ? "Audiência atualizada com sucesso!" : "Audiência criada com sucesso!",
+        description: isEditing ? "Audiência atualizada com sucesso! Status resetado para pendente de confirmação." : "Audiência criada com sucesso!",
       });
       onSuccess();
     },
