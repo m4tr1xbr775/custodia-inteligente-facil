@@ -28,7 +28,7 @@ export const useEntityCrud = (config: EntityCrudConfig) => {
       });
       
       const { data: result, error } = await supabase
-        .from(tableName)
+        .from(tableName as any)
         .insert([cleanData])
         .select()
         .single();
@@ -70,7 +70,7 @@ export const useEntityCrud = (config: EntityCrudConfig) => {
       });
       
       const { data: result, error } = await supabase
-        .from(tableName)
+        .from(tableName as any)
         .update(cleanData)
         .eq('id', id)
         .select()
@@ -104,7 +104,7 @@ export const useEntityCrud = (config: EntityCrudConfig) => {
     mutationFn: async (id: string) => {
       console.log(`Deleting ${entityName} with id:`, id);
       const { error } = await supabase
-        .from(tableName)
+        .from(tableName as any)
         .delete()
         .eq('id', id);
       

@@ -14,7 +14,7 @@ export const useUnidadesCrud = () => {
   // Customize mutations para lidar com campos específicos das unidades
   const customCreateMutation = {
     ...createMutation,
-    mutationFn: async (data: any) => {
+    mutate: (data: any, options?: any) => {
       // Limpar dados vazios opcionais
       const cleanData = { ...data };
       if (!cleanData.address || cleanData.address.trim() === '') {
@@ -29,13 +29,13 @@ export const useUnidadesCrud = () => {
         cleanData.municipalities = cleanData.municipalities.join(', ');
       }
 
-      return createMutation.mutationFn(cleanData);
+      return createMutation.mutate(cleanData, options);
     },
   };
 
   const customUpdateMutation = {
     ...updateMutation,
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutate: ({ id, data }: { id: string; data: any }, options?: any) => {
       // Limpar dados vazios opcionais
       const cleanData = { ...data };
       if (!cleanData.address || cleanData.address.trim() === '') {
@@ -50,7 +50,7 @@ export const useUnidadesCrud = () => {
         cleanData.municipalities = cleanData.municipalities.join(', ');
       }
 
-      return updateMutation.mutationFn({ id, data: cleanData });
+      return updateMutation.mutate({ id, data: cleanData }, options);
     },
   };
 
