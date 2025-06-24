@@ -10,7 +10,7 @@ const Sidebar = () => {
 
   const getResourceFromHref = (href: string) => {
     const resourceMap: Record<string, string> = {
-      '/': 'dashboard',
+      '/dashboard': 'dashboard',
       '/audiencias': 'audiencias',
       '/plantoes': 'plantoes',
       '/unidades': 'unidades',
@@ -26,40 +26,66 @@ const Sidebar = () => {
     if (!userProfile) return false;
     
     const resource = getResourceFromHref(href);
-    
-    // Histórico é exclusivo para administradores
-    if (resource === 'historico') {
-      return userProfile.profile === 'Administrador';
-    }
-    
-    // Verificar permissões usando o sistema de permissões
     return hasPermission(resource, 'read');
   };
 
   const filteredNavItems = navItems.filter(item => canAccessPage(item.href));
 
   return (
-    <div className="pb-12 w-64">
-      <div className="space-y-4 py-4">
-        <div className="px-3 py-2">
-          <div className="space-y-1">
+    <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
+      <div className="flex-1 flex flex-col min-h-0 bg-white border-r border-gray-200">
+        <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
+          <div className="flex items-center flex-shrink-0 px-4">
+            <h1 className="text-xl font-bold text-gray-900">SisJud</h1>
+          </div>
+          <nav className="mt-5 flex-1 px-2 space-y-1">
             {filteredNavItems.map((item, index) => (
               <Link
                 key={index}
                 to={item.href}
                 className={cn(
-                  "flex items-center rounded-lg px-3 py-2 text-gray-900 transition-all hover:bg-gray-100",
+                  "group flex items-center px-2 py-2 text-sm font-medium rounded-md",
                   location.pathname === item.href
-                    ? "bg-gray-100 text-gray-900 font-medium"
-                    : "text-gray-700"
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 )}
               >
-                <item.icon className="mr-2 h-4 w-4" />
+                <item.icon
+                  className={cn(
+                    "mr-3 flex-shrink-0 h-6 w-6",
+                    location.pathname === item.href
+                      ? "text-gray-500"
+                      : "text-gray-400 group-hover:text-gray-500"
+                  )}
+                />
                 {item.title}
               </Link>
             ))}
-          </div>
+          </nav>
         </div>
+
+        {/* Informações do usuário */}
+        {userProfile && (
+          <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
+            <div className="flex-shrink-0 w-full group block">
+              <div className="flex items-center">
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                    {userProfile.name}
+                  </p>
+                  <p className="text-xs font-medium text-gray-500 group-hover:text-gray-700">
+                    {userProfile.profile}
+                  </p>
+                  {!userProfile.active && (
+                    <p className="text-xs text-red-500">
+                      Aguardando aprovação
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

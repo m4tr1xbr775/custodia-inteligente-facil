@@ -213,6 +213,54 @@ export type Database = {
         }
         Relationships: []
       }
+      magistrate_assistants_history: {
+        Row: {
+          assistant_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          linked_at: string
+          magistrate_id: string
+          unlinked_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          assistant_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          linked_at?: string
+          magistrate_id: string
+          unlinked_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assistant_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          linked_at?: string
+          magistrate_id?: string
+          unlinked_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "magistrate_assistants_history_assistant_id_fkey"
+            columns: ["assistant_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "magistrate_assistants_history_magistrate_id_fkey"
+            columns: ["magistrate_id"]
+            isOneToOne: false
+            referencedRelation: "magistrates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       magistrates: {
         Row: {
           active: boolean | null
@@ -304,6 +352,44 @@ export type Database = {
           },
           {
             foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      permissions: {
+        Row: {
+          action: string
+          created_at: string
+          granted: boolean
+          id: string
+          resource: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          granted?: boolean
+          id?: string
+          resource: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          granted?: boolean
+          id?: string
+          resource?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permissions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "contacts"
@@ -596,6 +682,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      handle_user_deletion_with_links: {
+        Args: { contact_id: string }
+        Returns: boolean
+      }
       user_has_permission: {
         Args: { resource_name: string; action_name: string }
         Returns: boolean

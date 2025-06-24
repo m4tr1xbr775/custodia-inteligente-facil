@@ -68,11 +68,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const currentPath = location.pathname;
     
     // Se não estiver na rota de audiências, redirecionar
-    if (currentPath !== '/audiencias') {
+    if (!currentPath.includes('/audiencias') && currentPath !== '/dashboard') {
       return <Navigate to="/audiencias" replace />;
     }
     
-    // Se estiver na rota de audiências mas for uma ação que não seja leitura
+    // Se estiver tentando uma ação que não seja leitura
     if (resource && action !== 'read') {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -104,7 +104,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Acesso Restrito</h2>
           <p className="text-gray-600 mb-6">Você não tem permissão para acessar esta página.</p>
           <Button 
-            onClick={handleBackToLogin}
+            onClick={() => window.location.href = '/dashboard'}
             className="w-full"
             variant="outline"
           >

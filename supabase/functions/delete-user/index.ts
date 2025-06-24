@@ -8,96 +8,121 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // Create a Supabase client with service role key
-    const supabaseAdmin = createClient(
+    const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
     const { contactId } = await req.json()
 
+    if (!contactId) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Contact ID é obrigatório' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
     console.log('Iniciando processo de exclusão para contactId:', contactId)
 
-    // Primeiro, buscar o user_id associado ao contato
-    const { data: contact, error: contactError } = await supabaseAdmin
+    // Buscar o contato para obter o user_id
+    const { data: contact, error: fetchError } = await supabaseClient
       .from('contacts')
-      .select('user_id, name, email')
+      .select('user_id, profile')
       .eq('id', contactId)
       .single()
 
-    if (contactError) {
-      console.error('Erro ao buscar contato:', contactError)
-      throw new Error(`Erro ao buscar contato: ${contactError.message}`)
-    }
-
-    if (!contact) {
-      throw new Error('Contato não encontrado')
+    if (fetchError) {
+      console.error('Erro ao buscar contato:', fetchError)
+      return new Response(
+        JSON.stringify({ success: false, error: 'Contato não encontrado' }),
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
 
     console.log('Contato encontrado:', contact)
 
-    // Excluir o usuário do auth.users se existir user_id
-    if (contact.user_id) {
-      console.log('Excluindo usuário do auth.users:', contact.user_id)
-      
-      const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(
-        contact.user_id
+    // Usar a função SQL para preparar a exclusão
+    const { error: prepError } = await supabaseClient
+      .rpc('handle_user_deletion_with_links', { contact_id: contactId })
+
+    if (prepError) {
+      console.error('Erro ao preparar exclusão:', prepError)
+      return new Response(
+        JSON.stringify({ success: false, error: 'Erro ao preparar exclusão' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
-
-      if (authDeleteError) {
-        console.error('Erro ao excluir usuário do auth:', authDeleteError)
-        throw new Error(`Erro ao excluir usuário do sistema de autenticação: ${authDeleteError.message}`)
-      }
-
-      console.log('Usuário excluído do auth.users com sucesso')
     }
 
-    // Excluir o contato (as notificações serão excluídas automaticamente devido ao CASCADE)
-    const { error: deleteError } = await supabaseAdmin
+    // Excluir o contato da tabela contacts
+    const { error: deleteContactError } = await supabaseClient
       .from('contacts')
       .delete()
       .eq('id', contactId)
 
-    if (deleteError) {
-      console.error('Erro ao excluir contato:', deleteError)
-      throw new Error(`Erro ao excluir contato: ${deleteError.message}`)
+    if (deleteContactError) {
+      console.error('Erro ao excluir contato:', deleteContactError)
+      return new Response(
+        JSON.stringify({ success: false, error: 'Erro ao excluir contato' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
 
-    console.log('Contato excluído com sucesso')
+    // Se o contato tem user_id, excluir também do Auth
+    if (contact.user_id) {
+      console.log('Excluindo usuário do Auth:', contact.user_id)
+      
+      const { error: authDeleteError } = await supabaseClient.auth.admin.deleteUser(
+        contact.user_id
+      )
+
+      if (authDeleteError) {
+        console.error('Erro ao excluir usuário do Auth:', authDeleteError)
+        // Não falhar completamente se o usuário do Auth não puder ser excluído
+        // pois o contato já foi removido
+      }
+    }
+
+    console.log('Exclusão concluída com sucesso')
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Usuário ${contact.name} excluído com sucesso do sistema e da autenticação.`
+        message: 'Usuário excluído com sucesso do sistema e autenticação' 
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      },
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     )
 
   } catch (error) {
-    console.error('Erro na edge function delete-user:', error)
+    console.error('Erro na edge function:', error)
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Erro interno do servidor'
+        success: false, 
+        error: 'Erro interno do servidor: ' + error.message 
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      },
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     )
   }
 })

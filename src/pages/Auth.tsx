@@ -32,7 +32,6 @@ export default function Auth() {
   
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { signIn } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,32 +83,39 @@ export default function Auth() {
     setError("");
 
     try {
-      // Cadastrar o usuário no Supabase Auth
-      const { error: authError } = await supabase.auth.signUp({
+      // Cadastrar o usuário no Supabase Auth primeiro
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             name: name,
             profile: profile
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/auth`
         }
       });
 
       if (authError) throw authError;
 
-      // Cadastrar o contato na tabela contacts
-      const { error: contactError } = await supabase
-        .from('contacts')
-        .insert({
-          name: name,
-          email: email,
-          profile: profile,
-          active: profile === 'Administrador' ? true : false // Admin ativo, outros aguardam aprovação
-        });
+      if (authData.user) {
+        // Cadastrar o contato na tabela contacts com user_id
+        const { error: contactError } = await supabase
+          .from('contacts')
+          .insert({
+            user_id: authData.user.id,
+            name: name,
+            email: email,
+            profile: profile,
+            active: profile === 'Administrador' ? true : false // Admin ativo, outros aguardam aprovação
+          });
 
-      if (contactError) {
-        console.error('Erro ao cadastrar contato:', contactError);
+        if (contactError) {
+          console.error('Erro ao cadastrar contato:', contactError);
+          // Se falhar ao criar contato, tentar excluir o usuário do Auth
+          await supabase.auth.admin.deleteUser(authData.user.id);
+          throw new Error('Erro ao criar perfil do usuário');
+        }
       }
 
       toast({
@@ -125,7 +131,7 @@ export default function Auth() {
       setPassword("");
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
-      setError(error.message);
+      setError(error.message || 'Erro ao realizar cadastro');
     } finally {
       setIsLoading(false);
     }
