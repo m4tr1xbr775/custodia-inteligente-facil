@@ -13,7 +13,7 @@ import {
 export const navItems = [
   {
     title: "Dashboard",
-    href: "/",
+    href: "/dashboard",
     icon: BarChart3,
   },
   {
