@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -248,4 +247,4 @@ const AssistantSignup = () => {
   );
 };
 
-export default AssessorDashboard;
+export default AssistantSignup;
