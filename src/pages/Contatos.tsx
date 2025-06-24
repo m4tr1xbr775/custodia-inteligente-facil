@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Users, Plus, Search, Phone, MessageCircle, Mail, Edit, Trash2, UserCheck, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSearchParams } from "react-router-dom";
+import { useUserDeletion } from "@/hooks/useUserDeletion";
 import ContatoModal from "@/components/Contatos/ContatoModal";
 
 const Contatos = () => {
@@ -36,13 +36,13 @@ const Contatos = () => {
   const [statusFilter, setStatusFilter] = useState("todos");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingContactId, setEditingContactId] = useState<string | undefined>();
-  const [deletingContactId, setDeletingContactId] = useState<string | null>(null);
   const [highlightedContactId, setHighlightedContactId] = useState<string | null>(null);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { userProfile } = useAuth();
+  const { deleteUserMutation } = useUserDeletion();
 
   // Verificar se há um usuário para destacar baseado nos parâmetros da URL
   useEffect(() => {
@@ -160,32 +160,8 @@ const Contatos = () => {
   };
 
   const handleDeleteContact = async (contactId: string) => {
-    try {
-      setDeletingContactId(contactId);
-
-      const { error } = await supabase
-        .from('contacts')
-        .delete()
-        .eq('id', contactId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Contato removido",
-        description: "O contato foi removido com sucesso.",
-      });
-
-      queryClient.invalidateQueries({ queryKey: ['contacts'] });
-    } catch (error: any) {
-      console.error('Erro ao deletar contato:', error);
-      toast({
-        title: "Erro ao remover contato",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setDeletingContactId(null);
-    }
+    console.log('Solicitação de exclusão para:', contactId);
+    deleteUserMutation.mutate(contactId);
   };
 
   const handleToggleUserStatus = (contactId: string, currentStatus: boolean) => {
@@ -323,7 +299,7 @@ const Contatos = () => {
                           variant="outline"
                           size="sm"
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          disabled={deletingContactId === contact.id}
+                          disabled={deleteUserMutation.isPending}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
@@ -333,7 +309,7 @@ const Contatos = () => {
                           <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
                           <AlertDialogDescription>
                             Tem certeza que deseja excluir o usuário {contact.name}? 
-                            Esta ação não pode ser desfeita.
+                            Esta ação removerá o usuário do sistema de autenticação e não pode ser desfeita.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
-import { Building, Plus, Search, Phone, MessageCircle, MapPin, Edit, Trash2, Eye } from "lucide-react";
+
+import { useState } from "react";
+import { Building, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,9 +15,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useUnidadesCrud } from "@/hooks/useUnidadesCrud";
 import UnidadeForm from "@/components/Unidades/UnidadeForm";
+import UnidadesStats from "@/components/Unidades/UnidadesStats";
+import UnidadeCard from "@/components/Unidades/UnidadeCard";
 
 interface PrisonUnit {
   id: string;
@@ -45,7 +48,7 @@ const Unidades = () => {
   const [editingUnit, setEditingUnit] = useState<PrisonUnit | null>(null);
   const [deletingUnitId, setDeletingUnitId] = useState<string | null>(null);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const { createMutation, updateMutation, deleteMutation } = useUnidadesCrud();
 
   // Fetch units from Supabase
   const { data: units = [], isLoading } = useQuery({
@@ -66,133 +69,11 @@ const Unidades = () => {
         ...unit,
         type: unit.type as "CDP" | "Presídio" | "CPP",
         number_of_rooms: unit.number_of_rooms || 1,
-        // Garantir que campos opcionais tenham valores padrão se necessário
         address: unit.address || '',
         municipalities: unit.municipalities || ''
       })) as PrisonUnit[];
     },
   });
-
-  // Create unit mutation
-  const createUnitMutation = useMutation({
-    mutationFn: async (data: any) => {
-      // Limpar dados vazios opcionais
-      const cleanData = { ...data };
-      if (!cleanData.address || cleanData.address.trim() === '') {
-        cleanData.address = '';
-      }
-      if (!cleanData.municipalities || cleanData.municipalities.trim() === '') {
-        cleanData.municipalities = '';
-      }
-      
-      const { error } = await supabase
-        .from('prison_units_extended')
-        .insert([{
-          ...cleanData,
-          municipalities: Array.isArray(cleanData.municipalities) 
-            ? cleanData.municipalities.join(', ') 
-            : cleanData.municipalities || ''
-        }]);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['prison_units_extended'] });
-      toast({
-        title: "Sucesso",
-        description: "Unidade criada com sucesso!",
-      });
-    },
-    onError: (error) => {
-      console.error('Error creating unit:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao criar unidade",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Update unit mutation
-  const updateUnitMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      // Limpar dados vazios opcionais
-      const cleanData = { ...data };
-      if (!cleanData.address || cleanData.address.trim() === '') {
-        cleanData.address = '';
-      }
-      if (!cleanData.municipalities || cleanData.municipalities.trim() === '') {
-        cleanData.municipalities = '';
-      }
-      
-      const { error } = await supabase
-        .from('prison_units_extended')
-        .update({
-          ...cleanData,
-          municipalities: Array.isArray(cleanData.municipalities) 
-            ? cleanData.municipalities.join(', ') 
-            : cleanData.municipalities || ''
-        })
-        .eq('id', id);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['prison_units_extended'] });
-      toast({
-        title: "Sucesso",
-        description: "Unidade atualizada com sucesso!",
-      });
-    },
-    onError: (error) => {
-      console.error('Error updating unit:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao atualizar unidade",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Delete unit mutation
-  const deleteUnitMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('prison_units_extended')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['prison_units_extended'] });
-      toast({
-        title: "Sucesso",
-        description: "Unidade excluída com sucesso!",
-      });
-    },
-    onError: (error) => {
-      console.error('Error deleting unit:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao excluir unidade",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const getTypeBadge = (type: string) => {
-    switch (type) {
-      case "CDP":
-        return <Badge className="bg-blue-100 text-blue-800">CDP</Badge>;
-      case "Presídio":
-        return <Badge className="bg-green-100 text-green-800">Presídio</Badge>;
-      case "CPP":
-        return <Badge className="bg-purple-100 text-purple-800">CPP</Badge>;
-      default:
-        return <Badge variant="secondary">{type}</Badge>;
-    }
-  };
 
   const handleCall = (phone: string) => {
     window.open(`tel:${phone}`, '_self');
@@ -209,7 +90,7 @@ const Unidades = () => {
   };
 
   const handleEditUnit = (unit: PrisonUnit) => {
-    console.log('Editing unit:', unit); // Debug log
+    console.log('Editing unit:', unit);
     setEditingUnit(unit);
     setIsFormOpen(true);
   };
@@ -220,16 +101,16 @@ const Unidades = () => {
 
   const confirmDeleteUnit = () => {
     if (deletingUnitId) {
-      deleteUnitMutation.mutate(deletingUnitId);
+      deleteMutation.mutate(deletingUnitId);
       setDeletingUnitId(null);
     }
   };
 
   const handleSaveUnit = async (data: any) => {
     if (editingUnit) {
-      updateUnitMutation.mutate({ id: editingUnit.id, data });
+      updateMutation.mutate({ id: editingUnit.id, data });
     } else {
-      createUnitMutation.mutate(data);
+      createMutation.mutate(data);
     }
   };
 
@@ -295,206 +176,22 @@ const Unidades = () => {
         </CardContent>
       </Card>
 
-      {/* Estatísticas Rápidas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <Building className="h-8 w-8 text-blue-600" />
-              <div>
-                <p className="text-sm font-medium text-blue-800">Total de Unidades</p>
-                <p className="text-2xl font-bold text-blue-900">{units.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-green-50 border-green-200">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="bg-green-500 p-2 rounded-lg text-white font-bold">
-                CDP
-              </div>
-              <div>
-                <p className="text-sm font-medium text-green-800">CDPs</p>
-                <p className="text-2xl font-bold text-green-900">
-                  {units.filter(u => u.type === 'CDP').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-purple-50 border-purple-200">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="bg-purple-500 p-2 rounded-lg text-white font-bold">
-                CPP
-              </div>
-              <div>
-                <p className="text-sm font-medium text-purple-800">CPPs</p>
-                <p className="text-2xl font-bold text-purple-900">
-                  {units.filter(u => u.type === 'CPP').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-orange-50 border-orange-200">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="bg-orange-500 p-2 rounded-lg text-white font-bold">
-                PR
-              </div>
-              <div>
-                <p className="text-sm font-medium text-orange-800">Presídios</p>
-                <p className="text-2xl font-bold text-orange-900">
-                  {units.filter(u => u.type === 'Presídio').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Estatísticas */}
+      <UnidadesStats units={units} />
 
       {/* Lista de Unidades */}
       <div className="space-y-4">
-        {filteredUnits.map((unit) => {
-          const municipalitiesArray = typeof unit.municipalities === 'string' 
-            ? unit.municipalities.split(',').map(m => m.trim()).filter(m => m !== '') 
-            : [];
-
-          return (
-            <Card key={unit.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between space-y-4 lg:space-y-0">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="font-semibold text-lg text-gray-900">{unit.name}</h3>
-                        {getTypeBadge(unit.type)}
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div>
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">Comarca:</span> {unit.comarca}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">Diretor:</span> {unit.director}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">Responsável:</span> {unit.responsible}
-                          </p>
-                        </div>
-                        
-                        <div>
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">Telefone:</span> {unit.landline}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">Funcional:</span> {unit.functional}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">WhatsApp:</span> {unit.whatsapp}
-                          </p>
-                        </div>
-                        
-                        <div>
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">Salas para Audiências:</span> {unit.number_of_rooms}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">Capacidade por Slot:</span> {unit.number_of_rooms} audiência{unit.number_of_rooms > 1 ? 's' : ''}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      {municipalitiesArray.length > 0 && (
-                        <div className="mt-3">
-                          <p className="text-sm text-gray-600 mb-1">
-                            <span className="font-medium">Municípios Atendidos:</span>
-                          </p>
-                          <div className="flex flex-wrap gap-1">
-                            {municipalitiesArray.map((municipality: string, index: number) => (
-                              <Badge key={index} variant="outline" className="text-xs">
-                                {municipality}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {unit.address && (
-                        <div className="mt-3 flex items-start space-x-2">
-                          <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                          <p className="text-sm text-gray-600">{unit.address}</p>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex flex-col space-y-2 lg:ml-6">
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewUnit(unit)}
-                          className="flex items-center space-x-2"
-                        >
-                          <Eye className="h-4 w-4" />
-                          <span>Ver</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            console.log('Edit button clicked for unit:', unit.name);
-                            handleEditUnit(unit);
-                          }}
-                          className="flex items-center space-x-2"
-                        >
-                          <Edit className="h-4 w-4" />
-                          <span>Editar</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteUnit(unit.id)}
-                          className="flex items-center space-x-2 text-red-600 border-red-300 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span>Excluir</span>
-                        </Button>
-                      </div>
-                      
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleCall(unit.landline)}
-                          className="flex items-center space-x-2"
-                        >
-                          <Phone className="h-4 w-4" />
-                          <span>Ligar</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleWhatsApp(unit.whatsapp, unit.short_name)}
-                          className="flex items-center space-x-2 text-green-600 border-green-300 hover:bg-green-50"
-                        >
-                          <MessageCircle className="h-4 w-4" />
-                          <span>WhatsApp</span>
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+        {filteredUnits.map((unit) => (
+          <UnidadeCard
+            key={unit.id}
+            unit={unit}
+            onView={handleViewUnit}
+            onEdit={handleEditUnit}
+            onDelete={handleDeleteUnit}
+            onCall={handleCall}
+            onWhatsApp={handleWhatsApp}
+          />
+        ))}
       </div>
 
       {filteredUnits.length === 0 && (

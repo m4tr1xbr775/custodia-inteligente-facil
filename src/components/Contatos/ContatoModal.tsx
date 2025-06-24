@@ -43,7 +43,7 @@ const profiles = [
   "Defensor Público",
   "Assessor de Juiz",
   "Analista",
-  "Gestor",
+  "Policial Penal",
   "Administrador"
 ];
 
