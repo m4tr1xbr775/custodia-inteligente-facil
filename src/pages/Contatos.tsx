@@ -29,6 +29,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSearchParams } from "react-router-dom";
 import { useUserDeletion } from "@/hooks/useUserDeletion";
 import ContatoModal from "@/components/Contatos/ContatoModal";
+import QuickLinkChanger from "@/components/Contatos/QuickLinkChanger";
 
 const Contatos = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -60,13 +61,19 @@ const Contatos = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  // Fetch contacts from database
+  // Query para buscar contatos com informações do magistrado vinculado
   const { data: contacts = [], isLoading } = useQuery({
     queryKey: ['contacts'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contacts')
-        .select('*')
+        .select(`
+          *,
+          magistrates:linked_magistrate_id (
+            id,
+            name
+          )
+        `)
         .order('name');
       
       if (error) throw error;
@@ -274,7 +281,25 @@ const Contatos = () => {
                       {highlightedContactId === contact.id && (
                         <Badge className="bg-blue-100 text-blue-800 animate-pulse">Novo</Badge>
                       )}
+                    
+                      {/* Mostrar vínculo para assessores */}
+                      {contact.profile === 'Assessor de Juiz' && contact.magistrates && (
+                        <div className="mt-2 p-2 bg-blue-50 rounded-md">
+                          <p className="text-sm text-blue-800">
+                            <span className="font-medium">Vinculado a:</span> {contact.magistrates.name}
+                          </p>
+                        </div>
+                      )}
                     </div>
+                    
+                    {/* Botão para alterar vínculo (apenas para assessores) */}
+                    {contact.profile === 'Assessor de Juiz' && (
+                      <QuickLinkChanger
+                        assistantId={contact.id}
+                        currentMagistrateId={contact.linked_magistrate_id}
+                        currentMagistrateName={contact.magistrates?.name}
+                      />
+                    )}
                   </div>
                   <div className="flex space-x-2">
                     <Button

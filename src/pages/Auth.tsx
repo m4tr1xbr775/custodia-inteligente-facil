@@ -1,414 +1,154 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Loader2, Scale, AlertCircle } from "lucide-react";
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, UserPlus, LogIn, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-
-const Auth = () => {
-  const { signIn, signUp, user, loading } = useAuth();
-  const navigate = useNavigate();
+export default function Auth() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  
   const { toast } = useToast();
-  
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showAdminHint, setShowAdminHint] = useState(false);
-  
-  // Login form state
-  const [loginData, setLoginData] = useState({
-    email: '',
-    password: ''
-  });
-  
-  // Signup form state
-  const [signupData, setSignupData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    department: '',
-    phone: '',
-    mobile: '',
-    profile: ''
-  });
+  const navigate = useNavigate();
+  const { signIn } = useAuth();
 
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (user && !loading) {
-      navigate('/');
-    }
-  }, [user, loading, navigate]);
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    setIsLoading(true);
+    setError("");
 
-    if (!loginData.email || !loginData.password) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha todos os campos obrigatórios.",
-        variant: "destructive",
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
-      setIsSubmitting(false);
-      return;
-    }
 
-    console.log('🔐 Tentando fazer login com:', loginData.email);
-    const { error } = await signIn(loginData.email, loginData.password);
-
-    if (error) {
-      console.error('❌ Erro no login:', error);
-      
-      // Se o erro for de credenciais inválidas e o email for do admin, mostrar dica
-      if (error.message === 'Invalid login credentials' && loginData.email === 'm4tr1xbr@gmail.com') {
-        setShowAdminHint(true);
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          setError("Email ou senha incorretos. Verifique suas credenciais.");
+        } else if (error.message.includes("Email not confirmed")) {
+          setError("Email não confirmado. Verifique sua caixa de entrada.");
+        } else {
+          setError(error.message);
+        }
+        return;
       }
+
+      // Aguardar um momento para o contexto de auth ser atualizado
+      await new Promise(resolve => setTimeout(resolve, 100));
       
-      toast({
-        title: "Erro no login",
-        description: error.message === 'Invalid login credentials' 
-          ? "Email ou senha incorretos." 
-          : error.message,
-        variant: "destructive",
-      });
-    } else {
       toast({
         title: "Login realizado com sucesso!",
-        description: "Redirecionando...",
+        description: "Bem-vindo ao SisJud.",
       });
-    }
 
-    setIsSubmitting(false);
+      navigate("/dashboard");
+    } catch (error: any) {
+      console.error("Erro no login:", error);
+      setError("Erro interno. Tente novamente.");
+    } finally {
+      setIsLoading(false);
+    }
   };
-
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    // Validações
-    if (!signupData.name || !signupData.email || !signupData.password || !signupData.department || !signupData.profile) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha todos os campos obrigatórios.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (signupData.password !== signupData.confirmPassword) {
-      toast({
-        title: "Erro",
-        description: "As senhas não coincidem.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (signupData.password.length < 6) {
-      toast({
-        title: "Erro",
-        description: "A senha deve ter pelo menos 6 caracteres.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    const { error } = await signUp({
-      email: signupData.email,
-      password: signupData.password,
-      name: signupData.name,
-      department: signupData.department,
-      phone: signupData.phone,
-      mobile: signupData.mobile,
-      profile: signupData.profile,
-    });
-
-    if (error) {
-      console.error('Signup error:', error);
-      toast({
-        title: "Erro no cadastro",
-        description: error.message === 'User already registered' 
-          ? "Este email já está cadastrado." 
-          : error.message,
-        variant: "destructive",
-      });
-    } else {
-      // Reset form
-      setSignupData({
-        name: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        department: '',
-        phone: '',
-        mobile: '',
-        profile: ''
-      });
-    }
-
-    setIsSubmitting(false);
-  };
-
-  const fillAdminData = () => {
-    setSignupData({
-      name: 'Credson Batista',
-      email: 'm4tr1xbr@gmail.com',
-      password: 'Admin123!',
-      confirmPassword: 'Admin123!',
-      department: '3ª UJS - CRIMINAL',
-      phone: '62984452619',
-      mobile: '62984452619',
-      profile: 'Administrador'
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Carregando...</div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
+          <div className="flex justify-center mb-4">
+            <div className="bg-blue-600 p-3 rounded-full">
+              <Scale className="h-8 w-8 text-white" />
+            </div>
+          </div>
           <h2 className="text-3xl font-bold text-gray-900">SisJud</h2>
-          <p className="mt-2 text-gray-600">Sistema Judiciário</p>
+          <p className="mt-2 text-gray-600">Sistema Judiciário de Audiências</p>
         </div>
 
-        {showAdminHint && (
-          <Alert className="border-orange-200 bg-orange-50">
-            <AlertCircle className="h-4 w-4 text-orange-600" />
-            <AlertDescription className="text-orange-800">
-              <strong>Usuário administrador não encontrado!</strong><br />
-              Você precisa criar a conta do administrador primeiro. 
+        <Card className="shadow-lg">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl text-center">Entrar</CardTitle>
+            <CardDescription className="text-center">
+              Digite suas credenciais para acessar o sistema
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Sua senha"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+
               <Button 
-                variant="link" 
-                className="p-0 h-auto text-orange-800 underline ml-1"
-                onClick={() => {
-                  fillAdminData();
-                  setShowAdminHint(false);
-                }}
+                type="submit" 
+                className="w-full bg-blue-600 hover:bg-blue-700" 
+                disabled={isLoading}
               >
-                Clique aqui para preencher os dados automaticamente
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Entrando...
+                  </>
+                ) : (
+                  "Entrar"
+                )}
               </Button>
-            </AlertDescription>
-          </Alert>
-        )}
+            </form>
 
-        <Tabs defaultValue="login" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login" className="flex items-center space-x-2">
-              <LogIn className="h-4 w-4" />
-              <span>Login</span>
-            </TabsTrigger>
-            <TabsTrigger value="signup" className="flex items-center space-x-2">
-              <UserPlus className="h-4 w-4" />
-              <span>Cadastro</span>
-            </TabsTrigger>
-          </TabsList>
+            <div className="text-center space-y-2">
+              <p className="text-sm text-gray-600">
+                É assessor de juiz?
+              </p>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => navigate('/assistant-signup')}
+              >
+                Cadastrar como Assessor
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
-          <TabsContent value="login">
-            <Card>
-              <CardHeader>
-                <CardTitle>Entrar no Sistema</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div>
-                    <Label htmlFor="login-email">Email</Label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      value={loginData.email}
-                      onChange={(e) => setLoginData({...loginData, email: e.target.value})}
-                      placeholder="seu@email.com"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="login-password">Senha</Label>
-                    <div className="relative">
-                      <Input
-                        id="login-password"
-                        type={showPassword ? "text" : "password"}
-                        value={loginData.password}
-                        onChange={(e) => setLoginData({...loginData, password: e.target.value})}
-                        placeholder="Sua senha"
-                        required
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? "Entrando..." : "Entrar"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="signup">
-            <Card>
-              <CardHeader>
-                <CardTitle>Cadastrar-se</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSignup} className="space-y-4">
-                  <div>
-                    <Label htmlFor="signup-name">Nome Completo *</Label>
-                    <Input
-                      id="signup-name"
-                      type="text"
-                      value={signupData.name}
-                      onChange={(e) => setSignupData({...signupData, name: e.target.value})}
-                      placeholder="Seu nome completo"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="signup-email">Email *</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      value={signupData.email}
-                      onChange={(e) => setSignupData({...signupData, email: e.target.value})}
-                      placeholder="seu@email.com"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="signup-department">Serventia de Origem *</Label>
-                    <Input
-                      id="signup-department"
-                      type="text"
-                      value={signupData.department}
-                      onChange={(e) => setSignupData({...signupData, department: e.target.value})}
-                      placeholder="Sua serventia de origem"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="signup-profile">Perfil *</Label>
-                    <Select value={signupData.profile} onValueChange={(value) => setSignupData({...signupData, profile: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione seu perfil" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Administrador">Administrador</SelectItem>
-                        <SelectItem value="Juiz">Juiz</SelectItem>
-                        <SelectItem value="Promotor">Promotor</SelectItem>
-                        <SelectItem value="Defensor Público">Defensor Público</SelectItem>
-                        <SelectItem value="Advogado">Advogado</SelectItem>
-                        <SelectItem value="Polícia Penal">Polícia Penal</SelectItem>
-                        <SelectItem value="Assessor de Juiz">Assessor de Juiz</SelectItem>
-                        <SelectItem value="Analista">Analista</SelectItem>
-                        <SelectItem value="Gestor">Gestor</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="signup-phone">Telefone</Label>
-                    <Input
-                      id="signup-phone"
-                      type="tel"
-                      value={signupData.phone}
-                      onChange={(e) => setSignupData({...signupData, phone: e.target.value})}
-                      placeholder="(11) 1234-5678"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="signup-mobile">Celular</Label>
-                    <Input
-                      id="signup-mobile"
-                      type="tel"
-                      value={signupData.mobile}
-                      onChange={(e) => setSignupData({...signupData, mobile: e.target.value})}
-                      placeholder="(11) 91234-5678"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="signup-password">Senha *</Label>
-                    <div className="relative">
-                      <Input
-                        id="signup-password"
-                        type={showPassword ? "text" : "password"}
-                        value={signupData.password}
-                        onChange={(e) => setSignupData({...signupData, password: e.target.value})}
-                        placeholder="Mínimo 6 caracteres"
-                        required
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="signup-confirm-password">Confirmar Senha *</Label>
-                    <Input
-                      id="signup-confirm-password"
-                      type="password"
-                      value={signupData.confirmPassword}
-                      onChange={(e) => setSignupData({...signupData, confirmPassword: e.target.value})}
-                      placeholder="Confirme sua senha"
-                      required
-                    />
-                  </div>
-
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? "Cadastrando..." : "Cadastrar"}
-                  </Button>
-                  
-                  <p className="text-sm text-gray-600 text-center">
-                    Após o cadastro, aguarde a aprovação do administrador para acessar o sistema.
-                  </p>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <div className="text-center text-sm text-gray-500">
+          <p>© 2024 SisJud. Todos os direitos reservados.</p>
+        </div>
       </div>
     </div>
   );
-};
-
-export default Auth;
+}

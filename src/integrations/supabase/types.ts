@@ -131,6 +131,7 @@ export type Database = {
           department: string | null
           email: string | null
           id: string
+          linked_magistrate_id: string | null
           mobile: string | null
           name: string
           phone: string | null
@@ -144,6 +145,7 @@ export type Database = {
           department?: string | null
           email?: string | null
           id?: string
+          linked_magistrate_id?: string | null
           mobile?: string | null
           name: string
           phone?: string | null
@@ -157,6 +159,7 @@ export type Database = {
           department?: string | null
           email?: string | null
           id?: string
+          linked_magistrate_id?: string | null
           mobile?: string | null
           name?: string
           phone?: string | null
@@ -164,7 +167,15 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contacts_linked_magistrate_id_fkey"
+            columns: ["linked_magistrate_id"]
+            isOneToOne: false
+            referencedRelation: "magistrates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       defenders: {
         Row: {
@@ -293,54 +304,6 @@ export type Database = {
           },
           {
             foreignKeyName: "notifications_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      permissions: {
-        Row: {
-          action: string
-          created_at: string
-          granted: boolean
-          granted_by: string | null
-          id: string
-          resource: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          action: string
-          created_at?: string
-          granted?: boolean
-          granted_by?: string | null
-          id?: string
-          resource: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          action?: string
-          created_at?: string
-          granted?: boolean
-          granted_by?: string | null
-          id?: string
-          resource?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "permissions_granted_by_fkey"
-            columns: ["granted_by"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "permissions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "contacts"

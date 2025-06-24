@@ -1,95 +1,110 @@
 
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import Index from "./pages/Index";
+import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Audiencias from "./pages/Audiencias";
-import Plantoes from "./pages/Plantoes";
 import Unidades from "./pages/Unidades";
 import UnidadesPrisionais from "./pages/UnidadesPrisionais";
-import Contatos from "./pages/Contatos";
 import Configuracoes from "./pages/Configuracoes";
+import ConfiguracoesSlots from "./pages/ConfiguracoesSlots";
+import Contatos from "./pages/Contatos";
+import Plantoes from "./pages/Plantoes";
 import Historico from "./pages/Historico";
-import Auth from "./pages/Auth";
 import AdminSetup from "./pages/AdminSetup";
+import AssistantSignup from "./pages/AssistantSignup";
 import NotFound from "./pages/NotFound";
 import MainLayout from "./components/Layout/MainLayout";
 import ProtectedRoute from "./components/Layout/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
-// Componente para redirecionar usuários não ativos
-const InactiveUserRedirect = () => {
-  const { userProfile } = useAuth();
-  
-  if (userProfile && !userProfile.active) {
-    return <Navigate to="/audiencias" replace />;
-  }
-  
-  return <Dashboard />;
-};
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
         <AuthProvider>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/admin-setup" element={<AdminSetup />} />
-            <Route path="/" element={
-              <ProtectedRoute>
-                <MainLayout />
-              </ProtectedRoute>
-            }>
-              <Route index element={<InactiveUserRedirect />} />
-              <Route path="audiencias" element={
-                <ProtectedRoute resource="audiencias" action="read">
-                  <Audiencias />
+          <Toaster />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/admin-setup" element={<AdminSetup />} />
+              <Route path="/assistant-signup" element={<AssistantSignup />} />
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Dashboard />
+                  </MainLayout>
                 </ProtectedRoute>
               } />
-              <Route path="plantoes" element={
-                <ProtectedRoute resource="plantoes" action="read">
-                  <Plantoes />
+              <Route path="/audiencias" element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Audiencias />
+                  </MainLayout>
                 </ProtectedRoute>
               } />
-              <Route path="unidades" element={
-                <ProtectedRoute resource="unidades" action="read">
-                  <Unidades />
+              <Route path="/unidades" element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Unidades />
+                  </MainLayout>
                 </ProtectedRoute>
               } />
-              <Route path="unidades-prisionais" element={
-                <ProtectedRoute resource="unidades-prisionais" action="read">
-                  <UnidadesPrisionais />
+              <Route path="/unidades-prisionais" element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <UnidadesPrisionais />
+                  </MainLayout>
                 </ProtectedRoute>
               } />
-              <Route path="contatos" element={
-                <ProtectedRoute requireAdmin>
-                  <Contatos />
+              <Route path="/configuracoes" element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Configuracoes />
+                  </MainLayout>
                 </ProtectedRoute>
               } />
-              <Route path="historico" element={
-                <ProtectedRoute requireAdmin>
-                  <Historico />
+              <Route path="/configuracoes-slots" element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <ConfiguracoesSlots />
+                  </MainLayout>
                 </ProtectedRoute>
               } />
-              <Route path="configuracoes" element={
-                <ProtectedRoute requireAdmin>
-                  <Configuracoes />
+              <Route path="/contatos" element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Contatos />
+                  </MainLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/plantoes" element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Plantoes />
+                  </MainLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/historico" element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Historico />
+                  </MainLayout>
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />
-            </Route>
-          </Routes>
+            </Routes>
+          </BrowserRouter>
         </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;

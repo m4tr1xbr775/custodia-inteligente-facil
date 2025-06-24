@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +20,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAssistantLink } from "@/hooks/useAssistantLink";
+import MagistrateSelector from "./MagistrateSelector";
 
 interface ContatoModalProps {
   isOpen: boolean;
@@ -35,6 +36,7 @@ interface ContatoForm {
   phone: string;
   mobile: string;
   email: string;
+  linked_magistrate_id: string;
 }
 
 const profiles = [
@@ -55,11 +57,13 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
     phone: "",
     mobile: "",
     email: "",
+    linked_magistrate_id: "",
   });
   const [isLoading, setIsLoading] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { magistrates, loadingMagistrates } = useAssistantLink();
 
   // Fetch contact data when editing
   useEffect(() => {
@@ -89,6 +93,7 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
             phone: data.phone || "",
             mobile: data.mobile || "",
             email: data.email || "",
+            linked_magistrate_id: data.linked_magistrate_id || "",
           });
         }
       };
@@ -103,6 +108,7 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
         phone: "",
         mobile: "",
         email: "",
+        linked_magistrate_id: "",
       });
     }
   }, [editingContactId, toast]);
@@ -112,18 +118,28 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
     setIsLoading(true);
 
     try {
+      const submitData = {
+        name: formData.name,
+        profile: formData.profile,
+        department: formData.department,
+        phone: formData.phone,
+        mobile: formData.mobile,
+        email: formData.email,
+        linked_magistrate_id: formData.profile === 'Assessor de Juiz' ? formData.linked_magistrate_id : null,
+      };
+
+      // Remove empty string values
+      Object.keys(submitData).forEach(key => {
+        if (submitData[key as keyof typeof submitData] === "") {
+          delete submitData[key as keyof typeof submitData];
+        }
+      });
+
       if (editingContactId) {
         // Update existing contact
         const { error } = await supabase
           .from('contacts')
-          .update({
-            name: formData.name,
-            profile: formData.profile,
-            department: formData.department,
-            phone: formData.phone,
-            mobile: formData.mobile,
-            email: formData.email,
-          })
+          .update(submitData)
           .eq('id', editingContactId);
 
         if (error) throw error;
@@ -136,14 +152,7 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
         // Create new contact
         const { error } = await supabase
           .from('contacts')
-          .insert({
-            name: formData.name,
-            profile: formData.profile,
-            department: formData.department,
-            phone: formData.phone,
-            mobile: formData.mobile,
-            email: formData.email,
-          });
+          .insert(submitData);
 
         if (error) throw error;
 
@@ -218,6 +227,15 @@ const ContatoModal = ({ isOpen, onClose, editingContactId }: ContatoModalProps) 
               </SelectContent>
             </Select>
           </div>
+
+          {formData.profile === 'Assessor de Juiz' && (
+            <MagistrateSelector
+              magistrates={magistrates}
+              value={formData.linked_magistrate_id}
+              onValueChange={(value) => handleInputChange('linked_magistrate_id', value)}
+              required
+            />
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="department">Serventia de Origem</Label>
