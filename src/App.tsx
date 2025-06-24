@@ -35,69 +35,21 @@ function App() {
               <Route path="/auth" element={<Auth />} />
               <Route path="/admin-setup" element={<AdminSetup />} />
               <Route path="/assistant-signup" element={<AssistantSignup />} />
-              <Route path="/dashboard" element={
+              <Route path="/" element={
                 <ProtectedRoute>
-                  <MainLayout>
-                    <Dashboard />
-                  </MainLayout>
+                  <MainLayout />
                 </ProtectedRoute>
-              } />
-              <Route path="/audiencias" element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Audiencias />
-                  </MainLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/unidades" element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Unidades />
-                  </MainLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/unidades-prisionais" element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <UnidadesPrisionais />
-                  </MainLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/configuracoes" element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Configuracoes />
-                  </MainLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/configuracoes-slots" element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <ConfiguracoesSlots />
-                  </MainLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/contatos" element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Contatos />
-                  </MainLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/plantoes" element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Plantoes />
-                  </MainLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/historico" element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Historico />
-                  </MainLayout>
-                </ProtectedRoute>
-              } />
+              }>
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="audiencias" element={<Audiencias />} />
+                <Route path="unidades" element={<Unidades />} />
+                <Route path="unidades-prisionais" element={<UnidadesPrisionais />} />
+                <Route path="configuracoes" element={<Configuracoes />} />
+                <Route path="configuracoes-slots" element={<ConfiguracoesSlots />} />
+                <Route path="contatos" element={<Contatos />} />
+                <Route path="plantoes" element={<Plantoes />} />
+                <Route path="historico" element={<Historico />} />
+              </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
