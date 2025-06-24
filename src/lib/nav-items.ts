@@ -38,7 +38,7 @@ export const navItems = [
     icon: Building2,
   },
   {
-    title: "Assessor Dashboard",
+    title: "Painel Assessor",
     href: "/assessor-dashboard",
     icon: UserCheck,
   },
