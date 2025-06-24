@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 const AdminSetup = () => {
-  const { signIn } = useAuth();
+  const { userProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
@@ -26,7 +26,10 @@ const AdminSetup = () => {
     
     try {
       // Primeiro, tentar fazer login para ver se já existe
-      const { error: loginError } = await signIn(adminData.email, adminData.password);
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email: adminData.email,
+        password: adminData.password
+      });
       
       if (!loginError) {
         toast({
@@ -68,7 +71,10 @@ const AdminSetup = () => {
 
         // Fazer login automaticamente
         setTimeout(async () => {
-          await signIn(adminData.email, adminData.password);
+          await supabase.auth.signInWithPassword({
+            email: adminData.email,
+            password: adminData.password
+          });
           navigate('/');
         }, 1000);
       }
