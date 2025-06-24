@@ -15,6 +15,7 @@ const Sidebar = () => {
       '/plantoes': 'plantoes',
       '/unidades': 'unidades',
       '/unidades-prisionais': 'unidades-prisionais',
+      '/assessor-dashboard': 'assessor-dashboard',
       '/contatos': 'contatos',
       '/historico': 'historico',
       '/configuracoes': 'configuracoes'
@@ -26,6 +27,12 @@ const Sidebar = () => {
     if (!userProfile) return false;
     
     const resource = getResourceFromHref(href);
+    
+    // Assessor Dashboard só é visível para Assessor de Juiz
+    if (resource === 'assessor-dashboard') {
+      return userProfile.profile === 'Assessor de Juiz';
+    }
+    
     return hasPermission(resource, 'read');
   };
 

@@ -7,7 +7,8 @@ import {
   Settings, 
   BarChart3,
   UserPlus,
-  History
+  History,
+  UserCheck
 } from "lucide-react";
 
 export const navItems = [
@@ -35,6 +36,11 @@ export const navItems = [
     title: "UPR Audiências",
     href: "/unidades-prisionais",
     icon: Building2,
+  },
+  {
+    title: "Assessor Dashboard",
+    href: "/assessor-dashboard",
+    icon: UserCheck,
   },
   {
     title: "Cadastro Usuários",

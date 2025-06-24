@@ -15,6 +15,7 @@ import ConfiguracoesSlots from "./pages/ConfiguracoesSlots";
 import Contatos from "./pages/Contatos";
 import Plantoes from "./pages/Plantoes";
 import Historico from "./pages/Historico";
+import AssessorDashboard from "./pages/AssessorDashboard";
 import AdminSetup from "./pages/AdminSetup";
 import AssistantSignup from "./pages/AssistantSignup";
 import NotFound from "./pages/NotFound";
@@ -49,6 +50,11 @@ function App() {
                 <Route path="contatos" element={<Contatos />} />
                 <Route path="plantoes" element={<Plantoes />} />
                 <Route path="historico" element={<Historico />} />
+                <Route path="assessor-dashboard" element={
+                  <ProtectedRoute resource="assessor-dashboard">
+                    <AssessorDashboard />
+                  </ProtectedRoute>
+                } />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

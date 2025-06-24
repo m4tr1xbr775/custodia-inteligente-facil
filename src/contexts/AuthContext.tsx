@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +12,7 @@ interface UserProfile {
   phone?: string;
   mobile?: string;
   user_id: string;
+  linked_magistrate_id?: string;
 }
 
 interface AuthContextType {
@@ -82,19 +82,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
+    // Policial Penal: Dashboard, Agenda de Contatos, Unidades Prisionais, UPR Audiências
+    if (profile === 'Policial Penal') {
+      return ['dashboard', 'plantoes', 'unidades', 'unidades-prisionais'].includes(resource);
+    }
+
     // Perfis com acesso limitado (apenas dashboard e audiências)
     const limitedProfiles = ['Defensor Público', 'Promotor'];
     if (limitedProfiles.includes(profile)) {
       return ['dashboard', 'audiencias'].includes(resource);
     }
 
-    // Policial Penal: Dashboard, Unidades Prisionais, UPR Audiências
-    if (profile === 'Policial Penal') {
-      return ['dashboard', 'unidades', 'unidades-prisionais'].includes(resource);
+    // Assessor de Juiz: todas as abas exceto admin + aba exclusiva
+    if (profile === 'Assessor de Juiz') {
+      const allowedResources = ['dashboard', 'audiencias', 'plantoes', 'unidades', 'unidades-prisionais', 'assessor-dashboard'];
+      return allowedResources.includes(resource);
     }
 
-    // Demais perfis (Magistrado, Assessor de Juiz, Analista): todas as abas exceto admin
-    const fullAccessProfiles = ['Magistrado', 'Assessor de Juiz', 'Analista'];
+    // Demais perfis (Magistrado, Analista): todas as abas exceto admin
+    const fullAccessProfiles = ['Magistrado', 'Analista'];
     if (fullAccessProfiles.includes(profile)) {
       return !adminOnlyResources.includes(resource);
     }

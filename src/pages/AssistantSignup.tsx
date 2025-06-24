@@ -64,7 +64,7 @@ const AssistantSignup = () => {
 
       if (authData.user) {
         // Cadastrar o contato na tabela contacts com user_id
-        const { error: contactError } = await supabase
+        const { data: contactData, error: contactError } = await supabase
           .from('contacts')
           .insert({
             user_id: authData.user.id,
@@ -76,13 +76,26 @@ const AssistantSignup = () => {
             profile: 'Assessor de Juiz',
             linked_magistrate_id: formData.magistrateId,
             active: false
-          });
+          })
+          .select()
+          .single();
 
         if (contactError) {
           console.error('Erro ao cadastrar contato:', contactError);
           // Se falhar ao criar contato, tentar excluir o usuário do Auth
           await supabase.auth.admin.deleteUser(authData.user.id);
           throw new Error('Erro ao criar perfil do usuário');
+        }
+
+        // Atualizar o campo judicial_assistant_id na tabela magistrates
+        const { error: magistrateUpdateError } = await supabase
+          .from('magistrates')
+          .update({ judicial_assistant_id: contactData.id })
+          .eq('id', formData.magistrateId);
+
+        if (magistrateUpdateError) {
+          console.error('Erro ao vincular ao magistrado:', magistrateUpdateError);
+          // Não falhar completamente, apenas logar o erro
         }
       }
 
@@ -235,4 +248,4 @@ const AssistantSignup = () => {
   );
 };
 
-export default AssistantSignup;
+export default AssessorDashboard;
