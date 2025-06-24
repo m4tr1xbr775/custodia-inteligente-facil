@@ -47,7 +47,6 @@ const AssistantSignup = () => {
     setIsLoading(true);
 
     try {
-      // Cadastrar o contato como assessor
       const { error } = await supabase
         .from('contacts')
         .insert({
@@ -58,7 +57,7 @@ const AssistantSignup = () => {
           department: formData.department,
           profile: 'Assessor de Juiz',
           linked_magistrate_id: formData.magistrateId,
-          active: false // Aguarda aprovação do admin
+          active: false
         });
 
       if (error) throw error;
@@ -101,7 +100,7 @@ const AssistantSignup = () => {
                 Cadastro de Assessor
               </CardTitle>
               <CardDescription>
-                Etapa {step} de 3
+                Etapa {step} de 2
               </CardDescription>
             </div>
           </div>
@@ -141,18 +140,6 @@ const AssistantSignup = () => {
                 />
               </div>
 
-              <Button 
-                onClick={() => setStep(2)} 
-                className="w-full"
-                disabled={!formData.name || !formData.email}
-              >
-                Continuar
-              </Button>
-            </>
-          )}
-
-          {step === 2 && (
-            <>
               <div className="space-y-2">
                 <Label htmlFor="phone">Telefone</Label>
                 <Input
@@ -173,13 +160,17 @@ const AssistantSignup = () => {
                 />
               </div>
 
-              <Button onClick={() => setStep(3)} className="w-full">
+              <Button 
+                onClick={() => setStep(2)} 
+                className="w-full"
+                disabled={!formData.name || !formData.email}
+              >
                 Continuar
               </Button>
             </>
           )}
 
-          {step === 3 && (
+          {step === 2 && (
             <>
               {loadingMagistrates ? (
                 <div className="text-center py-4">Carregando magistrados...</div>

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -5,14 +6,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, Scale, AlertCircle } from "lucide-react";
+import { Loader2, Scale, AlertCircle, UserPlus } from "lucide-react";
+
+const userProfiles = [
+  "Analista",
+  "Policial Penal", 
+  "Administrador",
+  "Magistrado",
+  "Promotor",
+  "Defensor Público"
+];
 
 export default function Auth() {
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [profile, setProfile] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   
@@ -20,7 +34,7 @@ export default function Auth() {
   const navigate = useNavigate();
   const { signIn } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
@@ -42,7 +56,6 @@ export default function Auth() {
         return;
       }
 
-      // Aguardar um momento para o contexto de auth ser atualizado
       await new Promise(resolve => setTimeout(resolve, 100));
       
       toast({
@@ -54,6 +67,65 @@ export default function Auth() {
     } catch (error: any) {
       console.error("Erro no login:", error);
       setError("Erro interno. Tente novamente.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!name || !email || !password || !profile) {
+      setError("Preencha todos os campos obrigatórios.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      // Cadastrar o usuário no Supabase Auth
+      const { error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: name,
+            profile: profile
+          }
+        }
+      });
+
+      if (authError) throw authError;
+
+      // Cadastrar o contato na tabela contacts
+      const { error: contactError } = await supabase
+        .from('contacts')
+        .insert({
+          name: name,
+          email: email,
+          profile: profile,
+          active: profile === 'Administrador' ? true : false // Admin ativo, outros aguardam aprovação
+        });
+
+      if (contactError) {
+        console.error('Erro ao cadastrar contato:', contactError);
+      }
+
+      toast({
+        title: "Cadastro realizado",
+        description: profile === 'Administrador' 
+          ? "Cadastro realizado com sucesso! Você pode fazer login agora."
+          : "Seu cadastro foi enviado e aguarda aprovação do administrador.",
+      });
+
+      setMode("login");
+      setName("");
+      setProfile("");
+      setPassword("");
+    } catch (error: any) {
+      console.error('Erro no cadastro:', error);
+      setError(error.message);
     } finally {
       setIsLoading(false);
     }
@@ -74,9 +146,14 @@ export default function Auth() {
 
         <Card className="shadow-lg">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">Entrar</CardTitle>
+            <CardTitle className="text-2xl text-center">
+              {mode === "login" ? "Entrar" : "Cadastrar"}
+            </CardTitle>
             <CardDescription className="text-center">
-              Digite suas credenciais para acessar o sistema
+              {mode === "login" 
+                ? "Digite suas credenciais para acessar o sistema"
+                : "Preencha os dados para criar sua conta"
+              }
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -87,9 +164,42 @@ export default function Auth() {
               </Alert>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={mode === "login" ? handleLogin : handleSignup} className="space-y-4">
+              {mode === "signup" && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nome completo *</Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="Seu nome completo"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="profile">Perfil *</Label>
+                    <Select value={profile} onValueChange={setProfile} required disabled={isLoading}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione seu perfil" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {userProfiles.map((profileOption) => (
+                          <SelectItem key={profileOption} value={profileOption}>
+                            {profileOption}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
                   type="email"
@@ -102,7 +212,7 @@ export default function Auth() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <Label htmlFor="password">Senha *</Label>
                 <Input
                   id="password"
                   type="password"
@@ -122,25 +232,42 @@ export default function Auth() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Entrando...
+                    {mode === "login" ? "Entrando..." : "Cadastrando..."}
                   </>
                 ) : (
-                  "Entrar"
+                  mode === "login" ? "Entrar" : "Cadastrar"
                 )}
               </Button>
             </form>
 
             <div className="text-center space-y-2">
-              <p className="text-sm text-gray-600">
-                É assessor de juiz?
-              </p>
               <Button
-                variant="outline"
+                variant="link"
                 className="w-full"
-                onClick={() => navigate('/assistant-signup')}
+                onClick={() => {
+                  setMode(mode === "login" ? "signup" : "login");
+                  setError("");
+                }}
               >
-                Cadastrar como Assessor
+                {mode === "login" 
+                  ? "Não tem conta? Cadastre-se" 
+                  : "Já tem conta? Faça login"
+                }
               </Button>
+              
+              {mode === "login" && (
+                <>
+                  <p className="text-sm text-gray-600">ou</p>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => navigate('/assistant-signup')}
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Cadastrar como Assessor
+                  </Button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
