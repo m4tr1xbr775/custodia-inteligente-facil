@@ -27,6 +27,9 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [profile, setProfile] = useState("");
+  const [department, setDepartment] = useState("");
+  const [phone, setPhone] = useState("");
+  const [mobile, setMobile] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   
@@ -106,6 +109,9 @@ export default function Auth() {
             user_id: authData.user.id,
             name: name,
             email: email,
+            phone: phone,
+            mobile: mobile,
+            department: department,
             profile: profile,
             active: profile === 'Administrador' ? true : false // Admin ativo, outros aguardam aprovação
           });
@@ -128,6 +134,9 @@ export default function Auth() {
       setMode("login");
       setName("");
       setProfile("");
+      setDepartment("");
+      setPhone("");
+      setMobile("");
       setPassword("");
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
@@ -200,6 +209,42 @@ export default function Auth() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="department">Serventia de Origem</Label>
+                    <Input
+                      id="department"
+                      type="text"
+                      placeholder="Ex: 1ª Vara Criminal"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Telefone</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="(11) 1234-5678"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="mobile">Celular</Label>
+                    <Input
+                      id="mobile"
+                      type="tel"
+                      placeholder="(11) 99999-9999"
+                      value={mobile}
+                      onChange={(e) => setMobile(e.target.value)}
+                      disabled={isLoading}
+                    />
                   </div>
                 </>
               )}
