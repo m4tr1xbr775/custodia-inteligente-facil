@@ -248,7 +248,7 @@ export default function Auth() {
 
             <div className="text-center space-y-2">
               <Button
-                variant="link"
+                variant="outline"
                 className="w-full"
                 onClick={() => {
                   setMode(mode === "login" ? "signup" : "login");
