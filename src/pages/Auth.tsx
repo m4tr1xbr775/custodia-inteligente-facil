@@ -256,6 +256,7 @@ export default function Auth() {
                 }}
               >
                 {mode === "login" 
+                   <UserPlus className="mr-2 h-4 w-4" />
                   ? "Não tem conta? Cadastre-se" 
                   : "Já tem conta? Faça login"
                 }
