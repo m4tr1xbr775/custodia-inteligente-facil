@@ -6,21 +6,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Scale, AlertCircle, UserPlus, ArrowLeft } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Loader2, Scale, AlertCircle, UserPlus } from "lucide-react";
+
+const userProfiles = [
+  "Analista",
+  "Policial Penal", 
+  "Administrador",
+  "Magistrado",
+  "Promotor",
+  "Defensor Público"
+];
 
 export default function Auth() {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [serventia, setServentia] = useState("");
-  const [telefone, setTelefone] = useState("");
-  const [celular, setCelular] = useState("");
+  const [profile, setProfile] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-
+  
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -30,17 +39,29 @@ export default function Auth() {
     setError("");
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
       if (error) {
-        setError(error.message.includes("Invalid login credentials")
-          ? "Email ou senha incorretos. Verifique suas credenciais."
-          : error.message.includes("Email not confirmed")
-          ? "Email não confirmado. Verifique sua caixa de entrada."
-          : error.message);
+        if (error.message.includes("Invalid login credentials")) {
+          setError("Email ou senha incorretos. Verifique suas credenciais.");
+        } else if (error.message.includes("Email not confirmed")) {
+          setError("Email não confirmado. Verifique sua caixa de entrada.");
+        } else {
+          setError(error.message);
+        }
         return;
       }
+
       await new Promise(resolve => setTimeout(resolve, 100));
-      toast({ title: "Login realizado com sucesso!", description: "Bem-vindo ao SisJud." });
+      
+      toast({
+        title: "Login realizado com sucesso!",
+        description: "Bem-vindo ao SisJud.",
+      });
+
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Erro no login:", error);
@@ -52,31 +73,65 @@ export default function Auth() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !password) {
+    
+    if (!name || !email || !password || !profile) {
       setError("Preencha todos os campos obrigatórios.");
       return;
     }
+
     setIsLoading(true);
     setError("");
+
     try {
+      // Cadastrar o usuário no Supabase Auth primeiro
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { name, serventia, telefone, celular },
+          data: {
+            name: name,
+            profile: profile
+          },
           emailRedirectTo: `${window.location.origin}/auth`
         }
       });
+
       if (authError) throw authError;
+
+      if (authData.user) {
+        // Cadastrar o contato na tabela contacts com user_id
+        const { error: contactError } = await supabase
+          .from('contacts')
+          .insert({
+            user_id: authData.user.id,
+            name: name,
+            email: email,
+            profile: profile,
+            active: profile === 'Administrador' ? true : false // Admin ativo, outros aguardam aprovação
+          });
+
+        if (contactError) {
+          console.error('Erro ao cadastrar contato:', contactError);
+          // Se falhar ao criar contato, tentar excluir o usuário do Auth
+          await supabase.auth.admin.deleteUser(authData.user.id);
+          throw new Error('Erro ao criar perfil do usuário');
+        }
+      }
+
       toast({
         title: "Cadastro realizado",
-        description: "Cadastro enviado com sucesso. Aguarde aprovação."
+        description: profile === 'Administrador' 
+          ? "Cadastro realizado com sucesso! Você pode fazer login agora."
+          : "Seu cadastro foi enviado e aguarda aprovação do administrador.",
       });
+
       setMode("login");
-      setName(""); setEmail(""); setPassword(""); setServentia(""); setTelefone(""); setCelular("");
+      setName("");
+      setProfile("");
+      setPassword("");
     } catch (error: any) {
-      console.error("Erro no cadastro:", error);
-      setError(error.message || "Erro ao realizar cadastro");
+      console.error('Erro no cadastro:', error);
+      setError(error.message || 'Erro ao realizar cadastro');
     } finally {
       setIsLoading(false);
     }
@@ -97,17 +152,16 @@ export default function Auth() {
 
         <Card className="shadow-lg">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center flex items-center justify-center gap-2">
-              {mode === "signup" && <UserPlus className="w-6 h-6" />}
-              {mode === "login" ? "Entrar" : "Cadastro de Assessor"}
+            <CardTitle className="text-2xl text-center">
+              {mode === "login" ? "Entrar" : "Cadastrar"}
             </CardTitle>
             <CardDescription className="text-center">
-              {mode === "login"
+              {mode === "login" 
                 ? "Digite suas credenciais para acessar o sistema"
-                : "Preencha todos os dados"}
+                : "Preencha os dados para criar sua conta"
+              }
             </CardDescription>
           </CardHeader>
-
           <CardContent className="space-y-4">
             {error && (
               <Alert variant="destructive">
@@ -119,22 +173,76 @@ export default function Auth() {
             <form onSubmit={mode === "login" ? handleLogin : handleSignup} className="space-y-4">
               {mode === "signup" && (
                 <>
-                  <Label>Nome completo *</Label>
-                  <Input placeholder="Seu nome completo" value={name} onChange={(e) => setName(e.target.value)} required disabled={isLoading} />
-                  <Label>Serventia de Origem</Label>
-                  <Input placeholder="Ex: 1ª Vara Criminal" value={serventia} onChange={(e) => setServentia(e.target.value)} disabled={isLoading} />
-                  <Label>Telefone</Label>
-                  <Input placeholder="(11) 1234-5678" value={telefone} onChange={(e) => setTelefone(e.target.value)} disabled={isLoading} />
-                  <Label>Celular</Label>
-                  <Input placeholder="(11) 99999-9999" value={celular} onChange={(e) => setCelular(e.target.value)} disabled={isLoading} />
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nome completo *</Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="Seu nome completo"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="profile">Perfil *</Label>
+                    <Select value={profile} onValueChange={setProfile} required disabled={isLoading}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione seu perfil" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {userProfiles.map((profileOption) => (
+                          <SelectItem key={profileOption} value={profileOption}>
+                            {profileOption}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </>
               )}
-              <Label>Email *</Label>
-              <Input type="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={isLoading} />
-              <Label>Senha *</Label>
-              <Input type="password" placeholder="Sua senha" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={isLoading} />
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
-                {isLoading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />{mode === "login" ? "Entrando..." : "Cadastrando..."}</>) : (mode === "login" ? "Entrar" : "Cadastrar")}
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha *</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Sua senha"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full bg-blue-600 hover:bg-blue-700" 
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {mode === "login" ? "Entrando..." : "Cadastrando..."}
+                  </>
+                ) : (
+                  mode === "login" ? "Entrar" : "Cadastrar"
+                )}
               </Button>
             </form>
 
@@ -147,10 +255,25 @@ export default function Auth() {
                   setError("");
                 }}
               >
-                {mode === "login"
-                  ? (<><UserPlus className="mr-2 h-4 w-4" /> Cadastre-se</>)
-                  : (<><ArrowLeft className="mr-2 h-4 w-4" /> Voltar para o login</>)}
+                {mode === "login" 
+                  ? "Não tem conta? Cadastre-se" 
+                  : "Já tem conta? Faça login"
+                }
               </Button>
+              
+              {mode === "login" && (
+                <>
+                  <p className="text-sm text-gray-600">ou</p>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => navigate('/assistant-signup')}
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Cadastrar como Assessor
+                  </Button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -162,5 +285,3 @@ export default function Auth() {
     </div>
   );
 }
-
-
