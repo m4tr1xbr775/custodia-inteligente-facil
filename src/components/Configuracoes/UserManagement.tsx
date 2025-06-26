@@ -38,15 +38,6 @@ type User = BaseUser | Magistrate | Defender;
 const UserManagement = ({ type, title }: UserManagementProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    registration: "",
-    type: "",
-    judicial_assistant_id: "",
-    virtual_room_url: "",
-  });
   
   const { toast } = useToast();
   const { createMutation, updateMutation, deleteMutation } = useUserMutations(type, title);
@@ -90,11 +81,11 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFormSubmit = (formData: any) => {
+    console.log("Form data received:", formData);
     
     // Validate required fields
-    if (!formData.name.trim()) {
+    if (!formData.name?.trim()) {
       toast({
         title: "Erro",
         description: "Nome é obrigatório",
@@ -103,53 +94,40 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
       return;
     }
 
-    console.log("Form submitted:", formData);
-    
     if (editingUser) {
+      console.log("Updating user:", editingUser.id, formData);
       updateMutation.mutate({ id: editingUser.id, userData: formData }, {
-        onSuccess: handleCloseDialog,
+        onSuccess: () => {
+          console.log("Update successful");
+          handleCloseDialog();
+        },
+        onError: (error) => {
+          console.error("Update error:", error);
+        }
       });
     } else {
+      console.log("Creating new user:", formData);
       createMutation.mutate(formData, {
-        onSuccess: handleCloseDialog,
+        onSuccess: () => {
+          console.log("Create successful");
+          handleCloseDialog();
+        },
+        onError: (error) => {
+          console.error("Create error:", error);
+        }
       });
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
   const handleEdit = (user: User) => {
+    console.log("Editing user:", user);
     setEditingUser(user);
-    const magistrate = user as Magistrate;
-    setFormData({
-      name: user.name,
-      email: user.email || "",
-      phone: user.phone || "",
-      registration: user.registration || "",
-      type: (user as Defender).type || "",
-      judicial_assistant_id: magistrate.judicial_assistant_id || "",
-      virtual_room_url: magistrate.virtual_room_url || "",
-    });
     setIsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingUser(null);
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      registration: "",
-      type: "",
-      judicial_assistant_id: "",
-      virtual_room_url: "",
-    });
   };
 
   const handleDelete = (id: string) => {
@@ -160,6 +138,7 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
 
   const handleNewUser = () => {
     setEditingUser(null);
+    setIsDialogOpen(true);
   };
 
   if (isLoading) {
@@ -172,6 +151,34 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
     );
   }
 
+  // Preparar dados iniciais baseados no usuário em edição
+  const getInitialData = () => {
+    if (!editingUser) {
+      return {
+        name: "",
+        email: "",
+        phone: "",
+        registration: "",
+        type: "",
+        judicial_assistant_id: "",
+        virtual_room_url: "",
+      };
+    }
+
+    const magistrate = editingUser as Magistrate;
+    const defender = editingUser as Defender;
+    
+    return {
+      name: editingUser.name || "",
+      email: editingUser.email || "",
+      phone: editingUser.phone || "",
+      registration: editingUser.registration || "",
+      type: defender.type || "",
+      judicial_assistant_id: magistrate.judicial_assistant_id || "",
+      virtual_room_url: magistrate.virtual_room_url || "",
+    };
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -181,10 +188,10 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
           onOpenChange={setIsDialogOpen}
           editingUser={editingUser}
           title={title}
-          initialData={formData}
+          initialData={getInitialData()}
           type={type}
           isSubmitting={createMutation.isPending || updateMutation.isPending}
-          onSubmit={handleSubmit}
+          onSubmit={handleFormSubmit}
           onCancel={handleCloseDialog}
           onNewUser={handleNewUser}
         />

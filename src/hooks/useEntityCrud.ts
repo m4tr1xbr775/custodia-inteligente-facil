@@ -27,6 +27,8 @@ export const useEntityCrud = (config: EntityCrudConfig) => {
         }
       });
       
+      console.log(`Inserting into ${tableName}:`, cleanData);
+      
       const { data: result, error } = await supabase
         .from(tableName as any)
         .insert([cleanData])
@@ -38,9 +40,11 @@ export const useEntityCrud = (config: EntityCrudConfig) => {
         throw error;
       }
       
+      console.log(`Created ${entityName} successfully:`, result);
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log(`${entityName} created successfully:`, data);
       queryClient.invalidateQueries({ queryKey });
       toast({
         title: "Sucesso",
@@ -61,13 +65,15 @@ export const useEntityCrud = (config: EntityCrudConfig) => {
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       console.log(`Updating ${entityName} with id:`, id, data);
       
-      // Remove empty strings to avoid inserting empty values
+      // Remove empty strings to avoid inserting empty values, but allow null for clearing values
       const cleanData = { ...data };
       Object.keys(cleanData).forEach(key => {
         if (cleanData[key] === "") {
           delete cleanData[key];
         }
       });
+      
+      console.log(`Updating ${tableName} id ${id} with:`, cleanData);
       
       const { data: result, error } = await supabase
         .from(tableName as any)
@@ -81,9 +87,11 @@ export const useEntityCrud = (config: EntityCrudConfig) => {
         throw error;
       }
       
+      console.log(`Updated ${entityName} successfully:`, result);
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log(`${entityName} updated successfully:`, data);
       queryClient.invalidateQueries({ queryKey });
       toast({
         title: "Sucesso",
@@ -112,6 +120,8 @@ export const useEntityCrud = (config: EntityCrudConfig) => {
         console.error(`Error deleting ${entityName}:`, error);
         throw error;
       }
+      
+      console.log(`Deleted ${entityName} successfully`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });

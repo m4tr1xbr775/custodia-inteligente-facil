@@ -17,6 +17,8 @@ export const useUserMutations = (type: TableName, title: string) => {
   const customCreateMutation = {
     ...createMutation,
     mutate: (userData: any, options?: any) => {
+      console.log(`Creating ${type} with data:`, userData);
+      
       // Remove the type field for magistrates and prosecutors as they don't have this column
       const cleanUserData = { ...userData };
       if (type === "magistrates" || type === "prosecutors") {
@@ -25,7 +27,7 @@ export const useUserMutations = (type: TableName, title: string) => {
       
       // For magistrates, handle judicial_assistant_id
       if (type === "magistrates") {
-        if (cleanUserData.judicial_assistant_id === "") {
+        if (cleanUserData.judicial_assistant_id === "" || cleanUserData.judicial_assistant_id === "none") {
           delete cleanUserData.judicial_assistant_id;
         }
       } else {
@@ -34,6 +36,7 @@ export const useUserMutations = (type: TableName, title: string) => {
         delete cleanUserData.virtual_room_url;
       }
 
+      console.log(`Cleaned data for ${type}:`, cleanUserData);
       return createMutation.mutate(cleanUserData, options);
     },
   };
@@ -42,6 +45,8 @@ export const useUserMutations = (type: TableName, title: string) => {
   const customUpdateMutation = {
     ...updateMutation,
     mutate: ({ id, userData }: { id: string; userData: any }, options?: any) => {
+      console.log(`Updating ${type} ${id} with data:`, userData);
+      
       // Remove the type field for magistrates and prosecutors as they don't have this column
       const cleanUserData = { ...userData };
       if (type === "magistrates" || type === "prosecutors") {
@@ -50,7 +55,7 @@ export const useUserMutations = (type: TableName, title: string) => {
       
       // For magistrates, handle judicial_assistant_id
       if (type === "magistrates") {
-        if (cleanUserData.judicial_assistant_id === "") {
+        if (cleanUserData.judicial_assistant_id === "" || cleanUserData.judicial_assistant_id === "none") {
           cleanUserData.judicial_assistant_id = null;
         }
       } else {
@@ -59,6 +64,7 @@ export const useUserMutations = (type: TableName, title: string) => {
         delete cleanUserData.virtual_room_url;
       }
 
+      console.log(`Cleaned data for ${type} update:`, cleanUserData);
       return updateMutation.mutate({ id, data: cleanUserData }, options);
     },
   };
