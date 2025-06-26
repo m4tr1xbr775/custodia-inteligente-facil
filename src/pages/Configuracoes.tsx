@@ -1,14 +1,31 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserManagement from "@/components/Configuracoes/UserManagement";
 import ServentiaManagement from "@/components/Configuracoes/ServentiaManagement";
 import ScheduleManagement from "@/components/Configuracoes/ScheduleManagement";
 import AssignmentManagement from "@/components/Configuracoes/AssignmentManagement";
 import EscalaAutoUpdater from "@/components/Configuracoes/EscalaAutoUpdater";
+import { useSearchParams } from "react-router-dom";
 
 const Configuracoes = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("magistrates");
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    // Atualizar URL sem recarregar a página
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set('tab', value);
+    setSearchParams(newSearchParams);
+  };
 
   return (
     <div className="space-y-6">
@@ -24,7 +41,7 @@ const Configuracoes = () => {
         <EscalaAutoUpdater />
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="magistrates">Magistrados</TabsTrigger>
           <TabsTrigger value="prosecutors">Promotores</TabsTrigger>

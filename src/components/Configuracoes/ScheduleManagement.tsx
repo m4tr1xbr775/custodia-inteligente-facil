@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
+import { useMagistrateAssistantValidation } from "@/hooks/useMagistrateAssistantValidation";
+import MagistrateAssistantAlert from "./MagistrateAssistantAlert";
 
 interface Schedule {
   id: string;
@@ -39,7 +41,7 @@ interface Schedule {
   description?: string;
   start_date: string;
   end_date: string;
-  status: 'ativa' | 'inativa';
+  status: 'ativa' | 'inativa' | 'rascunho';
   created_by?: string;
   created_at: string;
   updated_at: string;
@@ -93,8 +95,22 @@ const ScheduleManagement = () => {
     shift: "integral",
   });
   
+  const { validateMagistrateAssistant, showAlert, selectedMagistrate, closeAlert } = useMagistrateAssistantValidation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Verificar se deve retornar para escalas após edição de magistrado
+  useEffect(() => {
+    const shouldReturn = localStorage.getItem('returnToSchedules');
+    if (shouldReturn === 'true') {
+      localStorage.removeItem('returnToSchedules');
+      localStorage.removeItem('selectedMagistrateId');
+      toast({
+        title: "Sucesso",
+        description: "Agora você pode continuar com o cadastro da escala.",
+      });
+    }
+  }, [toast]);
 
   // Fetch serventias
   const { data: serventias = [] } = useQuery({
@@ -327,10 +343,22 @@ const ScheduleManagement = () => {
     },
   });
 
-  // Create assignment mutation
+  // Create assignment mutation with validation
   const createAssignmentMutation = useMutation({
     mutationFn: async (assignmentData: any) => {
-      const cleanData = { ...assignmentData, schedule_id: selectedScheduleForAssignment?.id };
+      // Validar assessor antes de criar
+      const validation = await validateMagistrateAssistant(assignmentData.magistrate_id);
+      
+      if (!validation.isValid) {
+        throw new Error("Magistrado sem assessor vinculado");
+      }
+
+      const cleanData = { 
+        ...assignmentData, 
+        schedule_id: selectedScheduleForAssignment?.id,
+        judicial_assistant_id: validation.judicialAssistantId || null
+      };
+      
       if (cleanData.magistrate_id === "none") delete cleanData.magistrate_id;
       if (cleanData.prosecutor_id === "none") delete cleanData.prosecutor_id;
       if (cleanData.defender_id === "none") delete cleanData.defender_id;
@@ -346,6 +374,7 @@ const ScheduleManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedule_assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['management_assignments'] });
       toast({
         title: "Sucesso",
         description: "Atribuição criada com sucesso!",
@@ -353,18 +382,31 @@ const ScheduleManagement = () => {
       handleCloseAssignmentDialog();
     },
     onError: (error: any) => {
-      toast({
-        title: "Erro",
-        description: `Erro ao criar atribuição: ${error.message}`,
-        variant: "destructive",
-      });
+      if (error.message !== "Magistrado sem assessor vinculado") {
+        toast({
+          title: "Erro",
+          description: `Erro ao criar atribuição: ${error.message}`,
+          variant: "destructive",
+        });
+      }
     },
   });
 
-  // Update assignment mutation
+  // Update assignment mutation with validation
   const updateAssignmentMutation = useMutation({
     mutationFn: async ({ id, assignmentData }: { id: string; assignmentData: any }) => {
-      const cleanData = { ...assignmentData };
+      // Validar assessor antes de atualizar
+      const validation = await validateMagistrateAssistant(assignmentData.magistrate_id);
+      
+      if (!validation.isValid) {
+        throw new Error("Magistrado sem assessor vinculado");
+      }
+
+      const cleanData = { 
+        ...assignmentData,
+        judicial_assistant_id: validation.judicialAssistantId || null
+      };
+      
       if (cleanData.magistrate_id === "none") cleanData.magistrate_id = null;
       if (cleanData.prosecutor_id === "none") cleanData.prosecutor_id = null;
       if (cleanData.defender_id === "none") cleanData.defender_id = null;
@@ -388,11 +430,13 @@ const ScheduleManagement = () => {
       handleCloseAssignmentEditDialog();
     },
     onError: (error: any) => {
-      toast({
-        title: "Erro",
-        description: `Erro ao atualizar atribuição: ${error.message}`,
-        variant: "destructive",
-      });
+      if (error.message !== "Magistrado sem assessor vinculado") {
+        toast({
+          title: "Erro",
+          description: `Erro ao atualizar atribuição: ${error.message}`,
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -648,6 +692,15 @@ const ScheduleManagement = () => {
 
   return (
     <div className="space-y-6">
+      {/* Alert para magistrado sem assessor */}
+      {showAlert && selectedMagistrate && (
+        <MagistrateAssistantAlert
+          magistrateName={selectedMagistrate.name}
+          magistrateId={selectedMagistrate.id}
+          onClose={closeAlert}
+        />
+      )}
+
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Escalas de Plantão</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
