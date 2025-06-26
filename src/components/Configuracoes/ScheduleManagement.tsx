@@ -39,7 +39,7 @@ interface Schedule {
   description?: string;
   start_date: string;
   end_date: string;
-  status: 'ativa' | 'inativa' | 'rascunho';
+  status: 'ativa' | 'inativa';
   created_by?: string;
   created_at: string;
   updated_at: string;
