@@ -31,7 +31,7 @@ import {
 const unidadeSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   short_name: z.string().min(1, 'Nome curto é obrigatório'),
-  type: z.enum(['CDP', 'Presídio', 'CPP'], {
+  type: z.enum(['UPR', 'Presídio', 'CPP'], {
     required_error: 'Tipo é obrigatório',
   }),
   comarca: z.string().min(1, 'Comarca é obrigatória'),
