@@ -99,7 +99,11 @@ const ScheduleManagement = () => {
     defender_id: "none",
     shift: "integral",
   });
-  
+  const [assignmentMagistrateAlert, setAssignmentMagistrateAlert] = useState<{
+    show: boolean;
+    magistrate: any;
+  }>({ show: false, magistrate: null });
+
   const { validateMagistrateAssistant, showAlert, selectedMagistrate, closeAlert } = useMagistrateAssistantValidation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -359,6 +363,11 @@ const ScheduleManagement = () => {
         const validation = await validateMagistrateAssistant(assignmentData.magistrate_id);
         
         if (!validation.isValid) {
+          // Encontrar o magistrado para exibir o alerta no formulário
+          const magistrate = magistrates.find(m => m.id === assignmentData.magistrate_id);
+          if (magistrate) {
+            setAssignmentMagistrateAlert({ show: true, magistrate });
+          }
           throw new Error("Magistrado sem assessor vinculado");
         }
         
@@ -606,6 +615,8 @@ const ScheduleManagement = () => {
       defender_id: "none",
       shift: "integral",
     });
+    // Limpar o alerta do formulário
+    setAssignmentMagistrateAlert({ show: false, magistrate: null });
   };
 
   const handleManageAssignments = (schedule: Schedule) => {
@@ -702,6 +713,16 @@ const ScheduleManagement = () => {
     }
   };
 
+  const handleAssignmentMagistrateChange = (value: string) => {
+    handleAssignmentInputChange("magistrate_id", value);
+    // Limpar o alerta quando o magistrado for alterado
+    setAssignmentMagistrateAlert({ show: false, magistrate: null });
+  };
+
+  const handleCloseAssignmentMagistrateAlert = () => {
+    setAssignmentMagistrateAlert({ show: false, magistrate: null });
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -714,7 +735,7 @@ const ScheduleManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* Alert para magistrado sem assessor */}
+      {/* Alert para magistrado sem assessor - APENAS no topo da página para escalas gerais */}
       {showAlert && selectedMagistrate && (
         <MagistrateAssistantAlert
           magistrateName={selectedMagistrate.name}
@@ -856,7 +877,7 @@ const ScheduleManagement = () => {
 
             <div>
               <Label htmlFor="magistrate_id">Magistrado</Label>
-              <Select value={assignmentFormData.magistrate_id} onValueChange={(value) => handleAssignmentInputChange("magistrate_id", value)}>
+              <Select value={assignmentFormData.magistrate_id} onValueChange={handleAssignmentMagistrateChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um magistrado" />
                 </SelectTrigger>
@@ -869,6 +890,17 @@ const ScheduleManagement = () => {
                   ))}
                 </SelectContent>
               </Select>
+              
+              {/* Alert para magistrado sem assessor - DIRETAMENTE no formulário */}
+              {assignmentMagistrateAlert.show && assignmentMagistrateAlert.magistrate && (
+                <div className="mt-2">
+                  <MagistrateAssistantAlert
+                    magistrateName={assignmentMagistrateAlert.magistrate.name}
+                    magistrateId={assignmentMagistrateAlert.magistrate.id}
+                    onClose={handleCloseAssignmentMagistrateAlert}
+                  />
+                </div>
+              )}
             </div>
 
             <div>
