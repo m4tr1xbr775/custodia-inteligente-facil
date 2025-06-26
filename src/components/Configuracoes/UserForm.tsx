@@ -110,14 +110,16 @@ const UserForm = ({ type, initialData, onSubmit, onCancel, isLoading }: UserForm
         )}
       </div>
 
-      <div>
-        <Label htmlFor="registration">Matrícula/Registro</Label>
-        <Input 
-          id="registration"
-          {...register("registration")} 
-          placeholder="Número de matrícula ou registro"
-        />
-      </div>
+      {type === "defenders" && (
+        <div>
+          <Label htmlFor="registration">Matrícula/Registro</Label>
+          <Input 
+            id="registration"
+            {...register("registration")} 
+            placeholder="Número de matrícula ou registro"
+          />
+        </div>
+      )}
 
       <div>
         <Label htmlFor="email">Email</Label>

@@ -154,29 +154,41 @@ const UserManagement = ({ type, title }: UserManagementProps) => {
   // Preparar dados iniciais baseados no usuário em edição
   const getInitialData = () => {
     if (!editingUser) {
-      return {
+      const baseData = {
         name: "",
         email: "",
         phone: "",
-        registration: "",
         type: "",
         judicial_assistant_id: "",
         virtual_room_url: "",
       };
+      
+      // Só incluir registration se for defensor
+      if (type === "defenders") {
+        return { ...baseData, registration: "" };
+      }
+      
+      return baseData;
     }
 
     const magistrate = editingUser as Magistrate;
     const defender = editingUser as Defender;
     
-    return {
+    const baseData = {
       name: editingUser.name || "",
       email: editingUser.email || "",
       phone: editingUser.phone || "",
-      registration: editingUser.registration || "",
       type: defender.type || "",
       judicial_assistant_id: magistrate.judicial_assistant_id || "",
       virtual_room_url: magistrate.virtual_room_url || "",
     };
+    
+    // Só incluir registration se for defensor
+    if (type === "defenders") {
+      return { ...baseData, registration: editingUser.registration || "" };
+    }
+    
+    return baseData;
   };
 
   return (
