@@ -20,7 +20,7 @@ interface UserDialogProps {
     name: string;
     email: string;
     phone: string;
-    registration: string;
+    registration?: string; // Agora é opcional
     type: string;
     judicial_assistant_id: string;
     virtual_room_url: string;
