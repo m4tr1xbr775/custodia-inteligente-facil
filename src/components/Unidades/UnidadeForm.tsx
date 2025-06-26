@@ -31,7 +31,7 @@ import {
 const unidadeSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   short_name: z.string().min(1, 'Nome curto é obrigatório'),
-  type: z.enum(['UPR', 'Presídio', 'CPP'], {
+  type: z.enum(['UPR', 'CPP', 'Presídio Estadual', 'Penitenciária Feminina'], {
     required_error: 'Tipo é obrigatório',
   }),
   comarca: z.string().min(1, 'Comarca é obrigatória'),
@@ -177,9 +177,10 @@ const UnidadeForm = ({ isOpen, onClose, onSave, initialData, mode }: UnidadeForm
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="CDP">CDP - Centro de Detenção Provisória</SelectItem>
-                        <SelectItem value="CPP">CPP - Centro de Progressão Penitenciária</SelectItem>
-                        <SelectItem value="Presídio">Presídio</SelectItem>
+                        <SelectItem value="UPR">UPR - Unidade Prisional Regional</SelectItem>
+                        <SelectItem value="CPP">CPP - Casa de Prisão Provisória</SelectItem>
+                        <SelectItem value="Presídio Estadual">Presídio Estadual</SelectItem>
+                        <SelectItem value="Penitenciária Feminina">Penitenciária Feminina</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

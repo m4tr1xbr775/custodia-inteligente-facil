@@ -1,14 +1,14 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Phone, MessageCircle, MapPin, Eye, Edit, Trash2 } from "lucide-react";
+import { getPrisonUnitTypeLabel, getPrisonUnitTypeBadgeColor } from "@/utils/prisonUnitUtils";
 
 interface PrisonUnit {
   id: string;
   name: string;
   short_name: string;
-  type: "UPR" | "Presídio" | "CPP";
+  type: "UPR" | "CPP" | "Presídio Estadual" | "Penitenciária Feminina" | string;
   comarca: string;
   director: string;
   responsible: string;
@@ -39,16 +39,10 @@ const UnidadeCard = ({
   onWhatsApp 
 }: UnidadeCardProps) => {
   const getTypeBadge = (type: string) => {
-    switch (type) {
-      case "UPR":
-        return <Badge className="bg-blue-100 text-blue-800">CDP</Badge>;
-      case "Presídio":
-        return <Badge className="bg-green-100 text-green-800">Presídio</Badge>;
-      case "CPP":
-        return <Badge className="bg-purple-100 text-purple-800">CPP</Badge>;
-      default:
-        return <Badge variant="secondary">{type}</Badge>;
-    }
+    const label = getPrisonUnitTypeLabel(type);
+    const colorClass = getPrisonUnitTypeBadgeColor(type);
+    
+    return <Badge className={colorClass}>{label}</Badge>;
   };
 
   const municipalitiesArray = typeof unit.municipalities === 'string' 
