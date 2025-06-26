@@ -116,7 +116,7 @@ const UserForm = ({ type, initialData, onSubmit, onCancel, isLoading }: UserForm
           <Input 
             id="registration"
             {...register("registration")} 
-            placeholder="Número de matrícula ou registro"
+            placeholder="Número da OAB"
           />
         </div>
       )}
