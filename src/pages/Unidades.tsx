@@ -26,7 +26,7 @@ interface PrisonUnit {
   id: string;
   name: string;
   short_name: string;
-  type: "CDP" | "Presídio" | "CPP";
+  type: "UPR" | "Presídio" | "CPP";
   comarca: string;
   director: string;
   responsible: string;
@@ -67,7 +67,7 @@ const Unidades = () => {
       // Garantir que todos os campos obrigatórios estejam presentes
       return (data || []).map(unit => ({
         ...unit,
-        type: unit.type as "CDP" | "Presídio" | "CPP",
+        type: unit.type as "UPR" | "Presídio" | "CPP",
         number_of_rooms: unit.number_of_rooms || 1,
         address: unit.address || '',
         municipalities: unit.municipalities || ''
