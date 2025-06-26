@@ -8,7 +8,7 @@ interface PrisonUnit {
   id: string;
   name: string;
   short_name: string;
-  type: "CDP" | "Presídio" | "CPP";
+  type: "UPR" | "Presídio" | "CPP";
   comarca: string;
   director: string;
   responsible: string;
@@ -40,7 +40,7 @@ const UnidadeCard = ({
 }: UnidadeCardProps) => {
   const getTypeBadge = (type: string) => {
     switch (type) {
-      case "CDP":
+      case "UPR":
         return <Badge className="bg-blue-100 text-blue-800">CDP</Badge>;
       case "Presídio":
         return <Badge className="bg-green-100 text-green-800">Presídio</Badge>;
