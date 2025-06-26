@@ -112,7 +112,7 @@ const UserForm = ({ type, initialData, onSubmit, onCancel, isLoading }: UserForm
 
       {type === "defenders" && (
         <div>
-          <Label htmlFor="registration">Matrícula/Registro</Label>
+          <Label htmlFor="registration">OAB</Label>
           <Input 
             id="registration"
             {...register("registration")} 
