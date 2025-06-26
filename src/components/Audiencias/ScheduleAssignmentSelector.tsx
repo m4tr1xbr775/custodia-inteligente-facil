@@ -97,13 +97,16 @@ const ScheduleAssignmentSelector = ({ form, selectedDate, onAssignmentSelect }: 
       form.setValue("prosecutor_id", selectedAssignment.prosecutor_id);
       form.setValue("defender_id", selectedAssignment.defender_id);
       
-      // Preencher assessor judicial automaticamente
+      // Preencher assessor judicial automaticamente - PRIORIZAR o que está na atribuição
       if (selectedAssignment.judicial_assistant_id) {
-        console.log("Preenchendo assessor judicial automaticamente:", selectedAssignment.judicial_assistant_id);
+        console.log("Preenchendo assessor judicial da atribuição:", selectedAssignment.judicial_assistant_id);
         form.setValue("judicial_assistant_id", selectedAssignment.judicial_assistant_id);
       } else if (selectedAssignment.magistrates?.judicial_assistant_id) {
         console.log("Preenchendo assessor judicial do magistrado:", selectedAssignment.magistrates.judicial_assistant_id);
         form.setValue("judicial_assistant_id", selectedAssignment.magistrates.judicial_assistant_id);
+      } else {
+        console.log("Nenhum assessor judicial encontrado para esta atribuição");
+        form.setValue("judicial_assistant_id", "");
       }
       
       // Preencher virtual_room_url do magistrate

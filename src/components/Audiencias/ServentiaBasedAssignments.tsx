@@ -83,8 +83,8 @@ const ServentiaBasedAssignments = ({
             <div><strong>Juiz:</strong> {selectedAssignment.magistrates?.name || 'N/A'}</div>
             <div><strong>Promotor:</strong> {selectedAssignment.prosecutors?.name || 'N/A'}</div>
             <div><strong>Defensor:</strong> {selectedAssignment.defenders?.name || 'N/A'}</div>
-            <div><strong>Assessor:</strong> {selectedAssignment.judicial_assistants?.name || 'N/A'}</div>
-            <div><strong>Telefone Assessor:</strong> {selectedAssignment.judicial_assistants?.phone || 'N/A'}</div>
+            <div><strong>Assessor:</strong> {selectedAssignment.judicial_assistant?.name || 'N/A'}</div>
+            <div><strong>Telefone Assessor:</strong> {selectedAssignment.judicial_assistant?.phone || 'N/A'}</div>
           </div>
         </div>
       )}

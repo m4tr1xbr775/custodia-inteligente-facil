@@ -70,6 +70,11 @@ interface Assignment {
   defender?: {
     name: string;
   };
+  judicial_assistant?: {
+    id: string;
+    name: string;
+    phone: string;
+  };
 }
 
 const ScheduleManagement = () => {
@@ -202,9 +207,10 @@ const ScheduleManagement = () => {
         .select(`
           *,
           serventia:serventias(name, code),
-          magistrate:magistrates(name),
+          magistrate:magistrates(name, judicial_assistant_id),
           prosecutor:prosecutors(name),
-          defender:defenders(name)
+          defender:defenders(name),
+          judicial_assistant:contacts!judicial_assistant_id(id, name, phone)
         `)
         .eq('schedule_id', selectedScheduleForManagement.id)
         .order('shift');
@@ -346,20 +352,29 @@ const ScheduleManagement = () => {
   // Create assignment mutation with validation
   const createAssignmentMutation = useMutation({
     mutationFn: async (assignmentData: any) => {
-      // Validar assessor antes de criar
-      const validation = await validateMagistrateAssistant(assignmentData.magistrate_id);
+      console.log('Creating assignment with data:', assignmentData);
       
-      if (!validation.isValid) {
-        throw new Error("Magistrado sem assessor vinculado");
+      // Validar assessor antes de criar se há magistrado selecionado
+      if (assignmentData.magistrate_id && assignmentData.magistrate_id !== "none") {
+        const validation = await validateMagistrateAssistant(assignmentData.magistrate_id);
+        
+        if (!validation.isValid) {
+          throw new Error("Magistrado sem assessor vinculado");
+        }
+        
+        // Preencher automaticamente o judicial_assistant_id
+        assignmentData.judicial_assistant_id = validation.judicialAssistantId;
       }
 
       const cleanData = { 
         ...assignmentData, 
-        schedule_id: selectedScheduleForAssignment?.id,
-        judicial_assistant_id: validation.judicialAssistantId || null
+        schedule_id: selectedScheduleForAssignment?.id
       };
       
-      if (cleanData.magistrate_id === "none") delete cleanData.magistrate_id;
+      if (cleanData.magistrate_id === "none") {
+        delete cleanData.magistrate_id;
+        delete cleanData.judicial_assistant_id;
+      }
       if (cleanData.prosecutor_id === "none") delete cleanData.prosecutor_id;
       if (cleanData.defender_id === "none") delete cleanData.defender_id;
 
@@ -395,19 +410,26 @@ const ScheduleManagement = () => {
   // Update assignment mutation with validation
   const updateAssignmentMutation = useMutation({
     mutationFn: async ({ id, assignmentData }: { id: string; assignmentData: any }) => {
-      // Validar assessor antes de atualizar
-      const validation = await validateMagistrateAssistant(assignmentData.magistrate_id);
+      console.log('Updating assignment with data:', assignmentData);
       
-      if (!validation.isValid) {
-        throw new Error("Magistrado sem assessor vinculado");
+      // Validar assessor antes de atualizar se há magistrado selecionado
+      if (assignmentData.magistrate_id && assignmentData.magistrate_id !== "none") {
+        const validation = await validateMagistrateAssistant(assignmentData.magistrate_id);
+        
+        if (!validation.isValid) {
+          throw new Error("Magistrado sem assessor vinculado");
+        }
+        
+        // Preencher automaticamente o judicial_assistant_id
+        assignmentData.judicial_assistant_id = validation.judicialAssistantId;
       }
 
-      const cleanData = { 
-        ...assignmentData,
-        judicial_assistant_id: validation.judicialAssistantId || null
-      };
+      const cleanData = { ...assignmentData };
       
-      if (cleanData.magistrate_id === "none") cleanData.magistrate_id = null;
+      if (cleanData.magistrate_id === "none") {
+        cleanData.magistrate_id = null;
+        cleanData.judicial_assistant_id = null;
+      }
       if (cleanData.prosecutor_id === "none") cleanData.prosecutor_id = null;
       if (cleanData.defender_id === "none") cleanData.defender_id = null;
 
@@ -897,7 +919,7 @@ const ScheduleManagement = () => {
 
       {/* Manage Assignments Dialog */}
       <Dialog open={isManageAssignmentsDialogOpen} onOpenChange={setIsManageAssignmentsDialogOpen}>
-        <DialogContent className="sm:max-w-[800px]">
+        <DialogContent className="sm:max-w-[900px]">
           <DialogHeader>
             <DialogTitle>Gerenciar Atribuições</DialogTitle>
             {selectedScheduleForManagement && (
@@ -919,7 +941,7 @@ const ScheduleManagement = () => {
                 ) : (
                   managementAssignments.map((assignment) => (
                     <Card key={assignment.id} className="p-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                           <Label className="text-sm font-medium text-gray-700">Serventia</Label>
                           {editingAssignment?.id === assignment.id ? (
@@ -981,6 +1003,18 @@ const ScheduleManagement = () => {
                           ) : (
                             <p className="text-sm text-gray-900 mt-1">
                               {assignment.magistrate?.name || "-"}
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">Assessor Judicial</Label>
+                          <p className="text-sm text-gray-900 mt-1">
+                            {assignment.judicial_assistant?.name || "-"}
+                          </p>
+                          {assignment.judicial_assistant?.phone && (
+                            <p className="text-xs text-gray-500">
+                              {assignment.judicial_assistant.phone}
                             </p>
                           )}
                         </div>
